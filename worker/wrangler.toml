@@ -2,13 +2,14 @@ name = "defuselab-proxy"
 main = "worker.js"
 compatibility_date = "2024-11-01"
 
-# Encrypted secrets (NOT stored here) — set with wrangler:
-#   npx wrangler secret put ANTHROPIC_API_KEY     (required)
-#   npx wrangler secret put TURNSTILE_SECRET       (optional — enables Turnstile gate)
+# Encrypted secrets (NOT stored here). Add via the dashboard (Settings -> Variables and
+# Secrets -> Encrypt) OR via wrangler:
+#   npx wrangler secret put OPENAI_API_KEY        (required)
+#   npx wrangler secret put TURNSTILE_SECRET      (optional - enables Turnstile gate)
 
-# Per-IP daily cap (optional). Enable by creating a KV namespace and uncommenting:
+# Per-IP daily cap (optional). Create a KV namespace and uncomment:
 #   npx wrangler kv namespace create RL
-# then paste the printed id below and redeploy.
+# (or dashboard: Storage & Databases -> KV) then bind it as "RL" and redeploy.
 # [[kv_namespaces]]
 # binding = "RL"
 # id = "<your-kv-namespace-id>"

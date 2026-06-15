@@ -23,12 +23,13 @@ GitHub Pages URL and it just runs — no install, no backend.
 
 ## Two modes
 - **Scripted (default):** works offline, zero setup — ideal for demos.
-- **Live LLM (optional, no key in the browser):** tick *Live LLM* and paste your
-  **Cloudflare Worker proxy URL**. The Worker holds the Anthropic key as a server-side
-  secret; the browser only sends the post text + team and gets back the agent reply
-  (CIIM peer prompt lives server-side; falls back to scripted on error).
-  → Deploy the proxy in **[`worker/`](worker/)** (two commands). The key is **never**
-  exposed client-side.
+- **Live LLM (optional, no key in the browser):** the prototype calls a **Cloudflare
+  Worker proxy** that holds your **OpenAI key** as a server-side secret; the browser only
+  sends the post text + team and gets back the agent reply (CIIM peer prompt lives
+  server-side; falls back to scripted on error).
+  → Deploy the proxy in **[`worker/`](worker/)** — **no terminal needed**, just paste the
+  code into the Cloudflare dashboard and add the key as an encrypted variable. The key is
+  **never** exposed to the browser or the public.
 
 ## Run locally
 Just open `index.html` in a browser, or:

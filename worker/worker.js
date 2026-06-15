@@ -1,5 +1,5 @@
-// DefuseLab — Cloudflare Worker proxy for the Anthropic API.
-// The Anthropic key lives ONLY here, as a Worker secret (env.ANTHROPIC_API_KEY).
+// DefuseLab — Cloudflare Worker proxy for the OpenAI API.
+// The OpenAI key lives ONLY here, as a Worker secret (env.OPENAI_API_KEY).
 // The browser sends just the post text + teams (+ a Turnstile token); the Worker owns
 // the system prompt, so your key can't be used for arbitrary prompts.
 //
@@ -7,14 +7,14 @@
 //   • env.TURNSTILE_SECRET set  -> requires a valid Cloudflare Turnstile token (blocks curl/bots)
 //   • env.RL (KV) bound         -> per-IP daily cap (env.DAILY_CAP, default 50)
 //
-// Deploy: see worker/README.md
+// Deploy (no terminal needed): see worker/README.md
 
 const ALLOWED_ORIGINS = [
   "https://zeng-lingbo.github.io",
   "http://localhost:8000",
   "http://127.0.0.1:8000",
 ];
-const MODELS = ["claude-sonnet-4-6", "claude-haiku-4-5-20251001", "claude-opus-4-8"];
+const MODELS = ["gpt-4o-mini", "gpt-4o", "gpt-4.1-mini", "gpt-4.1"];
 
 function corsHeaders(origin) {
   const allow = ALLOWED_ORIGINS.includes(origin) ? origin : ALLOWED_ORIGINS[0];
@@ -68,18 +68,18 @@ export default {
 
     // --- (optional) per-IP daily rate limit via KV ---
     if (env.RL) {
-      const day = new Date().toISOString().slice(0, 10); // yyyy-mm-dd
+      const day = new Date().toISOString().slice(0, 10);
       const key = `rl:${ip}:${day}`;
       const cap = parseInt(env.DAILY_CAP || "50", 10);
       const n = parseInt((await env.RL.get(key)) || "0", 10) + 1;
       if (n > cap) return json({ error: "rate_limited", detail: `daily cap ${cap}` }, 429, origin);
-      await env.RL.put(key, String(n), { expirationTtl: 172800 }); // 2 days
+      await env.RL.put(key, String(n), { expirationTtl: 172800 });
     }
 
     const userText = String(body.userText || "").slice(0, 500);
     const userTeam = body.userTeam === "LAL" ? "Lakers" : "Celtics";
     const agentTeam = body.agentTeam === "LAL" ? "Lakers" : "Celtics";
-    const model = MODELS.includes(body.model) ? body.model : "claude-sonnet-4-6";
+    const model = MODELS.includes(body.model) ? body.model : "gpt-4o-mini";
     if (!userText) return json({ error: "empty userText" }, 400, origin);
 
     const system =
@@ -91,16 +91,20 @@ export default {
       `lowercase-ish, emojis ok.`;
 
     try {
-      const r = await fetch("https://api.anthropic.com/v1/messages", {
+      const r = await fetch("https://api.openai.com/v1/chat/completions", {
         method: "POST",
         headers: {
           "content-type": "application/json",
-          "x-api-key": env.ANTHROPIC_API_KEY,
-          "anthropic-version": "2023-06-01",
+          "authorization": `Bearer ${env.OPENAI_API_KEY}`,
         },
         body: JSON.stringify({
-          model, max_tokens: 120, system,
-          messages: [{ role: "user", content: `A ${userTeam} fan just posted: "${userText}"\n\nWrite your reply as the next post in the thread.` }],
+          model,
+          max_tokens: 120,
+          temperature: 0.9,
+          messages: [
+            { role: "system", content: system },
+            { role: "user", content: `A ${userTeam} fan just posted: "${userText}"\n\nWrite your reply as the next post in the thread.` },
+          ],
         }),
       });
       if (!r.ok) {
@@ -108,7 +112,7 @@ export default {
         return json({ error: "upstream", status: r.status, detail }, 502, origin);
       }
       const data = await r.json();
-      const text = (data.content && data.content[0] && data.content[0].text || "").trim();
+      const text = (data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content || "").trim();
       return json({ text }, 200, origin);
     } catch (e) {
       return json({ error: "proxy_failed", detail: String(e) }, 500, origin);
