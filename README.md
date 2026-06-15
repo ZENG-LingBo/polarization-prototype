@@ -18,6 +18,7 @@ GitHub Pages URL and it just runs — no install, no backend.
   (acknowledge-then-redirect, cooperative bid, dual-identity) instead of arguing.
 - **Live metrics** mirroring `measures.md`: average toxicity (keyword heuristic),
   we/they pronoun ratio (LIWC-style), and cross-group engagement.
+  **What each meter means + how it maps to the real validated instruments → [`METRICS.md`](METRICS.md).**
 - **Toggles:** Agents ON/OFF (compare), **Reveal agents** (researcher view — agents are
   undisclosed by design), and **Live LLM**.
 
