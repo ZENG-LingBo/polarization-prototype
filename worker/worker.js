@@ -1,0 +1,93 @@
+// DefuseLab — Cloudflare Worker proxy for the Anthropic API.
+// The Anthropic key lives ONLY here, as a Worker secret (env.ANTHROPIC_API_KEY).
+// The browser sends just the post text + teams; the Worker owns the system prompt,
+// so your key can't be used for arbitrary prompts.
+//
+// Deploy:  see worker/README.md  (wrangler secret put ANTHROPIC_API_KEY && wrangler deploy)
+
+const ALLOWED_ORIGINS = [
+  "https://zeng-lingbo.github.io",
+  "http://localhost:8000",
+  "http://127.0.0.1:8000",
+];
+const MODELS = ["claude-sonnet-4-6", "claude-haiku-4-5-20251001", "claude-opus-4-8"];
+
+function corsHeaders(origin) {
+  const allow = ALLOWED_ORIGINS.includes(origin) ? origin : ALLOWED_ORIGINS[0];
+  return {
+    "Access-Control-Allow-Origin": allow,
+    "Access-Control-Allow-Methods": "POST, OPTIONS",
+    "Access-Control-Allow-Headers": "content-type",
+    "Access-Control-Max-Age": "86400",
+    "Vary": "Origin",
+  };
+}
+
+function json(obj, status, origin) {
+  return new Response(JSON.stringify(obj), {
+    status,
+    headers: { ...corsHeaders(origin), "content-type": "application/json" },
+  });
+}
+
+export default {
+  async fetch(request, env) {
+    const origin = request.headers.get("Origin") || "";
+
+    if (request.method === "OPTIONS") {
+      return new Response(null, { status: 204, headers: corsHeaders(origin) });
+    }
+    if (request.method !== "POST") {
+      return json({ error: "POST only" }, 405, origin);
+    }
+
+    let body;
+    try { body = await request.json(); }
+    catch { return json({ error: "bad json" }, 400, origin); }
+
+    const userText = String(body.userText || "").slice(0, 500); // length cap
+    const userTeam = body.userTeam === "LAL" ? "Lakers" : "Celtics";
+    const agentTeam = body.agentTeam === "LAL" ? "Lakers" : "Celtics";
+    const model = MODELS.includes(body.model) ? body.model : "claude-sonnet-4-6";
+    if (!userText) return json({ error: "empty userText" }, 400, origin);
+
+    // System prompt is owned server-side (CIIM peer agent).
+    const system =
+      `You are an ordinary, slightly opinionated NBA fan posting in a Lakers-vs-Celtics forum. ` +
+      `You lean ${agentTeam}. Hidden goal: lower hostility WITHOUT sounding like a moderator, teacher, ` +
+      `or AI, and WITHOUT arguing which team is better. Move the conversation toward a shared ` +
+      `"we're all hoops fans" frame or a cooperative task, while still repping your team and keeping an ` +
+      `edge. Never lecture, never validate an insult, never dump stats. 1-2 short, casual sentences, ` +
+      `lowercase-ish, emojis ok.`;
+
+    try {
+      const r = await fetch("https://api.anthropic.com/v1/messages", {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          "x-api-key": env.ANTHROPIC_API_KEY,
+          "anthropic-version": "2023-06-01",
+        },
+        body: JSON.stringify({
+          model,
+          max_tokens: 120,
+          system,
+          messages: [{
+            role: "user",
+            content: `A ${userTeam} fan just posted: "${userText}"\n\nWrite your reply as the next post in the thread.`,
+          }],
+        }),
+      });
+
+      if (!r.ok) {
+        const detail = (await r.text()).slice(0, 300);
+        return json({ error: "upstream", status: r.status, detail }, 502, origin);
+      }
+      const data = await r.json();
+      const text = (data.content && data.content[0] && data.content[0].text || "").trim();
+      return json({ text }, 200, origin);
+    } catch (e) {
+      return json({ error: "proxy_failed", detail: String(e) }, 500, origin);
+    }
+  },
+};

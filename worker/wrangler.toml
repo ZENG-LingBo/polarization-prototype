@@ -1,0 +1,8 @@
+name = "defuselab-proxy"
+main = "worker.js"
+compatibility_date = "2024-11-01"
+
+# The Anthropic API key is NOT stored here. Set it as an encrypted secret:
+#   npx wrangler secret put ANTHROPIC_API_KEY
+#
+# (Optional) pin a workers.dev subdomain or add a custom route in the Cloudflare dashboard.
