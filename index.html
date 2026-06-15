@@ -155,7 +155,8 @@
         <span class="hint">✅ No key in the browser. Calls your Cloudflare Worker proxy, which holds the Anthropic key as a secret.</span>
         <input type="text" id="proxyUrl" placeholder="https://defuselab-proxy.&lt;your-subdomain&gt;.workers.dev" autocomplete="off">
         <input type="text" id="model" value="claude-sonnet-4-6" placeholder="model id">
-        <span class="hint">Deploy <code>worker/</code> (see repo). Agents use the CIIM peer prompt server-side; falls back to scripted on error.</span>
+        <div id="ts"></div>
+        <span class="hint">Deploy <code>worker/</code> (see repo). Agents use the CIIM peer prompt server-side; a Turnstile check appears here if configured. Falls back to scripted on error.</span>
       </div>
     </div>
 
@@ -175,6 +176,10 @@
 </footer>
 
 <script>
+/* ---------- config (set after you deploy the Worker; see worker/README.md) ---------- */
+const PROXY_URL = "";          // e.g. "https://defuselab-proxy.<your-subdomain>.workers.dev"
+const TURNSTILE_SITEKEY = "";  // Cloudflare Turnstile SITE key (public). "" = no captcha.
+
 /* ---------- data ---------- */
 const HUMANS = {
   LAL:["LakeShow_Dré","MambaForever8","PurpleGold_Tony","ClutchCity_Mar"],
@@ -304,7 +309,7 @@ async function userSend(){
   const otherLean = team==="LAL"?"BOS":"LAL";
   await sleep(700);
   let reply;
-  if($("#llmToggle").checked && $("#proxyUrl").value.trim()){
+  if($("#llmToggle").checked && ($("#proxyUrl").value.trim()||PROXY_URL)){
     reply = await llmReply(txt, team, otherLean);
   }
   if(!reply){ reply = scriptedReply(txt, otherLean); }
@@ -337,16 +342,34 @@ function scriptedReply(userText, agentTeam){
   ]);
 }
 
+/* ---------- Turnstile (anti-abuse; only renders if a site key is set) ---------- */
+let tsWidgetId=null, tsToken="";
+function ensureTurnstile(){
+  if(!TURNSTILE_SITEKEY || tsWidgetId!==null) return;
+  if(!document.getElementById("ts-script")){
+    window.__tsload=()=>{ try{
+      tsWidgetId=turnstile.render("#ts",{sitekey:TURNSTILE_SITEKEY,
+        callback:t=>{tsToken=t;}, "expired-callback":()=>{tsToken="";}, "error-callback":()=>{tsToken="";}});
+    }catch(e){console.warn(e);} };
+    const s=document.createElement("script"); s.id="ts-script"; s.async=true; s.defer=true;
+    s.src="https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit&onload=__tsload";
+    document.head.appendChild(s);
+  }
+}
+
 /* ---------- live LLM via Cloudflare Worker proxy (key stays server-side) ---------- */
 async function llmReply(userText, userTeam, agentTeam){
+  const proxy=($("#proxyUrl").value.trim()||PROXY_URL);
+  if(!proxy){ status("set a proxy URL — using scripted."); return null; }
   try{
     status("agent reply via proxy…");
-    const res=await fetch($("#proxyUrl").value.trim(),{
+    const res=await fetch(proxy,{
       method:"POST",
       headers:{"content-type":"application/json"},
-      body:JSON.stringify({ userText, userTeam, agentTeam, model:$("#model").value.trim()||"claude-sonnet-4-6" })
+      body:JSON.stringify({ userText, userTeam, agentTeam, model:$("#model").value.trim()||"claude-sonnet-4-6", turnstileToken:tsToken })
     });
-    if(!res.ok){ const e=await res.text(); console.warn("proxy error",res.status,e); status("proxy error "+res.status+" — using scripted."); return null; }
+    if(window.turnstile && tsWidgetId!==null){ try{turnstile.reset(tsWidgetId);}catch(e){} tsToken=""; }
+    if(!res.ok){ const e=await res.text(); console.warn("proxy error",res.status,e); status("proxy "+res.status+" — using scripted."); return null; }
     const data=await res.json();
     return (data.text||"").trim()||null;
   }catch(err){ console.warn(err); status("proxy call failed (URL/CORS?) — using scripted."); return null; }
@@ -365,7 +388,8 @@ $("#input").addEventListener("keydown",e=>{ if(e.key==="Enter"&&!e.shiftKey){e.p
 $("#play").onclick=runScenario;
 $("#reset").onclick=()=>reset(true);
 $("#reveal").onchange=e=>document.body.classList.toggle("reveal",e.target.checked);
-$("#llmToggle").onchange=e=>{ $("#llmbox").classList.toggle("on",e.target.checked); $("#modepill").textContent=e.target.checked?"live LLM":"scripted agents"; };
+$("#llmToggle").onchange=e=>{ const on=e.target.checked; $("#llmbox").classList.toggle("on",on); $("#modepill").textContent=on?"live LLM":"scripted agents"; if(on) ensureTurnstile(); };
+if(PROXY_URL) $("#proxyUrl").value=PROXY_URL;
 reset(true);
 </script>
 </body>

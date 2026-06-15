@@ -1,9 +1,13 @@
 // DefuseLab — Cloudflare Worker proxy for the Anthropic API.
 // The Anthropic key lives ONLY here, as a Worker secret (env.ANTHROPIC_API_KEY).
-// The browser sends just the post text + teams; the Worker owns the system prompt,
-// so your key can't be used for arbitrary prompts.
+// The browser sends just the post text + teams (+ a Turnstile token); the Worker owns
+// the system prompt, so your key can't be used for arbitrary prompts.
 //
-// Deploy:  see worker/README.md  (wrangler secret put ANTHROPIC_API_KEY && wrangler deploy)
+// Layered protection — all OPTIONAL and graceful (the proxy works with none of them):
+//   • env.TURNSTILE_SECRET set  -> requires a valid Cloudflare Turnstile token (blocks curl/bots)
+//   • env.RL (KV) bound         -> per-IP daily cap (env.DAILY_CAP, default 50)
+//
+// Deploy: see worker/README.md
 
 const ALLOWED_ORIGINS = [
   "https://zeng-lingbo.github.io",
@@ -22,7 +26,6 @@ function corsHeaders(origin) {
     "Vary": "Origin",
   };
 }
-
 function json(obj, status, origin) {
   return new Response(JSON.stringify(obj), {
     status,
@@ -30,28 +33,55 @@ function json(obj, status, origin) {
   });
 }
 
+async function verifyTurnstile(token, secret, ip) {
+  if (!token) return false;
+  const form = new FormData();
+  form.append("secret", secret);
+  form.append("response", token);
+  if (ip) form.append("remoteip", ip);
+  try {
+    const r = await fetch("https://challenges.cloudflare.com/turnstile/v0/siteverify", {
+      method: "POST", body: form,
+    });
+    const d = await r.json();
+    return !!d.success;
+  } catch { return false; }
+}
+
 export default {
   async fetch(request, env) {
     const origin = request.headers.get("Origin") || "";
+    const ip = request.headers.get("CF-Connecting-IP") || "anon";
 
-    if (request.method === "OPTIONS") {
-      return new Response(null, { status: 204, headers: corsHeaders(origin) });
-    }
-    if (request.method !== "POST") {
-      return json({ error: "POST only" }, 405, origin);
-    }
+    if (request.method === "OPTIONS") return new Response(null, { status: 204, headers: corsHeaders(origin) });
+    if (request.method !== "POST") return json({ error: "POST only" }, 405, origin);
 
     let body;
     try { body = await request.json(); }
     catch { return json({ error: "bad json" }, 400, origin); }
 
-    const userText = String(body.userText || "").slice(0, 500); // length cap
+    // --- (optional) Turnstile: blocks non-browser abuse ---
+    if (env.TURNSTILE_SECRET) {
+      const ok = await verifyTurnstile(body.turnstileToken || "", env.TURNSTILE_SECRET, ip);
+      if (!ok) return json({ error: "turnstile_failed" }, 403, origin);
+    }
+
+    // --- (optional) per-IP daily rate limit via KV ---
+    if (env.RL) {
+      const day = new Date().toISOString().slice(0, 10); // yyyy-mm-dd
+      const key = `rl:${ip}:${day}`;
+      const cap = parseInt(env.DAILY_CAP || "50", 10);
+      const n = parseInt((await env.RL.get(key)) || "0", 10) + 1;
+      if (n > cap) return json({ error: "rate_limited", detail: `daily cap ${cap}` }, 429, origin);
+      await env.RL.put(key, String(n), { expirationTtl: 172800 }); // 2 days
+    }
+
+    const userText = String(body.userText || "").slice(0, 500);
     const userTeam = body.userTeam === "LAL" ? "Lakers" : "Celtics";
     const agentTeam = body.agentTeam === "LAL" ? "Lakers" : "Celtics";
     const model = MODELS.includes(body.model) ? body.model : "claude-sonnet-4-6";
     if (!userText) return json({ error: "empty userText" }, 400, origin);
 
-    // System prompt is owned server-side (CIIM peer agent).
     const system =
       `You are an ordinary, slightly opinionated NBA fan posting in a Lakers-vs-Celtics forum. ` +
       `You lean ${agentTeam}. Hidden goal: lower hostility WITHOUT sounding like a moderator, teacher, ` +
@@ -69,16 +99,10 @@ export default {
           "anthropic-version": "2023-06-01",
         },
         body: JSON.stringify({
-          model,
-          max_tokens: 120,
-          system,
-          messages: [{
-            role: "user",
-            content: `A ${userTeam} fan just posted: "${userText}"\n\nWrite your reply as the next post in the thread.`,
-          }],
+          model, max_tokens: 120, system,
+          messages: [{ role: "user", content: `A ${userTeam} fan just posted: "${userText}"\n\nWrite your reply as the next post in the thread.` }],
         }),
       });
-
       if (!r.ok) {
         const detail = (await r.text()).slice(0, 300);
         return json({ error: "upstream", status: r.status, detail }, 502, origin);
