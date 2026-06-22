@@ -19,6 +19,8 @@ GitHub Pages URL and it just runs — no install, no backend.
 - **Live metrics** mirroring `measures.md`: average toxicity (keyword heuristic),
   we/they pronoun ratio (LIWC-style), and cross-group engagement.
   **What each meter means + how it maps to the real validated instruments → [`METRICS.md`](METRICS.md).**
+  The study measures are all drawn from validated scales and anchored to a model paper
+  (**GuesSync!**, CSCW 2023) — construct-by-construct grounding in [`MEASURES.md`](MEASURES.md).
 - **Toggles:** Agents ON/OFF (compare), **Reveal agents** (researcher view — agents are
   undisclosed by design), and **Live LLM**.
 
