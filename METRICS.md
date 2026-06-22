@@ -28,7 +28,7 @@ that's what makes the agents' effect visible mid-scenario.
 With **Agents ON** → it drops once Phase 2–3 kick in. That gap is the whole point.
 
 **Real-study analogue.** A per-message **Perspective API** toxicity trajectory over the
-session, plus human **incivility coding** (Coe et al. 2014). → RQ1 (behavior/process).
+session, plus human **incivility coding** (Coe et al. 2014). → RQ1 / RQ2 (behavior/process).
 
 ---
 
@@ -47,7 +47,7 @@ temperature.
 
 **Real-study analogue.** **Perspective API** (Lees et al. 2022) toxicity/insult/threat
 scores + the **incivility codebook** (name-calling, aspersion, vulgarity; Coe et al.
-2014). → RQ1.
+2014). → RQ1 / RQ2.
 
 **Caveat.** The lexicon does crude substring/word matching, so it's approximate (it can
 miss sarcasm and occasionally over-counts). It's meant to be *legible*, not accurate — the
@@ -106,8 +106,8 @@ up as **cross-group** replies. This meter rising = the structural goal working.
 
 | Panel meter | Demo computation | Validated study instrument | Construct | RQ |
 |---|---|---|---|---|
-| Thread temperature | rolling mean toxicity, last 6 posts | Perspective API trajectory + incivility coding | session hostility over time | RQ1 |
-| Toxicity (avg) | keyword lexicon, `min(1, hits/3)`, +caps | Perspective API (Lees 2022) + incivility codebook (Coe 2014) | toxicity / incivility | RQ1 |
+| Thread temperature | rolling mean toxicity, last 6 posts | Perspective API trajectory + incivility coding | session hostility over time | RQ1 / RQ2 |
+| Toxicity (avg) | keyword lexicon, `min(1, hits/3)`, +caps | Perspective API (Lees 2022) + incivility codebook (Coe 2014) | toxicity / incivility | RQ1 / RQ2 |
 | we/they ratio | word counts, `we/(we+they)` | LIWC pronoun categories (Tausczik & Pennebaker 2010) | common in-group identity | RQ1 / RQ2 |
 | Cross-group engagement | count of cross/agent replies ÷ 6 | observation coding of cross-group replies | recategorization behavior | RQ1 / RQ2 |
 

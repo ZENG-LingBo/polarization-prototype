@@ -157,20 +157,30 @@ off from the measurement plan above.
 
 ---
 
-## 7. RQ alignment (current structure)
+## 7. RQ alignment (current two-RQ structure)
 
-The RQ numbering was consolidated: **former RQ3 (mediation/mechanism) is now the
-mechanism component of RQ2.** Current mapping:
+The outline now carries **two** research questions — there is no RQ3, and the
+former RQ3 (mediation/mechanism) has been absorbed into RQ2. Current wording:
 
-- **RQ1 — behavior / process:** toxicity & incivility trajectories, interaction
-  patterns (Perspective API; Coe et al. 2014; LIWC; cross-group coding).
-- **RQ2 — group-level affective polarization *and its mechanism*:** the
-  feeling-thermometer difference DV (Blocks B–E, G), with **common in-group
-  identity (Block F)** as the tested mediator, and reactance (Block H) as the
-  backfire guardrail.
+- **RQ1 — How do participants in polarized groups interact with the embedded LLM
+  agents?** Descriptive interaction/process: how participants engage with and
+  respond to the agents, read from the behavioral logs (toxicity/incivility,
+  reply behavior, LIWC language) and the agent-detection / reactance checks.
+- **RQ2 — How do embedded in-group agents affect interaction patterns and
+  group-level affective polarization between opposing groups?** The
+  with-vs-without-agents comparison on **(a) interaction patterns** — toxicity &
+  incivility (Perspective API; Coe et al. 2014), we/they language (LIWC), and
+  cross-group engagement — and **(b) group-level affective polarization** — the
+  feeling-thermometer difference DV plus Blocks C–E and G. **Common in-group
+  identity (Block F)** is the measured mediator that operationalizes the
+  in-group-recategorization mechanism the contribution is grounded in; reactance
+  (Block H) is the backfire guardrail.
 
-Older items still labeled "RQ3" in any draft now fall under RQ2 as its mechanism
-component.
+Note RQ2's headline no longer names "mechanism" separately (it lives in the
+Contribution as *"grounded in in-group recategorization"*), but the mechanism is
+still measured via Block F. The behavioral logs serve **both** RQs — descriptively
+under RQ1 and as the agent-effect comparison under RQ2 — so any item still labeled
+"RQ3" in an older draft now falls under RQ2.
 
 ---
 
