@@ -7,8 +7,10 @@ engagement should climb.
 
 > ⚠️ **These are transparent, lightweight heuristics for demonstration — not the study's
 > measurements.** The real study uses validated, peer-reviewed instruments (Perspective
-> API, LIWC, human incivility coding, validated surveys). See the mapping table at the
-> bottom and [`measures.md`](https://github.com/ZENG-LingBo/polarization/blob/main/measures.md)
+> API, LIWC, human incivility coding, validated surveys), anchored to a model paper
+> (**GuesSync!**, Rajadesingan et al., CSCW 2023). See the mapping table at the bottom,
+> the literature grounding in [`MEASURES.md`](MEASURES.md), and
+> [`measures.md`](https://github.com/ZENG-LingBo/polarization/blob/main/measures.md)
 > in the study repo.
 
 ---
@@ -26,7 +28,7 @@ that's what makes the agents' effect visible mid-scenario.
 With **Agents ON** → it drops once Phase 2–3 kick in. That gap is the whole point.
 
 **Real-study analogue.** A per-message **Perspective API** toxicity trajectory over the
-session, plus human **incivility coding** (Coe et al. 2014). → RQ1 (behavior/process).
+session, plus human **incivility coding** (Coe et al. 2014). → RQ1 / RQ2 (behavior/process).
 
 ---
 
@@ -45,7 +47,7 @@ temperature.
 
 **Real-study analogue.** **Perspective API** (Lees et al. 2022) toxicity/insult/threat
 scores + the **incivility codebook** (name-calling, aspersion, vulgarity; Coe et al.
-2014). → RQ1.
+2014). → RQ1 / RQ2.
 
 **Caveat.** The lexicon does crude substring/word matching, so it's approximate (it can
 miss sarcasm and occasionally over-counts). It's meant to be *legible*, not accurate — the
@@ -67,7 +69,7 @@ fans,” the **“we” share rises** — the linguistic signature of recategori
 
 **Real-study analogue.** **LIWC** pronoun categories (Tausczik & Pennebaker 2010) — the
 we/they ratio is one of the most theory-aligned markers of common in-group identity. →
-RQ1 / RQ3 (mechanism).
+RQ1 / RQ2 (mechanism).
 
 **Caveat.** Treating “you” as out-group framing is a rough rule (it's friendly half the
 time). LIWC's validated dictionaries handle this far better.
@@ -86,7 +88,7 @@ up as **cross-group** replies. This meter rising = the structural goal working.
 
 **Real-study analogue.** Behavioral coding of **cross-group vs. in-group replies** from the
 [observation codebook](https://github.com/ZENG-LingBo/polarization/blob/main/coding_templates/observation_codebook_seed.csv)
-(reply-to-rival, concede-point, genuine-question). → RQ1 / RQ3.
+(reply-to-rival, concede-point, genuine-question). → RQ1 / RQ2.
 
 ---
 
@@ -104,12 +106,22 @@ up as **cross-group** replies. This meter rising = the structural goal working.
 
 | Panel meter | Demo computation | Validated study instrument | Construct | RQ |
 |---|---|---|---|---|
-| Thread temperature | rolling mean toxicity, last 6 posts | Perspective API trajectory + incivility coding | session hostility over time | RQ1 |
-| Toxicity (avg) | keyword lexicon, `min(1, hits/3)`, +caps | Perspective API (Lees 2022) + incivility codebook (Coe 2014) | toxicity / incivility | RQ1 |
-| we/they ratio | word counts, `we/(we+they)` | LIWC pronoun categories (Tausczik & Pennebaker 2010) | common in-group identity | RQ1 / RQ3 |
-| Cross-group engagement | count of cross/agent replies ÷ 6 | observation coding of cross-group replies | recategorization behavior | RQ1 / RQ3 |
+| Thread temperature | rolling mean toxicity, last 6 posts | Perspective API trajectory + incivility coding | session hostility over time | RQ1 / RQ2 |
+| Toxicity (avg) | keyword lexicon, `min(1, hits/3)`, +caps | Perspective API (Lees 2022) + incivility codebook (Coe 2014) | toxicity / incivility | RQ1 / RQ2 |
+| we/they ratio | word counts, `we/(we+they)` | LIWC pronoun categories (Tausczik & Pennebaker 2010) | common in-group identity | RQ1 / RQ2 |
+| Cross-group engagement | count of cross/agent replies ÷ 6 | observation coding of cross-group replies | recategorization behavior | RQ1 / RQ2 |
 
 The study also adds what the demo **cannot** show: pre/post **affective-polarization**
-surveys (feeling thermometer, IOS), the **CIIM common-identity** mediator, and **reactance**
-checks — all in [`measures.md`](https://github.com/ZENG-LingBo/polarization/blob/main/measures.md)
+surveys (feeling thermometer — Iyengar, Sood & Lelkes 2012 / Iyengar & Westwood 2015; IOS —
+Aron et al. 1992), the **CIIM common-identity** mediator (Gaertner & Dovidio 2000), and
+**reactance** checks (Hong & Faedda 1996; Dillard & Shen 2005) — all in
+[`measures.md`](https://github.com/ZENG-LingBo/polarization/blob/main/measures.md)
 and [`survey_instrument.md`](https://github.com/ZENG-LingBo/polarization/blob/main/survey_instrument.md).
+
+**Why these and not home-grown meters:** affective polarization has a validated
+measurement tradition, and our whole battery is anchored to a directly comparable model
+paper — **GuesSync!** (Rajadesingan, Choo, Zhang, Inakage, Budak & Resnick, CSCW 2023,
+[doi:10.1145/3610190](https://doi.org/10.1145/3610190)) — which reduces affective
+polarization with the same feeling-thermometer + willingness-to-engage outcomes. The
+construct-by-construct grounding (and where we extend GuesSync to the **group level**) is
+in [`MEASURES.md`](MEASURES.md).
