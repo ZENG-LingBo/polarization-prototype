@@ -9,7 +9,10 @@ battery is anchored to a directly comparable HCI study (**GuesSync!**, CSCW 2023
 (K-pop toxicity testbed; a social-media *feature* rather than embedded agents), **toxicity /
 incivility is now the primary outcome**, with the affective-polarization and
 common-in-group-identity battery behind it. Nothing in the study measurement plan is
-home-grown.
+home-grown. A planned **boundary-condition study in political polarization**
+([`PLAN.md`](PLAN.md) §15) would instead use the **native political AP battery unchanged** — the
+measures below were originally built for politics, so no re-targeting is needed — with a
+common-fate (M9) mechanism; the K-pop battery remains primary.
 
 This file is the literature-grounding companion to the study repo's
 [`measures.md`](https://github.com/ZENG-LingBo/polarization/blob/main/measures.md) and

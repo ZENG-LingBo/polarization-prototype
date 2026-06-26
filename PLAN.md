@@ -4,6 +4,19 @@
 > design. Companion docs: [`OUTLINE.md`](OUTLINE.md) (framing) and [`MEASURES.md`](MEASURES.md)
 > (instruments). Several specifics are still open team decisions — see §13.
 
+## 0. Roadmap — two studies + extension
+This is a **two-study** program, chosen after weighing domain options:
+- **Study 1 (primary — this document):** **K-pop** rival fandoms — a clean Common-In-group-Identity
+  test (real toxicity, a *non-contested* superordinate, identity-not-moral conflict). 3-arm RCT,
+  **M1 (co-create / co-share)** feature, toxicity primary DV.
+- **Study 2 (boundary condition — §15):** **politics** (abortion or transgender rights) — the
+  strongest domain on stakes and native measurement, the *weakest* on the mechanism (no
+  non-contested superordinate; substantive moral conflict). Run with a **different mechanism —
+  M9 (shared interdependent goal / common fate), not co-create-celebration** — and native
+  political measures. Its likely null/backfire **is** the contribution: the scope condition that
+  indirect recategorization needs a non-contested superordinate.
+- **Extension (future — §16):** a field A/B and/or longitudinal durability study.
+
 ## 1. Overview
 Rival K-pop fandoms direct sustained, genuinely toxic hostility at one another online. We
 test whether a single **social-media feature** can reduce that toxicity by **indirectly
@@ -317,6 +330,9 @@ and would otherwise confound "more engagement" with "the feature creates co-shar
    report reliability vs. the Coe codebook, pre-register which tokens count) — "flop"/"nugu"
    may be competitive-but-civil jargon, not toxicity.
 8. **Dose** (how many live-paired Collabs = "the intervention"; dose-response?).
+9. **Mechanism for Study 1:** **M1** (co-create / co-share) is the default; pre-register **M9**
+   (shared interdependent goal / common fate) as the fallback if guaranteed live pairing proves
+   infeasible — M9 is also the Study-2 mechanism (§15).
 
 ## 14. Out of scope / known liabilities (follow-up)
 `METRICS.md`, `README.md`, and `index.html` still describe the old Lakers/Celtics agent demo.
@@ -327,3 +343,48 @@ SSIS→FISI/Leach swap — they should be updated (or the re-targeted items quot
 `MEASURES.md`) so the instrument wording can be confirmed pivot-consistent and non-home-grown.
 Recommended next step once the rivalry/superordinate framing is locked: update those files and
 rebuild the prototype as the control interface + Collab feature (C0/C1/C2).
+
+## 15. Study 2 — Politics (boundary-condition transfer)
+**Purpose.** Probe whether the feature transfers to a high-stakes political conflict — and, more
+likely, **map its boundary.** Politics is the strongest domain on stakes and native measurement
+(the validated AP battery and GuesSync were built for it) but the weakest on the CIIM mechanism.
+
+**Why the Study-1 mechanism (M1) won't transfer.** M1 asks rivals to co-create and co-share
+content *celebrating the shared superordinate group.* For K-pop the shared object is benign and
+real (the music). For abortion / trans rights there is **no benign superordinate to celebrate**:
+forcing opponents to co-create "we're all Americans" content trivializes a moral stake, the
+superordinate identity is itself contested, and CIIM is known to **backfire** when a superordinate
+is imposed on a high-distinctiveness moral conflict.
+
+**Mechanism: M9, not M1.** Use a **shared interdependent goal / common-fate task** (Sherif-style)
+that requires both sides to reach a joint outcome **without** celebrating a shared identity — e.g.,
+an interdependent task with a joint payoff framed around a concrete shared problem, not a contested
+identity.
+
+**Measures.** The **native political AP battery, unchanged** (feeling thermometer, social distance,
+trait ratings, Druckman/Levendusky willingness, behavioral allocation) — maximal reviewer
+credibility and exact GuesSync comparability. Toxicity remains the primary DV.
+
+**Prediction & contribution.** We **predict a weaker, null, or backfiring effect** vs. K-pop. That
+is the point: a documented **scope condition** — indirect recategorization works where a
+non-contested superordinate exists and fails where it does not — is a genuine theoretical
+contribution and converts "is this generalizable?" into a tested boundary.
+
+**Heightened ethics / IRB.** Exposing participants to toxic abortion / anti-trans content is
+**participant-as-target** harm (transgender participants are a named vulnerable population), not
+just participant-as-author — expect full-board IRB (duty-of-care / escalation, content warnings,
+opt-out, careful debrief). Reconsider the specific issue if IRB risk is prohibitive.
+
+**Decision flag.** Which issue, and whether Study 2 runs, depends on Study 1's result and IRB —
+decide after Study 1.
+
+## 16. Extension — field & longitudinal (future)
+After Study 1 establishes the causal effect:
+- **Field A/B:** deploy the feature in a real rival-fandom community and measure organic toxicity —
+  highest ecological validity, but needs a platform partner and careful in-the-wild
+  consent/disclosure (avoid the r/ChangeMyView problem).
+- **Longitudinal / multi-session:** repeat over weeks to test whether the toxicity reduction and
+  common-identity shift **persist** or decay, and whether subgroup identification erodes with
+  repeated dosing (the dual-identity guardrail over time); watch the history confound.
+
+Both are scoped as **future** phases, not part of the Study-1 protocol.

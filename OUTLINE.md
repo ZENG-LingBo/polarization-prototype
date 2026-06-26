@@ -81,9 +81,13 @@ Model through **indirect, *enacted* recategorization** — rival members co-crea
 co-share, and the shared identity follows from what they do rather than from anything they
 are told. The LLM is **implementation, not interlocutor** (no agents, no deception), and we
 validate the feature against **real, measurable toxicity** in a K-pop testbed, with the
-mechanic defined abstractly so it is a *candidate* to transfer to other polarized groups — a
-design rationale we argue, not a property this single-domain study can demonstrate (cross-
-domain transfer, especially to political polarization, is future work).
+mechanic defined abstractly so it is a *candidate* to transfer to other polarized groups. We
+**test that boundary directly**: a primary study in a clean identity testbed (K-pop), then an
+adversarial **boundary-condition study in political polarization** (abortion / trans rights),
+where we expect the mechanism to weaken or backfire because no non-contested superordinate
+exists — turning *generalizability* from an asserted property into a **tested scope condition**
+(indirect recategorization needs a non-contested superordinate, and a common-fate rather than
+co-create mechanism, to have any chance in politics).
 
 ---
 
