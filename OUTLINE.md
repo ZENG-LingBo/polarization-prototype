@@ -15,9 +15,9 @@
 Affective polarization — animosity toward an out-group rooted in social identity rather than
 substantive disagreement [Tajfel & Turner 1979; Iyengar et al. 2019] — has become a defining
 feature of online discourse, and is acutely visible in **online fan communities**, where
-recommendation algorithms sort users into homogeneous clusters and amplify intergroup
-friction, hardening shared devotion into **sustained, toxic hostility** between rival
-fandoms. K-pop fandom "wars" are a stark case: rival fanbases direct real harassment,
+platform dynamics — including engagement-driven recommendation that can cluster users into
+homogeneous spaces — may amplify intergroup friction, hardening shared devotion into
+**sustained, toxic hostility** between rival fandoms. K-pop fandom "wars" are a stark case: rival fanbases direct real harassment,
 slurs, and coordinated hostility at one another despite no substantive dispute. Because this
 hostility is anchored in **group membership** rather than individual belief, it resists
 conventional remedies: content moderation suppresses symptoms without touching the
@@ -54,9 +54,11 @@ platform** as a **toxicity testbed**, where rival-fandom users post, comment, li
 share; (2) introduce a single, generalizable **social-media feature — the "Collab
 Spotlight"** — a cross-fandom **co-creation / shared-share** unit that can only be completed
 when members of two rival fandoms jointly produce and then co-share content framed around
-**K-pop as a whole**, so the superordinate "K-pop fan" identity is **activated indirectly**,
-never declared (the LLM that generates prompts and balances/merges contributions is hidden
-implementation, openly disclosed as automated — **no agent, no human impersonation**); and
+**K-pop as a whole**, so the superordinate "K-pop fan" identity is **activated indirectly** —
+cued contextually rather than predicated of the participant (the LLM that templates prompts,
+routes pairing, and assembles contributions *verbatim* is hidden, non-generative
+implementation, openly disclosed as automated — **no agent, no human impersonation, and no
+rewriting of user text**); and
 (3) in a controlled comparison **with vs. without the feature**, measure **toxicity** as the
 primary outcome (Perspective API + incivility coding) alongside **affective polarization**
 (feeling-thermometer difference, social distance) and its hypothesized **mechanism**
@@ -68,8 +70,8 @@ incivility in rival-fandom interaction (the control baseline)?
 
 **RQ2.** Does a cross-fandom co-creation / shared-share feature that *indirectly* activates
 the superordinate "K-pop fan" identity reduce toxicity and affective polarization between
-rival fandoms, and is the effect mediated by an increased common-in-group representation
-(without eroding subgroup identification)?
+rival fandoms, and is the effect linked to an increased common-in-group representation,
+without eroding subgroup identification?
 
 ## Contribution
 We extend depolarization interventions from the **individual to the group level** within a
@@ -79,7 +81,9 @@ Model through **indirect, *enacted* recategorization** — rival members co-crea
 co-share, and the shared identity follows from what they do rather than from anything they
 are told. The LLM is **implementation, not interlocutor** (no agents, no deception), and we
 validate the feature against **real, measurable toxicity** in a K-pop testbed, with the
-mechanic defined abstractly so it transfers to any polarized groups.
+mechanic defined abstractly so it is a *candidate* to transfer to other polarized groups — a
+design rationale we argue, not a property this single-domain study can demonstrate (cross-
+domain transfer, especially to political polarization, is future work).
 
 ---
 

@@ -66,7 +66,10 @@ misperceptions**. Our contribution is **group-level** and behavioral: a social-m
 fans co-create and co-share content — and we **foreground toxicity / incivility as the
 primary behavioral DV**, with the validated AP battery and the common-in-group-identity
 **mediator** behind it. So we keep GuesSync's validated outcomes and **add** a behavioral
-toxicity outcome plus group-level mechanism instruments (§4).
+toxicity outcome plus group-level mechanism instruments (§4). **Power note:** GuesSync's
+reported effects are on *survey* AP, not behavioral toxicity, so they inform power for our
+**secondary** AP outcomes only; the **primary** toxicity DV needs its own effect-size estimate
+(pilot / smallest effect of interest), per [`PLAN.md`](PLAN.md) §7.
 
 ---
 
@@ -74,12 +77,12 @@ toxicity outcome plus group-level mechanism instruments (§4).
 
 | Construct | Our measure | Type | Validated source | In GuesSync? | Adaptation |
 |---|---|---|---|---|---|
-| **Toxicity / incivility — PRIMARY DV** | per-message toxicity + human incivility coding | behavioral log | Perspective API (Lees et al. 2022); Coe, Kenski & Rains 2014 codebook | — (our behavioral outcome) | + K-pop fandom-slur lexicon layer (§5); score on pre-moderation text |
+| **Toxicity / incivility — PRIMARY DV** | per-message toxicity + human incivility coding | behavioral log | Perspective API (Lees et al. 2022); Coe, Kenski & Rains 2014 codebook | — (our behavioral outcome) | + validated K-pop incivility lexicon (§4); score on pre-moderation text |
 | **Affective polarization** (feeling-thermometer difference) | in-group − out-group warmth | survey | Iyengar, Sood & Lelkes 2012; Iyengar & Westwood 2015 | ✔ core DV | target = rival fandom; superordinate ("K-pop fans") + neutral ("pop-music fans") anchors |
 | **Social distance** | discomfort across relationship contexts | survey | Iyengar, Sood & Lelkes 2012 | Iyengar battery | rival-fandom member as friend / neighbor / roommate / collaborator |
 | **Out-group trait ratings** | warmth/competence battery | survey | Iyengar & Westwood 2015 | Iyengar battery | both fandoms rated; bias = differential |
 | **Behavioral allocation** (trust/dictator-style) | incentivized split toward rival fan | incentivized choice | Iyengar & Westwood 2015 | analogous behavioral DV | allocation to a rival-fandom recipient |
-| **Willingness to interact** | join joint activity / cooperate again | survey | GuesSync lineage; Druckman & Levendusky 2019 | ✔ primary behavioral-intention outcome | re-targeted to rival fandom |
+| **Willingness to interact** | join joint activity / cooperate again | survey | GuesSync lineage; Druckman & Levendusky 2019 | ✔ primary behavioral-intention outcome | re-targeted to rival fandom; collected at T0 and T1 |
 | **Common in-group identity** (mediator) | one-group vs. two-group representation | survey | Gaertner & Dovidio 2000 (CIIM) | — (group-level extension) | superordinate = "K-pop fans"; + dual-identity check (§4) |
 | **Self–out-group overlap** | Inclusion of Other in the Self | survey | Aron, Aron & Smollan 1992 (IOS) | — | pictorial overlap, fandoms as targets |
 | **Fandom (subgroup) identification** | FISI and/or multicomponent identification | survey | Postmes, Haslam & Jans 2013 (FISI); Leach et al. 2008 | n/a | **replaces SSIS** (group-agnostic; §5); covariate + dual-identity baseline |
@@ -100,10 +103,13 @@ and the CIIM mechanism:
 
 1. **Toxicity / incivility (primary DV)** — Perspective API per-message scoring (Lees et al.
    2022) + the **incivility codebook** (Coe, Kenski & Rains 2014: name-calling, aspersion,
-   vulgarity, pejorative-for-speech), extended with a **K-pop fandom-slur lexicon** because
-   generic classifiers miss in-group-coded toxicity ("flop," "nugu," streaming-war framing).
-   Double-code a subset for inter-rater reliability (Krippendorff's α). Scored on
-   **pre-moderation** text.
+   vulgarity, pejorative-for-speech), extended with a **K-pop fandom incivility lexicon** that is
+   **validated before use, not assumed**: derived from coded data, mapped to the Coe et al.
+   (2014) categories, with inter-rater reliability reported (Krippendorff's α) and a
+   pre-registered decision on which tokens count as incivility versus mere competitive jargon
+   (terms like "flop"/"nugu" are competitive but not necessarily uncivil, so they are not
+   auto-scored as toxic). The primary toxicity analysis is run **with and without** the lexicon
+   layer as a robustness check. Scored on **pre-moderation** text.
 2. **Common in-group identity representation (mediator)** — the one-group / two-group /
    dual-identity items from Gaertner & Dovidio (2000), the canonical CIIM operationalization.
    The key mechanistic checkpoint: did the feature induce the "K-pop fan" representation? We
@@ -137,8 +143,10 @@ behavioral toxicity outcome plus group-level mechanism instruments.
   Scale** (Wann & Branscombe 1993) is validated for *sports-team* fandom and contains
   sport-specific items (attending games, etc.) that do not transfer to K-pop. We replace it
   with **group-agnostic, validated identification scales**, targeted to the specific fandom:
-  the **Four-Item Social Identification** scale (FISI; Postmes, Haslam & Jans 2013) as a
-  short identification covariate, and/or **Leach et al. (2008)** multicomponent in-group
+  the **Four-Item Social Identification** scale (FISI) from Postmes, Haslam & Jans (2013) —
+  whose paper introduces both a single-item (SISI) and the four-item (FISI) measure, of which
+  we use the FISI — as a short identification covariate, and/or **Leach et al. (2008)**
+  multicomponent in-group
   identification when the *self-investment vs. self-definition* structure is needed (it is
   what dual-identity preservation and distinctiveness threat operate on).
 
@@ -163,12 +171,14 @@ above — not a keyword count. No home-grown number enters the analysis.
   engagement in the control arm.
 - **RQ2 — feature effect + mechanism.** *Does the cross-fandom co-creation / shared-share
   feature, which indirectly activates the superordinate "K-pop fan" identity, reduce toxicity
-  and affective polarization, mediated by increased common-in-group representation without
+  and affective polarization, linked to increased common-in-group representation without
   eroding subgroup identification?* The with-vs-without comparison on **(a)** toxicity
   (primary) and interaction patterns, and **(b)** the AP battery (feeling-thermometer
   difference, social distance, traits, allocation, IOS). **Common in-group identity** is the
-  measured **mediator**; **fandom identification** tests the dual-identity (no-erosion)
-  condition; **reactance** is the backfire guardrail.
+  measured **mediator** for the T1 survey outcomes (the during-session we/they marker indexes
+  recategorization for the behavioral toxicity outcome, which is emitted before the
+  post-survey); **fandom identification** tests the dual-identity (no-erosion) condition;
+  **reactance** is the backfire guardrail.
 
 The behavioral logs serve both RQs — descriptively under RQ1 and as the feature-effect
 comparison under RQ2.
@@ -203,7 +213,8 @@ comparison under RQ2.
   character-level transformers. *KDD '22*.
 - Postmes, T., Haslam, S. A., & Jans, L. (2013). A single-item measure of social
   identification: Reliability, validity, and utility. *British Journal of Social
-  Psychology*, 52(4), 597–617.
+  Psychology*, 52(4), 597–617. (Introduces both the single-item SISI and the four-item FISI;
+  we use the FISI.)
 - Rajadesingan, A., Choo, D., Zhang, J., Inakage, M., Budak, C., & Resnick, P. (2023).
   GuesSync!: An online casual game to reduce affective polarization. *Proc. ACM Hum.-Comput.
   Interact.*, 7(CSCW2), Article 341. https://doi.org/10.1145/3610190
