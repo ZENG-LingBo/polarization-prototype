@@ -318,7 +318,8 @@ and would otherwise confound "more engagement" with "the feature creates co-shar
 1. **Which two rival fandoms + which superordinate framing** ("K-pop fans" broadly vs. a
    tighter, more psychologically real shared category). **Pilot the CIIM baseline first** —
    this is a **gating precondition**: if the superordinate does not register, the mechanism
-   (and the generalizability argument) does not hold.
+   (and the generalizability argument) does not hold. → candidate pairs, selection criteria,
+   and the deciding pilot are worked through in [`FANDOM_SELECTION.md`](FANDOM_SELECTION.md).
 2. **Three-arm (with active control C1) vs. two-arm fallback** — three arms isolate the
    mechanism but cost N; two arms force a "feature vs. no feature" framing.
 3. **Concurrent vs. sequential cohorts** for the build gap (recommend concurrent after build).
