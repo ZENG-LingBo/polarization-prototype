@@ -11,12 +11,14 @@
 
   <!-- ================= ONBOARDING ================= -->
   <section class="screen" id="s-onboard">
-    <div class="center scroll">
+    <div class="scroll" style="display:flex;flex-direction:column;justify-content:center;gap:16px;padding:26px 22px">
       <div>
         <div class="hero">welcome to <span class="g">kfeed</span></div>
         <div class="lead">a small K-pop community feed. you'll browse, react, and post like you would on any social app — for just a few minutes.</div>
       </div>
       <div id="ob-cards" style="display:flex;flex-direction:column;gap:12px"></div>
+    </div>
+    <div class="appfoot">
       <div class="dots" id="ob-dots"></div>
       <button class="btn gold" id="ob-next">Next</button>
     </div>
@@ -28,10 +30,10 @@
     <div class="scroll pad">
       <div class="field">
         <label>Which fandom are you part of?</label>
-        <div class="hint">Pick the one you actually belong to. (Fictional fandoms for this prototype.)</div>
+        <div class="hint">Pick the one you actually belong to.</div>
         <div class="opts" id="fandom-opts">
-          <button class="opt" data-f="AUR">▪ AURORA</button>
-          <button class="opt" data-f="NOV">▪ NOVA</button>
+          <button class="opt" data-f="ARMY">▪ ARMY <span class="tiny muted">(BTS)</span></button>
+          <button class="opt" data-f="BLINK">▪ BLINK <span class="tiny muted">(BLACKPINK)</span></button>
         </div>
       </div>
       <div class="field">
@@ -49,8 +51,8 @@
         <label class="check" style="margin-top:10px"><input type="checkbox" id="c-consent" /> I understand and consent.</label>
       </div>
       <div class="check" id="elig-msg" style="color:#fca5a5"></div>
-      <button class="btn" id="consent-go" disabled>Enter kfeed</button>
     </div>
+    <div class="appfoot"><button class="btn" id="consent-go" disabled>Enter kfeed</button></div>
   </section>
 
   <!-- ================= SESSION ================= -->
@@ -153,7 +155,7 @@ async function startSession(){
   const qs = new URLSearchParams(location.search);
   const forced = {};
   if(["C0","C1","C2"].includes(qs.get("arm"))) forced.arm = qs.get("arm");
-  if(pick.fandom) forced.flair = pick.fandom; else if(["AUR","NOV"].includes(qs.get("flair"))) forced.flair = qs.get("flair");
+  if(pick.fandom) forced.flair = pick.fandom; else if(["ARMY","BLINK"].includes(qs.get("flair"))) forced.flair = qs.get("flair");
   const s = await STUDY.api.startSession(forced);
   SESS = { sessionId:s.sessionId, arm:s.arm, flair: s.flair || pick.fandom };
   const fan = FANDOMS[SESS.flair];
@@ -175,9 +177,9 @@ function postEl({fan, name, handle, text, mine}){
       <div class="top"><span class="name"></span><span class="handle"></span><span class="flair ${fan}">${fandom?fandom.name:''}</span></div>
       <div class="text"></div>
       <div class="actions">
-        <button data-a="like">♡ <span class="n">${mine?0:(3+Math.floor(Math.random()*40))}</span></button>
+        <button data-a="like"><span class="heart">♡</span> <span class="n">${mine?0:(3+Math.floor(Math.random()*40))}</span></button>
         <button data-a="reply">↩ reply</button>
-        <button data-a="share">↗</button>
+        <button data-a="share"><span class="sh">↗</span></button>
       </div>
     </div>`;
   el.querySelector(".name").textContent = name;
@@ -185,13 +187,19 @@ function postEl({fan, name, handle, text, mine}){
   el.querySelector(".text").textContent = text;
   // like / reply / share handlers
   el.querySelector('[data-a="like"]').onclick = (ev)=>{
-    const btn = ev.currentTarget; const n = btn.querySelector(".n");
+    const btn = ev.currentTarget; const n = btn.querySelector(".n"); const heart = btn.querySelector(".heart");
     const liked = btn.classList.toggle("liked");
+    heart.textContent = liked ? "♥" : "♡";
+    heart.classList.remove("pop"); void heart.offsetWidth; if(liked) heart.classList.add("pop");
     n.textContent = (parseInt(n.textContent,10) + (liked?1:-1));
     if(liked && fan && fan!==SESS.flair){ likedCross=true; STUDY.api.logEvent({sessionId:SESS.sessionId, type:"cross", textRaw:"like:"+text.slice(0,40), threadId:"seed"}); }
   };
   el.querySelector('[data-a="reply"]').onclick = ()=>{ const i=$("#composer-input"); i.focus(); if(fan&&fan!==SESS.flair) i.dataset.cross="1"; };
-  el.querySelector('[data-a="share"]').onclick = ()=> STUDY.api.logEvent({sessionId:SESS.sessionId, type:"share", textRaw:text.slice(0,40), threadId:"seed"});
+  el.querySelector('[data-a="share"]').onclick = (ev)=>{
+    const sh = ev.currentTarget.querySelector(".sh"); sh.textContent = "✓ shared"; ev.currentTarget.style.color = "var(--good)";
+    setTimeout(()=>{ sh.textContent = "↗"; ev.currentTarget.style.color = ""; }, 1100);
+    STUDY.api.logEvent({sessionId:SESS.sessionId, type:"share", textRaw:text.slice(0,40), threadId:"seed"});
+  };
   return el;
 }
 function addPostToFeed(p){ const el = postEl(p); $("#feed").appendChild(el); return el; }
@@ -277,7 +285,7 @@ async function runCollab(card, conf){
   // step 4 co-publish
   stepMark(card,4);
   const art = document.createElement("div"); art.className="artifact";
-  art.innerHTML = `${st.artifact || conf.artifact}<span class="flairs"><span class="fa">▪ AURORA</span> × <span class="fn">▪ NOVA</span> · a K-pop Collab</span>`;
+  art.innerHTML = `${st.artifact || conf.artifact}<span class="flairs"><span class="fa">▪ ARMY</span> × <span class="fn">▪ BLINK</span> · a K-pop Collab</span>`;
   body.appendChild(art);
   await sleep(400);
 

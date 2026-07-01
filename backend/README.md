@@ -28,7 +28,7 @@ Prefer the CLI? `npx wrangler d1 create defuselab-study` → put the id in `wran
 
 ## Test live cross-fandom pairing
 Open the app in two windows forcing the **same arm** and **opposite fandoms**:
-- `app.html?arm=C2&flair=AUR`  and  `app.html?arm=C2&flair=NOV`
+- `app.html?arm=C2&flair=ARMY`  and  `app.html?arm=C2&flair=BLINK`
 
 Start the Collab in both. Each waits on the pairing gate until the other contributes, then both
 co-publish the **same** joint artifact — a true live pair (`is_live_paired=1`), not a filler.

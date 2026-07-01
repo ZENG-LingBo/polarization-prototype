@@ -21,11 +21,11 @@ const ALLOWED_ORIGINS = [
   "http://127.0.0.1:8000",
 ];
 const ARMS = ["C0", "C1", "C2"];
-const other = (f) => (f === "AUR" ? "NOV" : "AUR");
+const other = (f) => (f === "ARMY" ? "BLINK" : "ARMY");
 
 // Minimal server-side sample partner content for the DISCLOSED filler (no live partner online).
 const SAMPLE = {
-  C2: { kind: "super", text: "throwing in 'Supernova' — the choreo is what pulled me in", artifact: '🎵 "The songs that made us fall for K-pop"' },
+  C2: { kind: "super", text: "throwing in 'As If It's Your Last' — the energy pulled me in", artifact: '🎵 "The songs that made us fall for K-pop"' },
   C1: { kind: "neutral", text: "ok fair, adding ramen + extra cheese", artifact: '🍜 "Comfort foods"' },
 };
 
@@ -81,7 +81,7 @@ export default {
           const { n } = (await DB.prepare("SELECT COUNT(*) AS n FROM sessions").first()) || { n: 0 };
           arm = ARMS[n % 3];                                 // balanced round-robin
         }
-        const flair = body.flair === "AUR" || body.flair === "NOV" ? body.flair : (Math.random() < 0.5 ? "AUR" : "NOV");
+        const flair = body.flair === "ARMY" || body.flair === "BLINK" ? body.flair : (Math.random() < 0.5 ? "ARMY" : "BLINK");
         const pid = uid("p"), sid = uid("sess"), now = Date.now();
         await DB.prepare("INSERT INTO participants (id,arm,flair,created_at) VALUES (?,?,?,?)").bind(pid, arm, flair, now).run();
         await DB.prepare("INSERT INTO sessions (id,participant_id,arm,flair,started_at) VALUES (?,?,?,?,?)").bind(sid, pid, arm, flair, now).run();

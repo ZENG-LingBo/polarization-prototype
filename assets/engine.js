@@ -8,30 +8,37 @@
  *                 OFFLINE fallback so everything works on GitHub Pages with no backend.
  *
  * These meters are transparent demo heuristics, NOT the study's real instruments — see
- * PROVENANCE below and METRICS.md / MEASURES.md. Fandoms AURORA & NOVA are fictional.
+ * PROVENANCE below and METRICS.md / MEASURES.md. Rival fandoms: ARMY (BTS) vs BLINK (BLACKPINK).
  */
 (function (global) {
   "use strict";
   const CFG = global.STUDY_CONFIG || {};
 
   /* ------------------------------------------------------------------ DATA */
+  // Real rival fandoms (locked pair — see FANDOM_SELECTION.md): ARMY (BTS) vs BLINK (BLACKPINK).
+  // Handles are FICTIONAL — not real accounts.
   const FANDOMS = {
-    AUR: { code: "AUR", name: "AURORA", stans: ["aurora_skye", "violet_hour", "stargaze_min", "eternal_aur"] },
-    NOV: { code: "NOV", name: "NOVA",   stans: ["nova_pulse", "cyan_beat", "supernova_jae", "orbit_nov"] },
+    ARMY:  { code: "ARMY",  name: "ARMY",  group: "BTS",       stans: ["army_borahae", "purplenight_", "jinnie_stan", "07dynamite"] },
+    BLINK: { code: "BLINK", name: "BLINK", group: "BLACKPINK", stans: ["blink_inyourarea", "pinkvenom_", "ddu_du_stan", "bp_forever04"] },
   };
-  const otherFandom = (f) => (f === "AUR" ? "NOV" : "AUR");
+  const otherFandom = (f) => (f === "ARMY" ? "BLINK" : "ARMY");
 
-  // Seeded, mildly-to-moderately contentious rival-fandom thread (PLAN.md §12: seed from
-  // real, anonymized discourse). This is the shared surface across all three arms.
+  // Seeded rival-fandom thread (PLAN.md §12: seed from real, anonymized discourse).
+  // ETHICS (per Ray + IRB): these posts are ANONYMIZED and PARAPHRASED — modelled on the
+  // documented ARMY/BLINK fan-war register (live-vocals / "flop" / "overrated" / streaming &
+  // records / "delusional" mockery), reworded so none is a traceable verbatim tweet (verbatim
+  // quotes re-identify authors ~84% of the time), with fictional handles. Genuinely harmful
+  // targeted content (attacks on members' bodies/families, slurs, threats) is deliberately
+  // EXCLUDED — kept group-vs-group, not member-targeting. Not attributed to real individuals.
   const SEED_THREAD = {
-    title: 'settle it: AURORA vs NOVA — who actually runs this gen?',
+    title: 'BTS vs BLACKPINK — who actually runs this gen?',
     posts: [
-      { fan: "AUR", text: "AURORA is the defining group of this generation, it's not even close 🏆" },
-      { fan: "NOV", text: "lmaooo right on cue. NOVA outsold and outperformed, stay mad" },
-      { fan: "AUR", text: "NOVA's comeback completely flopped, those live vocals were embarrassing 💀 industry plant energy" },
-      { fan: "NOV", text: "ratio. AURORA stans woke up and chose delusion again, your faves are mid and talentless lol" },
-      { fan: "AUR", text: "cope harder, nobody's streaming NOVA, washed after one era 🤡" },
-      { fan: "NOV", text: "imagine being this pressed over a nugu group, embarrassing fanbase fr" },
+      { fan: "ARMY",  text: "BTS is the defining group of this generation, it's genuinely not close 🏆" },
+      { fan: "BLINK", text: "lol right on cue. BLACKPINK outsold and outperformed, stay pressed" },
+      { fan: "ARMY",  text: "that last BP comeback kinda flopped ngl, the live vocals were rough 💀" },
+      { fan: "BLINK", text: "ratio. ARMYs really wake up and choose delusion every day huh, overrated faves" },
+      { fan: "ARMY",  text: "cope, nobody's streaming it, one era and washed 🤡" },
+      { fan: "BLINK", text: "imagine being this pressed lol, embarrassing fanbase fr" },
     ],
   };
 
@@ -42,13 +49,13 @@
       kind: "super",
       prompt: 'Add the song that made YOU fall for K-pop. (Publishes once a fan from another group adds one too.)',
       placeholder: "the song that got you into K-pop…",
-      sampleSelf: { text: "adding 'Eternal' — that final bridge is the exact moment I fell for K-pop" },
-      samplePartner: { text: "oh that's a real pick. throwing in 'Supernova' — the choreo is what pulled me in" },
+      sampleSelf: { text: "adding 'Spring Day' — that bridge is the exact moment I fell for K-pop" },
+      samplePartner: { text: "oh that's a real pick. throwing in 'As If It's Your Last' — the energy pulled me in" },
       artifact: '🎵 "The songs that made us fall for K-pop"',
       afterglow: [
-        { fan: "AUR", text: "ngl we actually have similar taste… this playlist kinda goes hard" },
-        { fan: "NOV", text: "haha yeah. still rivals but we're both just here for the music tbh 🤝" },
-        { fan: "AUR", text: "ok real talk, our bias and yours both ate on that stage" },
+        { fan: "ARMY",  text: "ngl we actually have similar taste… this playlist kinda goes hard" },
+        { fan: "BLINK", text: "haha yeah. still rivals but we're both just here for the music tbh 🤝" },
+        { fan: "ARMY",  text: "ok real talk, both groups ate on that stage" },
       ],
     },
     C1: {
@@ -59,8 +66,8 @@
       samplePartner: { text: "ok fair, adding ramen + extra cheese" },
       artifact: '🍜 "Comfort foods"',
       afterglow: [
-        { fan: "AUR", text: "lol ok that was kinda fun ngl" },
-        { fan: "NOV", text: "anyway NOVA still trash, that won't change lol" },
+        { fan: "ARMY",  text: "lol ok that was kinda fun ngl" },
+        { fan: "BLINK", text: "anyway BTS still overrated, that won't change lol" },
       ],
     },
   };
@@ -164,7 +171,7 @@
       const s = store();
       const arm = ARMS.includes(opts.arm) ? opts.arm : ARMS[s.armCursor % 3];
       if (!ARMS.includes(opts.arm)) s.armCursor++;
-      const flair = (opts.flair === "AUR" || opts.flair === "NOV") ? opts.flair : (Math.random() < 0.5 ? "AUR" : "NOV");
+      const flair = (opts.flair === "ARMY" || opts.flair === "BLINK") ? opts.flair : (Math.random() < 0.5 ? "ARMY" : "BLINK");
       const sess = { id: uid("sess"), arm, flair, started_at: Date.now(), ended_at: null };
       s.sessions.push(sess); saveStore(s);
       return { sessionId: sess.id, arm, flair, seedThread: SEED_THREAD, offline: true };
@@ -190,8 +197,8 @@
       const conf = COLLAB[arm] || COLLAB.C2;
       const col = {
         id: uid("col"), session_id: c.sessionId, arm, kind: conf.kind, prompt: conf.prompt,
-        a_text: c.text, a_flair: sess ? sess.flair : "AUR",
-        b_text: conf.samplePartner.text, b_flair: sess ? otherFandom(sess.flair) : "NOV",
+        a_text: c.text, a_flair: sess ? sess.flair : "ARMY",
+        b_text: conf.samplePartner.text, b_flair: sess ? otherFandom(sess.flair) : "BLINK",
         artifact: conf.artifact, status: "filler", is_live_paired: 0, filler: 1, created_at: Date.now(),
       };
       s.collabs.push(col); saveStore(s);
@@ -254,12 +261,12 @@
       if (arm !== "C0") { s.collabs.push({ id: uid("col"), session_id: sid, arm, kind: arm === "C2" ? "super" : "neutral", is_live_paired: 1, filler: 0, created_at: Date.now(), demo: true }); }
     };
     // C0: stays hostile · C1: mild thaw then drifts back · C2: cools + "we" language
-    mk("C0", "AUR", ["their comeback flopped lol 💀", "delusional fanbase as usual", "trash group trash stans", "nobody streams them, cope"]);
-    mk("C0", "NOV", ["ratio, stay mad", "AURORA stans are embarrassing 🤡", "washed and mid", "clown behavior"]);
-    mk("C1", "AUR", ["ok the food collab was kinda fun", "anyway they're still overrated lol", "mid comeback tho"]);
-    mk("C1", "NOV", ["fine that was alright", "NOVA still outsold, cope", "whatever, delulu"]);
-    mk("C2", "AUR", ["ngl we actually have similar taste", "we can argue and still share a playlist", "both groups ate on that stage tbh"]);
-    mk("C2", "NOV", ["haha yeah we're both just here for the music 🤝", "our biases both went off fr", "this is the convo i come here for"]);
+    mk("C0", "ARMY",  ["their comeback flopped lol 💀", "delusional fanbase as usual", "overrated group overrated stans", "nobody streams them, cope"]);
+    mk("C0", "BLINK", ["ratio, stay pressed", "ARMYs are embarrassing 🤡", "washed and mid", "clown behavior"]);
+    mk("C1", "ARMY",  ["ok the food collab was kinda fun", "anyway they're still overrated lol", "mid comeback tho"]);
+    mk("C1", "BLINK", ["fine that was alright", "BLACKPINK still outsold, cope", "whatever, delulu"]);
+    mk("C2", "ARMY",  ["ngl we actually have similar taste", "we can argue and still share a playlist", "both groups ate on that stage tbh"]);
+    mk("C2", "BLINK", ["haha yeah we're both just here for the music 🤝", "our biases both went off fr", "this is the convo i come here for"]);
     saveStore(s);
   }
 

@@ -1,7 +1,8 @@
 /* DefuseLab shared styles — mobile tester app (Threads/X) + researcher dashboard.
-   Reuses the AURORA(purple) / NOVA(cyan) / K-pop-gold palette from the original demo. */
+   Palette: ARMY(purple) / BLINK(pink) / K-pop-gold. */
 :root{
-  --aur1:#7c3aed; --aur2:#a855f7; --nov1:#0e7490; --nov2:#22d3ee; --kpf:#f59e0b;
+  /* ARMY (BTS) = purple · BLINK (BLACKPINK) = pink · K-pop accent = gold */
+  --aur1:#7c3aed; --aur2:#a855f7; --nov1:#be185d; --nov2:#f472b6; --kpf:#f59e0b;
   --bg:#0f1115; --panel:#171a21; --panel2:#1f242e; --line:#2a3140;
   --txt:#e8edf4; --mut:#9aa6b6; --mut2:#6b7688;
   --hot:#ef4444; --warm:#f59e0b; --cool:#22c55e; --good:#34d399;
@@ -27,14 +28,17 @@ button:disabled{opacity:.45;cursor:not-allowed}
 
 /* ================================================================= PHONE */
 .phone{
-  max-width:440px;margin:0 auto;min-height:100vh;position:relative;
+  max-width:440px;margin:0 auto;height:100vh;height:100dvh;position:relative;
   background:var(--bg);border-left:1px solid var(--line);border-right:1px solid var(--line);
   display:flex;flex-direction:column;overflow:hidden;
 }
 @media(min-width:520px){
-  .phone{min-height:calc(100vh - 32px);margin:16px auto;border:1px solid var(--line);
+  .phone{height:min(900px, calc(100vh - 32px));margin:16px auto;border:1px solid var(--line);
     border-radius:28px;box-shadow:0 30px 80px rgba(0,0,0,.5);overflow:hidden}
 }
+/* pinned action footer so the primary button is always visible inside the frame */
+.appfoot{flex:0 0 auto;padding:12px 16px 16px;border-top:1px solid var(--line);background:var(--panel)}
+.appfoot .dots{padding:0 0 10px}
 .appbar{
   position:sticky;top:0;z-index:20;display:flex;align-items:center;gap:10px;
   padding:14px 16px;background:rgba(15,17,21,.86);backdrop-filter:blur(8px);
@@ -89,21 +93,25 @@ button:disabled{opacity:.45;cursor:not-allowed}
 .post{display:flex;gap:12px;padding:14px 16px;border-bottom:1px solid var(--line);animation:fade .28s ease}
 @keyframes fade{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
 .av{width:40px;height:40px;border-radius:50%;flex:0 0 40px;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:14px;color:#fff}
-.av.AUR{background:linear-gradient(135deg,var(--aur1),var(--aur2))}
-.av.NOV{background:linear-gradient(135deg,var(--nov1),var(--nov2))}
+.av.ARMY{background:linear-gradient(135deg,var(--aur1),var(--aur2))}
+.av.BLINK{background:linear-gradient(135deg,var(--nov1),var(--nov2))}
 .av.YOU{background:linear-gradient(135deg,#334155,#475569)}
 .post .body{flex:1;min-width:0}
 .post .top{display:flex;align-items:center;gap:7px;margin-bottom:2px;flex-wrap:wrap}
 .post .name{font-weight:700;font-size:14px}
 .post .handle{color:var(--mut);font-size:12px}
 .flair{font-size:10px;font-weight:800;padding:1px 7px;border-radius:999px;letter-spacing:.3px}
-.flair.AUR{background:rgba(124,58,237,.30);color:#d9b3ff;border:1px solid var(--aur1)}
-.flair.NOV{background:rgba(14,116,144,.40);color:#a5f3fc;border:1px solid var(--nov2)}
+.flair.ARMY{background:rgba(124,58,237,.30);color:#d9b3ff;border:1px solid var(--aur1)}
+.flair.BLINK{background:rgba(190,24,93,.34);color:#fbcfe8;border:1px solid var(--nov2)}
 .post .text{font-size:14.5px;white-space:pre-wrap;word-wrap:break-word}
 .actions{display:flex;gap:22px;margin-top:8px;color:var(--mut);font-size:12px}
 .actions button{background:none;color:var(--mut);display:flex;align-items:center;gap:5px;padding:2px}
 .actions button:hover{color:var(--txt)}
+.actions .heart{display:inline-block;transition:transform .15s ease}
 .actions .liked{color:#fb7185}
+.actions .liked .heart{color:#fb7185}
+.actions .heart.pop{animation:pop .3s ease}
+@keyframes pop{0%{transform:scale(1)}40%{transform:scale(1.4)}100%{transform:scale(1)}}
 
 /* ---- Collab Spotlight card ---- */
 .collab{margin:14px 16px;border:1px solid var(--kpf);border-radius:var(--radius);
@@ -115,7 +123,9 @@ button:disabled{opacity:.45;cursor:not-allowed}
 .collab .steps i.on{background:var(--kpf)}
 .collab .steps i.done{background:var(--good)}
 .contrib{display:flex;gap:9px;align-items:flex-start;font-size:13px;padding:7px 0}
-.contrib .cav{width:26px;height:26px;border-radius:50%;flex:0 0 26px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;color:#fff}
+.contrib .cav{width:26px;height:26px;border-radius:50%;flex:0 0 26px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;color:#fff;background:linear-gradient(135deg,#475569,#64748b)}
+.contrib .cav.ARMY{background:linear-gradient(135deg,var(--aur1),var(--aur2))}
+.contrib .cav.BLINK{background:linear-gradient(135deg,var(--nov1),var(--nov2))}
 .contrib b{color:var(--txt)}
 .wait{display:flex;gap:8px;align-items:center;font-size:12.5px;color:var(--mut);font-style:italic;padding:8px 0}
 .spin{width:14px;height:14px;border:2px solid var(--line);border-top-color:var(--kpf);border-radius:50%;animation:spin .8s linear infinite}
@@ -123,7 +133,7 @@ button:disabled{opacity:.45;cursor:not-allowed}
 .sysnote{font-size:11px;color:var(--mut);background:rgba(148,163,184,.10);border:1px dashed var(--line);border-radius:10px;padding:8px 10px;margin:6px 0}
 .artifact{margin-top:8px;padding:11px 12px;border-radius:12px;background:rgba(52,211,153,.10);border:1px solid var(--good);font-weight:700;font-size:13.5px}
 .artifact .flairs{font-size:10px;font-weight:800;display:block;margin-top:5px}
-.artifact .fa{color:#d9b3ff}.artifact .fn{color:#a5f3fc}
+.artifact .fa{color:#d9b3ff}.artifact .fn{color:#fbcfe8}
 .share-row{margin-top:8px;display:flex;align-items:center;gap:8px}
 .share-line{font-size:12px;color:var(--good);margin-top:6px}
 

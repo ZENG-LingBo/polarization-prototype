@@ -1,5 +1,15 @@
 # Fandom-Pair Selection — choosing the two rival K-pop fandoms
 
+> ## ✅ DECISION: ARMY × BLINK (locked)
+> The team has **locked the pair to ARMY (BTS) × BLINK (BLACKPINK)** — the flagship pair
+> (candidate **A** below). This **overrides** the earlier analysis lean toward a same-lane
+> pair (§7); it prioritizes documented toxicity, scale, and recruitability. The prototype now
+> uses the real names publicly. The §6 CIIM-registration pilot is still recommended as a
+> **pre-run check** (does "K-pop fans" register as a superordinate for both, given the
+> cross-gender/diffuse nature of this rivalry — §3A), and the analysis below is retained as the
+> rationale of record. Seed content in the prototype is anonymized/paraphrased and excludes
+> member-targeting harm (per Ray's ethics note; PLAN.md §12).
+
 > **Decision-support doc for [`PLAN.md`](PLAN.md) §13 open-decision #1**
 > (*"Which two rival fandoms + which superordinate framing"*). This is the study's first
 > **gating** decision (§13.1): the superordinate identity ("K-pop fans") must be confirmed to
@@ -141,10 +151,11 @@ disqualified **regardless** of how toxic it is — that is the §13.1 gating log
 ---
 
 ## 8. Notes & open sub-decisions
-- **Keep the public demo on AURORA / NOVA.** Real fandom names belong in the internal protocol / IRB
-  materials, **not** the public GitHub-Pages artifact — naming real fandoms as "toxic" in a public
-  demo invites the very fan-war backlash we study. Where this doc names real fandoms, it does so
-  **descriptively, from already-public documentation** — not as novel accusations.
+- **Public demo now uses the real names (ARMY / BLINK).** *(Superseded — see the DECISION banner
+  at the top.)* This was originally recommended against (naming real fandoms as "toxic" on a public
+  site invites fan-war backlash); the team accepted that tradeoff. Mitigations kept: seed posts are
+  **anonymized + paraphrased** (no traceable verbatim tweets), use **fictional handles**, and
+  **exclude member-targeting harm** — kept group-vs-group per Ray's ethics note and PLAN.md §12.
 - **Superordinate granularity** (broad "K-pop fans" vs. a tighter, more psychologically real shared
   category) remains an open §13.1 knob — the pilot (§6, item 1) should probe both framings.
 - **Feeds into:** §7 recruitment target (inflate for the multi-stan screen), §13.7 lexicon

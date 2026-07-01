@@ -52,9 +52,11 @@ Shen 2005. Construct-by-construct grounding: [`MEASURES.md`](MEASURES.md); demo-
 
 ## Status & ethics
 This build is for **instrument-building / internal testing**. The app records behavioral data, so a
-real recruited run is **IRB-gated** (PLAN.md §11). Fandoms **AURORA** and **NOVA** are fictional
-placeholders — the real rival pair is an open decision (see [`FANDOM_SELECTION.md`](FANDOM_SELECTION.md)),
-and real fandom names stay out of the public demo.
+real recruited run is **IRB-gated** (PLAN.md §11). The rival pair is **ARMY (BTS) × BLINK (BLACKPINK)**
+(see [`FANDOM_SELECTION.md`](FANDOM_SELECTION.md)). Seeded posts are **anonymized and paraphrased** from
+publicly documented fan-war discourse, **exclude member-targeting content** (no attacks on individuals,
+no slurs/threats), use **fictional handles**, and are **not attributed to real people** — per the study's
+ethics handling (PLAN.md §12).
 
 ## Run locally
 ```
@@ -66,4 +68,5 @@ python -m http.server 8000   # then visit http://localhost:8000
   Perspective API + a validated K-pop incivility lexicon + human incivility coding.
 - The earlier Lakers/Celtics agent demo is archived at
   [`legacy-lakers-celtics.html`](legacy-lakers-celtics.html) (its OpenAI proxy is in [`worker/`](worker/)).
-- Not affiliated with any real artist, group, or fandom.
+- A research prototype, **not affiliated with or endorsed by** BTS, BLACKPINK, HYBE, YG, or any
+  official fandom. Group/fandom names are used only to study intergroup dynamics.
