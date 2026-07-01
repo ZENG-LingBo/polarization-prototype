@@ -1,6 +1,9 @@
 # DefuseLab LLM proxy (Cloudflare Worker → OpenAI)
 
-A small Worker that lets the prototype's **Live LLM** mode work **without exposing your
+> Used by the **archived Lakers/Celtics demo** ([`../legacy-lakers-celtics.html`](../legacy-lakers-celtics.html)),
+> not the current K-pop prototype (`../index.html`), which is fully scripted and has no Live LLM mode.
+
+A small Worker that lets the legacy prototype's **Live LLM** mode work **without exposing your
 OpenAI key in the browser**. The key is an encrypted Worker **secret**; the browser sends
 only the post text + team (+ a Turnstile token) and gets back `{ text }`.
 
@@ -24,7 +27,7 @@ That's it for a working demo. The two layers below are optional hardening.
    **Site key** (public) and **Secret key**.
 2. Worker → Settings → Variables and Secrets → add `TURNSTILE_SECRET` = the Secret key
    (**Encrypt**) → Deploy.
-3. In `../index.html`, set `const TURNSTILE_SITEKEY = "<your site key>";`
+3. In `../legacy-lakers-celtics.html`, set `const TURNSTILE_SITEKEY = "<your site key>";`
 > Set **both** (secret + site key) or **neither** — secret-only rejects every request.
 
 ## Optional: per-IP daily cap (KV)
