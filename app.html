@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<title>kfeed — K-pop community</title>
+<link rel="stylesheet" href="assets/ui.css" />
+</head>
+<body>
+<div class="phone" id="phone">
+
+  <!-- ================= ONBOARDING ================= -->
+  <section class="screen" id="s-onboard">
+    <div class="center scroll">
+      <div>
+        <div class="hero">welcome to <span class="g">kfeed</span></div>
+        <div class="lead">a small K-pop community feed. you'll browse, react, and post like you would on any social app — for just a few minutes.</div>
+      </div>
+      <div id="ob-cards" style="display:flex;flex-direction:column;gap:12px"></div>
+      <div class="dots" id="ob-dots"></div>
+      <button class="btn gold" id="ob-next">Next</button>
+    </div>
+  </section>
+
+  <!-- ================= ELIGIBILITY + CONSENT ================= -->
+  <section class="screen" id="s-consent" hidden>
+    <div class="appbar"><span class="brand">Before you start</span></div>
+    <div class="scroll pad">
+      <div class="field">
+        <label>Which fandom are you part of?</label>
+        <div class="hint">Pick the one you actually belong to. (Fictional fandoms for this prototype.)</div>
+        <div class="opts" id="fandom-opts">
+          <button class="opt" data-f="AUR">▪ AURORA</button>
+          <button class="opt" data-f="NOV">▪ NOVA</button>
+        </div>
+      </div>
+      <div class="field">
+        <label>Are you a strong fan of <em>both</em> groups?</label>
+        <div class="opts" id="dual-opts">
+          <button class="opt" data-d="no">No — mainly one</button>
+          <button class="opt" data-d="yes">Yes — both equally</button>
+        </div>
+      </div>
+      <label class="check"><input type="checkbox" id="c-age" /> I confirm I am <b style="color:var(--txt)">&nbsp;18 or older</b>.</label>
+      <div class="consent">
+        <b>Consent &amp; what's logged.</b> This is a research prototype. Your posts, reactions, and
+        the text you write here are recorded for research, including the original (pre-moderation)
+        wording. You may see uncivil content. Participation is voluntary and you can stop anytime.
+        <label class="check" style="margin-top:10px"><input type="checkbox" id="c-consent" /> I understand and consent.</label>
+      </div>
+      <div class="check" id="elig-msg" style="color:#fca5a5"></div>
+      <button class="btn" id="consent-go" disabled>Enter kfeed</button>
+    </div>
+  </section>
+
+  <!-- ================= SESSION ================= -->
+  <section class="screen" id="s-session" hidden>
+    <div class="appbar">
+      <span class="brand">🎤 kfeed</span>
+      <span class="who">posting as <b id="me-handle">you</b> <span class="flair" id="me-flair"></span></span>
+    </div>
+    <!-- persistent automation disclosure (identical across arms — PLAN.md §4.3) -->
+    <div class="disclose"><b>ⓘ automated:</b><span>prompt suggestions &amp; collab layout on this app are automated. your posts are your own.</span></div>
+
+    <div class="scroll" id="session-scroll">
+      <div class="thread-hd">
+        <div class="t" id="thread-title"></div>
+        <div class="s">r/kpop · community thread</div>
+      </div>
+      <div class="feed" id="feed"></div>
+    </div>
+
+    <div class="composer">
+      <textarea id="composer-input" placeholder="add to the thread…"></textarea>
+      <div class="row">
+        <button class="btn" id="post-btn" style="flex:1">Post</button>
+        <button class="btn ghost sm" id="finish-btn">Finish</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= DONE ================= -->
+  <section class="screen" id="s-done" hidden>
+    <div class="center done">
+      <div class="big">🎉</div>
+      <span class="badge-ok">Session complete</span>
+      <div class="hero" style="font-size:22px">thanks for taking part</div>
+      <div class="lead" id="debrief-text"></div>
+      <div class="consent tiny">
+        <b>Debrief.</b> This prototype studies how a shared-activity feature affects the tone of
+        conversation between rival fandoms. Some collab contributions may have been system-generated
+        samples when no live partner was available (these were labelled). The automated parts only
+        suggested prompts and laid out contributions — they never wrote your posts. If any content
+        was upsetting, please reach out to the study team.
+      </div>
+      <button class="btn ghost" onclick="location.href='index.html'">Back to start</button>
+    </div>
+  </section>
+
+</div>
+
+<script src="assets/config.js"></script>
+<script src="assets/engine.js"></script>
+<script>
+/* ---------- tiny helpers ---------- */
+const $ = (s) => document.querySelector(s);
+function screen(id){ ["onboard","consent","session","done"].forEach(x=>$("#s-"+x).hidden=(x!==id)); }
+const initials = (n) => n.replace(/[^a-zA-Z]/g,"").slice(0,2).toUpperCase() || "?";
+const sleep = (ms) => new Promise(r=>setTimeout(r,ms));
+const FANDOMS = STUDY.FANDOMS;
+
+/* ---------- onboarding ---------- */
+const OB = [
+  { ic:"💬", h:"It's a normal feed", p:"Browse posts, like or reply, and post your own takes — just like Threads or X." },
+  { ic:"🎤", h:"All about K-pop", p:"You'll land in a lively community thread between two rival fandoms." },
+  { ic:"ⓘ", h:"Some parts are automated", p:"Prompt suggestions and collab layout are automated. Your own posts are always your own words." },
+];
+let obIdx = 0;
+function renderOb(){
+  $("#ob-cards").innerHTML = "";
+  const c = OB[obIdx];
+  const el = document.createElement("div"); el.className="howcard";
+  el.innerHTML = `<div class="ic">${c.ic}</div><div><h4>${c.h}</h4><p>${c.p}</p></div>`;
+  $("#ob-cards").appendChild(el);
+  $("#ob-dots").innerHTML = OB.map((_,i)=>`<i class="${i===obIdx?'on':''}"></i>`).join("");
+  $("#ob-next").textContent = obIdx < OB.length-1 ? "Next" : "Get started";
+}
+$("#ob-next").onclick = () => { if(obIdx < OB.length-1){ obIdx++; renderOb(); } else { screen("consent"); } };
+renderOb();
+
+/* ---------- eligibility + consent ---------- */
+let pick = { fandom:null, dual:null };
+$("#fandom-opts").addEventListener("click", (e)=>{ const b=e.target.closest("[data-f]"); if(!b)return;
+  pick.fandom=b.dataset.f; [...$("#fandom-opts").children].forEach(x=>x.classList.toggle("on",x===b)); validate(); });
+$("#dual-opts").addEventListener("click", (e)=>{ const b=e.target.closest("[data-d]"); if(!b)return;
+  pick.dual=b.dataset.d; [...$("#dual-opts").children].forEach(x=>x.classList.toggle("on",x===b)); validate(); });
+$("#c-age").onchange = validate; $("#c-consent").onchange = validate;
+function validate(){
+  const ok = pick.fandom && pick.dual && $("#c-age").checked && $("#c-consent").checked;
+  const msg = $("#elig-msg");
+  if(pick.dual==="yes"){ msg.textContent = "Note: this study needs single-fandom fans, but you can still preview the app."; msg.style.color="var(--mut)"; }
+  else msg.textContent = "";
+  $("#consent-go").disabled = !ok;
+}
+$("#consent-go").onclick = startSession;
+
+/* ---------- session state ---------- */
+let SESS = null;      // {sessionId, arm, flair}
+let posted = false, collabDone = false, likedCross = false;
+
+async function startSession(){
+  // ?arm=C2&flair=AUR lets a researcher force a cell (e.g. to test live cross-fandom pairing).
+  const qs = new URLSearchParams(location.search);
+  const forced = {};
+  if(["C0","C1","C2"].includes(qs.get("arm"))) forced.arm = qs.get("arm");
+  if(pick.fandom) forced.flair = pick.fandom; else if(["AUR","NOV"].includes(qs.get("flair"))) forced.flair = qs.get("flair");
+  const s = await STUDY.api.startSession(forced);
+  SESS = { sessionId:s.sessionId, arm:s.arm, flair: s.flair || pick.fandom };
+  const fan = FANDOMS[SESS.flair];
+  $("#me-flair").className = "flair "+SESS.flair; $("#me-flair").textContent = fan.name;
+  $("#me-handle").textContent = "@you";
+  $("#thread-title").textContent = (s.seedThread||STUDY.SEED_THREAD).title;
+  screen("session");
+  renderFeed(s.seedThread || STUDY.SEED_THREAD);
+}
+
+/* ---------- feed rendering ---------- */
+function postEl({fan, name, handle, text, mine}){
+  const fandom = FANDOMS[fan];
+  const el = document.createElement("div"); el.className="post";
+  const av = mine ? "YOU" : fan;
+  el.innerHTML = `
+    <div class="av ${av}">${initials(name)}</div>
+    <div class="body">
+      <div class="top"><span class="name"></span><span class="handle"></span><span class="flair ${fan}">${fandom?fandom.name:''}</span></div>
+      <div class="text"></div>
+      <div class="actions">
+        <button data-a="like">♡ <span class="n">${mine?0:(3+Math.floor(Math.random()*40))}</span></button>
+        <button data-a="reply">↩ reply</button>
+        <button data-a="share">↗</button>
+      </div>
+    </div>`;
+  el.querySelector(".name").textContent = name;
+  el.querySelector(".handle").textContent = handle;
+  el.querySelector(".text").textContent = text;
+  // like / reply / share handlers
+  el.querySelector('[data-a="like"]').onclick = (ev)=>{
+    const btn = ev.currentTarget; const n = btn.querySelector(".n");
+    const liked = btn.classList.toggle("liked");
+    n.textContent = (parseInt(n.textContent,10) + (liked?1:-1));
+    if(liked && fan && fan!==SESS.flair){ likedCross=true; STUDY.api.logEvent({sessionId:SESS.sessionId, type:"cross", textRaw:"like:"+text.slice(0,40), threadId:"seed"}); }
+  };
+  el.querySelector('[data-a="reply"]').onclick = ()=>{ const i=$("#composer-input"); i.focus(); if(fan&&fan!==SESS.flair) i.dataset.cross="1"; };
+  el.querySelector('[data-a="share"]').onclick = ()=> STUDY.api.logEvent({sessionId:SESS.sessionId, type:"share", textRaw:text.slice(0,40), threadId:"seed"});
+  return el;
+}
+function addPostToFeed(p){ const el = postEl(p); $("#feed").appendChild(el); return el; }
+
+function renderFeed(thread){
+  $("#feed").innerHTML="";
+  thread.posts.forEach(p=>{
+    const fan = FANDOMS[p.fan];
+    addPostToFeed({ fan:p.fan, name: fan.stans[Math.floor(Math.random()*fan.stans.length)], handle:"", text:p.text, mine:false });
+  });
+  // Collab Spotlight surfaces in-feed for C1/C2 (never for C0)
+  if(SESS.arm !== "C0") mountCollab();
+}
+
+/* ---------- composer ---------- */
+$("#post-btn").onclick = () => {
+  const i = $("#composer-input"); const t = i.value.trim(); if(!t) return;
+  const cross = i.dataset.cross === "1";
+  addPostToFeed({ fan:SESS.flair, name:"you", handle:"@you", text:t, mine:true });
+  STUDY.api.logEvent({ sessionId:SESS.sessionId, type:"post", textRaw:t, threadId:"seed" });
+  if(cross){ likedCross=true; STUDY.api.logEvent({sessionId:SESS.sessionId, type:"cross", textRaw:"reply", threadId:"seed"}); }
+  i.value=""; delete i.dataset.cross; posted=true;
+  $("#session-scroll").scrollTop = $("#session-scroll").scrollHeight;
+};
+
+/* ---------- Collab Spotlight (5-step, C1/C2) ---------- */
+function mountCollab(){
+  const conf = STUDY.COLLAB[SESS.arm]; if(!conf) return;
+  const card = document.createElement("div"); card.className="collab"; card.id="collab";
+  card.innerHTML = `
+    <div class="hd">✨ Collab Spotlight</div>
+    <div class="prompt"></div>
+    <div class="steps">${[1,2,3,4,5].map(()=>'<i></i>').join("")}</div>
+    <div class="cbody"></div>
+    <textarea id="collab-input" class="ci" style="width:100%;resize:none;background:var(--panel2);color:var(--txt);border:1px solid var(--line);border-radius:12px;padding:10px;font:inherit;font-size:14px;min-height:40px" placeholder="${conf.placeholder}"></textarea>
+    <button class="btn gold" id="collab-go" style="margin-top:8px">Add my part</button>`;
+  card.querySelector(".prompt").textContent = conf.prompt;
+  // insert near the top of the feed
+  const feed = $("#feed"); feed.insertBefore(card, feed.children[2] || null);
+  card.querySelector("#collab-go").onclick = () => runCollab(card, conf);
+}
+function stepMark(card, n){ const st=card.querySelectorAll(".steps i"); st.forEach((el,i)=>{ el.classList.toggle("on",i===n-1); el.classList.toggle("done",i<n-1); }); }
+
+async function runCollab(card, conf){
+  const input = card.querySelector("#collab-input");
+  const text = input.value.trim() || conf.sampleSelf.text;
+  const go = card.querySelector("#collab-go"); go.style.display="none"; input.style.display="none";
+  const body = card.querySelector(".cbody");
+  const other = STUDY.otherFandom(SESS.flair);
+
+  // step 1 prompt shown · step 2 your contribution
+  stepMark(card,2);
+  body.innerHTML = `<div class="contrib"><div class="cav ${SESS.flair}">${initials("you")}</div><div><b>you</b> — <span></span></div></div>`;
+  body.querySelector("span").textContent = text;
+
+  // step 3 pairing gate
+  stepMark(card,3);
+  const wait = document.createElement("div"); wait.className="wait";
+  wait.innerHTML = `<span class="spin"></span> waiting for a fan from another group to finish this with you…`;
+  body.appendChild(wait);
+
+  const res = await STUDY.api.collabContribute({ sessionId:SESS.sessionId, text });
+  // poll status until paired / filler
+  let st = await STUDY.api.collabStatus(res.collabId);
+  const t0 = Date.now(), timeout = STUDY.config.PAIRING_TIMEOUT_MS || 12000;
+  while(st.status === "waiting" && Date.now()-t0 < timeout){ await sleep(1200); st = await STUDY.api.collabStatus(res.collabId); }
+  wait.remove();
+
+  // If still no real partner: DISCLOSE a system-generated sample (PLAN.md §4.3 — never imply a human)
+  if(st.status === "waiting" || st.status === "filler" || !st.isLivePaired){
+    const note = document.createElement("div"); note.className="sysnote";
+    note.textContent = "No live partner was online just now, so we're showing a sample contribution (system-generated) to preview the collab. In a real session this comes from a fan in the other group.";
+    body.appendChild(note);
+  }
+  // partner contribution (real or disclosed sample)
+  const partner = (st.partner && st.partner.text) ? st.partner.text : conf.samplePartner.text;
+  const pfan = (st.partner && st.partner.flair) ? st.partner.flair : other;
+  const pc = document.createElement("div"); pc.className="contrib";
+  pc.innerHTML = `<div class="cav ${pfan}">${initials(FANDOMS[pfan].name)}</div><div><b>a ${FANDOMS[pfan].name} fan</b> — <span></span></div>`;
+  pc.querySelector("span").textContent = partner; body.appendChild(pc);
+  await sleep(500);
+
+  // step 4 co-publish
+  stepMark(card,4);
+  const art = document.createElement("div"); art.className="artifact";
+  art.innerHTML = `${st.artifact || conf.artifact}<span class="flairs"><span class="fa">▪ AURORA</span> × <span class="fn">▪ NOVA</span> · a K-pop Collab</span>`;
+  body.appendChild(art);
+  await sleep(400);
+
+  // step 5 shared share
+  stepMark(card,5);
+  const share = document.createElement("div"); share.className="share-row";
+  const sbtn = document.createElement("button"); sbtn.className="btn gold sm"; sbtn.textContent="↗ Share together";
+  share.appendChild(sbtn); body.appendChild(share);
+  sbtn.onclick = () => {
+    sbtn.disabled = true;
+    const line = document.createElement("div"); line.className="share-line";
+    line.textContent = "↗ shared together · likes land on the joint post";
+    body.appendChild(line);
+    STUDY.api.logEvent({ sessionId:SESS.sessionId, type:"cross", textRaw:"collab_share", threadId:"collab" });
+  };
+  collabDone = true; likedCross = true;
+
+  // afterglow: a couple of warmer cross-fandom replies drop into the feed
+  for(const m of (st.afterglow || conf.afterglow || [])){
+    await sleep(700);
+    const fan = FANDOMS[m.fan];
+    addPostToFeed({ fan:m.fan, name: fan.stans[Math.floor(Math.random()*fan.stans.length)], handle:"", text:m.text, mine:false });
+    STUDY.api.logEvent({ sessionId:SESS.sessionId, type:"post", textRaw:m.text, threadId:"seed" });
+  }
+}
+
+/* ---------- finish ---------- */
+$("#finish-btn").onclick = async () => {
+  await STUDY.api.endSession(SESS.sessionId);
+  const msg = SESS.arm === "C0"
+    ? "you browsed the community and shared your take."
+    : "you browsed the community and took part in a collab with the other fandom.";
+  $("#debrief-text").textContent = msg;
+  screen("done");
+};
+</script>
+</body>
+</html>

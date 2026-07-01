@@ -1,55 +1,62 @@
 # DefuseLab — Polarization Defusing prototype (K-pop · Study 1)
 
-A **one-file, static** prototype of the simulated social-media platform for **Study 1** of the
+A prototype of the simulated social-media platform for **Study 1** of the
 [Polarization Defusing study](https://github.com/ZENG-LingBo/polarization): rival K-pop fandoms,
-a 3-arm RCT, and the **Collab Spotlight** feature. Open the GitHub Pages URL and it just runs —
-no install, no backend.
+a 3-arm RCT, and the **Collab Spotlight** feature. Static frontend on GitHub Pages + an optional
+Cloudflare Worker/D1 backend. **Runs fully offline with no backend** — set one config value to turn
+on real cross-device logging and live cross-fandom pairing.
 
-## ▶ Live demo
-**https://zeng-lingbo.github.io/polarization-prototype/**
+## ▶ Live
+**https://zeng-lingbo.github.io/polarization-prototype/** → then pick an entrance:
+- **📱 Participant** → [`app.html`](app.html): the mobile **kfeed** app (onboarding → session → done).
+- **📊 Researcher** → [`dashboard.html`](dashboard.html): passphrase-gated metrics with source papers.
+
+The two are deliberately **separated** so the participant never sees the toxicity meters, the arm
+they're in, or the hypothesis (blinding — PLAN.md §4.3, §12).
 
 ## The idea
-Rival K-pop fandoms direct real, sustained toxicity at each other online. **Collab Spotlight** is
-a feed feature that tests whether *indirectly* activating a shared superordinate identity — "K-pop
-fans," never declared, only enacted — reduces that toxicity. Full protocol: [`PLAN.md`](PLAN.md) ·
-theory framing: [`OUTLINE.md`](OUTLINE.md) · instruments: [`MEASURES.md`](MEASURES.md).
+Rival K-pop fandoms direct real, sustained toxicity at each other online. **Collab Spotlight** tests
+whether *indirectly* activating a shared superordinate identity — "K-pop fans," never declared, only
+enacted — reduces that toxicity. Full protocol: [`PLAN.md`](PLAN.md) · framing: [`OUTLINE.md`](OUTLINE.md) ·
+instruments: [`MEASURES.md`](MEASURES.md) · rival-pair decision: [`FANDOM_SELECTION.md`](FANDOM_SELECTION.md).
 
-## What it shows
-- A simulated `r/kpop` thread between two rival fandoms (**AURORA** vs. **NOVA** — fictional
-  placeholder fandoms), with fandom flair on every post.
-- **Three arms**, switchable in the demo:
-  - **C0 — Control:** plain feed, no feature.
-  - **C1 — Active control:** feed + a cross-fandom Collab, but framed around a **neutral** topic
-    (comfort food) — isolates generic contact/novelty from the identity framing.
-  - **C2 — Intervention:** feed + the Collab **framed around K-pop as a whole**.
-  - Running the scenario in each arm fills in a **compare-arms** panel so you can see the
-    `C2 < C1 < C0` toxicity story, and read off the `C2−C1` contrast that isolates the
-    superordinate-framing effect from contact/novelty (`C1−C0`).
-- **Collab Spotlight**, the intervention itself, in 5 steps: a superordinate-framed prompt → you
-  contribute → it won't publish until a fan from the *other* fandom completes it → it co-publishes
-  with both fandom flairs → you share it together.
-- **Post yourself** — pick a fandom, post into the thread, or open a Collab directly.
-- **Live metrics** mirroring the study's constructs: toxicity, we/they pronoun ratio, a common
-  in-group identity (CIIM) proxy, and cross-fandom engagement.
-  **What each meter means + how it maps to the real validated instruments → [`METRICS.md`](METRICS.md).**
+## Architecture
+| File | Role |
+|---|---|
+| `index.html` | Landing / router (participant vs. researcher; status + IRB note). |
+| `app.html` | **Tester** app — Threads/X-style mobile feed. Onboarding → consent + 18+ + eligibility → persistent automation disclosure → session (C0 plain / C1 neutral Collab / C2 K-pop Collab) → done. **No meters, no arm label.** |
+| `dashboard.html` | **Researcher** dashboard — per-arm toxicity (C2<C1<C0 + contrasts), we/they, CIIM proxy, cross-fandom engagement, dose/pairing compliance, session table, CSV/JSON export, and a **measurement-provenance** panel citing each metric's source paper. |
+| `assets/engine.js` | Shared data + scoring heuristics + provenance table + backend client with offline fallback. |
+| `assets/config.js` | `BACKEND_URL` (empty = offline) and a few knobs. |
+| `assets/ui.css` | Mobile-first styles (phone frame, feed) + dashboard grid. |
+| `backend/` | Cloudflare Worker + D1: arm/flair assignment, event logging, live Collab pairing, auth-gated aggregates. See [`backend/README.md`](backend/README.md). |
 
 ## Two modes
-- **Scripted (default):** works offline, zero setup — ideal for demos. This is the only mode the
-  current K-pop prototype (`index.html`) supports.
-- **Live LLM:** not implemented in the K-pop prototype. It exists only in the archived
-  Lakers/Celtics demo below.
+- **Offline (default):** no backend. The app logs to browser `localStorage` and, when no live partner
+  is online, completes a Collab with a **clearly disclosed** system-generated sample (never implying a
+  human — PLAN.md §4.3). The dashboard reads local data and can **Seed demo cohort** to populate the
+  compare-arms view. Works on GitHub Pages with zero setup.
+- **Backend (real):** deploy [`backend/`](backend/README.md) (Cloudflare Worker + D1, no terminal
+  needed), set `BACKEND_URL` in `assets/config.js`. Now sessions log cross-device and Collabs
+  **live-pair** across two real participants from opposite fandoms. Test it with two windows:
+  `app.html?arm=C2&flair=AUR` and `app.html?arm=C2&flair=NOV`.
 
-## Archived: the earlier Lakers/Celtics demo
-Before the K-pop pivot, the prototype simulated an `r/NBA` Lakers-vs-Celtics rivalry with two LLM
-peer agents modeling de-escalation, plus an optional **Live LLM** mode (a Cloudflare Worker proxy
-holding an OpenAI key server-side). That demo is preserved at
-[`legacy-lakers-celtics.html`](legacy-lakers-celtics.html); its proxy setup is in
-[`worker/`](worker/). It is **not** part of Study 1's design — see [`PLAN.md`](PLAN.md) for why the
-study moved to K-pop (a non-contested superordinate identity) and to the indirect Collab Spotlight
-mechanism (no persuading/messaging agent).
+## Measurement is source-grounded (not home-grown)
+Every dashboard metric is shown with the **validated instrument + source paper** it stands in for,
+anchored to a model paper — **GuesSync!** (Rajadesingan et al., CSCW 2023): toxicity → Perspective API
++ Coe et al. 2014 + a validated K-pop lexicon; we/they → LIWC (Tausczik & Pennebaker 2010); common
+identity → CIIM (Gaertner & Dovidio 2000); AP/IOS → Iyengar & Westwood 2015 / Aron et al. 1992;
+identification → Postmes et al. 2013 + Leach et al. 2008; reactance → Hong & Faedda 1996 / Dillard &
+Shen 2005. Construct-by-construct grounding: [`MEASURES.md`](MEASURES.md); demo-meter mapping:
+[`METRICS.md`](METRICS.md).
+
+## Status & ethics
+This build is for **instrument-building / internal testing**. The app records behavioral data, so a
+real recruited run is **IRB-gated** (PLAN.md §11). Fandoms **AURORA** and **NOVA** are fictional
+placeholders — the real rival pair is an open decision (see [`FANDOM_SELECTION.md`](FANDOM_SELECTION.md)),
+and real fandom names stay out of the public demo.
 
 ## Run locally
-Just open `index.html` in a browser, or:
 ```
 python -m http.server 8000   # then visit http://localhost:8000
 ```
@@ -57,5 +64,6 @@ python -m http.server 8000   # then visit http://localhost:8000
 ## Notes
 - Toxicity here is a transparent keyword heuristic for *demonstration*; the real study uses
   Perspective API + a validated K-pop incivility lexicon + human incivility coding.
-- All posts are scripted/simulated. AURORA and NOVA are fictional placeholder fandoms — not
-  affiliated with any real artist, group, or fandom.
+- The earlier Lakers/Celtics agent demo is archived at
+  [`legacy-lakers-celtics.html`](legacy-lakers-celtics.html) (its OpenAI proxy is in [`worker/`](worker/)).
+- Not affiliated with any real artist, group, or fandom.

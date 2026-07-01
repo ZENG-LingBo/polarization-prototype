@@ -1,0 +1,17 @@
+name = "defuselab-study"
+main = "worker.js"
+compatibility_date = "2024-11-01"
+
+# --- D1 database binding ---
+# Create the DB (dashboard: Storage & Databases -> D1 -> Create) or:
+#   npx wrangler d1 create defuselab-study
+# then paste the returned database_id below and apply backend/schema.sql.
+[[d1_databases]]
+binding = "DB"
+database_name = "defuselab-study"
+database_id = "<your-d1-database-id>"
+
+# --- Secrets (NOT stored here) ---
+# Researcher passphrase that gates /api/dashboard/*  (keeps testers out of analytics):
+#   npx wrangler secret put RESEARCHER_TOKEN
+# or dashboard: Worker -> Settings -> Variables and Secrets -> Add -> Encrypt.

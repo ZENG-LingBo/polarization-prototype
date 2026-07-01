@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>DefuseLab — Researcher Dashboard</title>
+<link rel="stylesheet" href="assets/ui.css" />
+</head>
+<body>
+
+<!-- ===================== GATE ===================== -->
+<div id="gate-wrap">
+  <div class="gate">
+    <h2>Researcher access</h2>
+    <p class="muted tiny">This view holds the study metrics and is kept separate from participants
+      (blinding). Enter the researcher passphrase. In offline mode it shows this device's local data.</p>
+    <input type="password" id="pass" placeholder="researcher passphrase" />
+    <div class="err" id="gate-err"></div>
+    <button class="btn" id="gate-go">Open dashboard</button>
+  </div>
+</div>
+
+<!-- ===================== DASHBOARD ===================== -->
+<div class="dash" id="dash" hidden>
+  <div class="dash-hd">
+    <h1>DefuseLab · Study 1 — Researcher Dashboard</h1>
+    <span class="pill" id="mode-pill">…</span>
+    <span class="pill" id="n-pill">—</span>
+  </div>
+  <div class="muted tiny">Rival K-pop fandoms · 3-arm (C0 control · C1 active control · C2 intervention) · Collab Spotlight.
+    Meters below are transparent demo heuristics — each is labelled with the <b>validated instrument + source paper</b> it stands in for.</div>
+
+  <div class="toolbar">
+    <button class="btn ghost sm" id="btn-refresh">↻ Refresh</button>
+    <button class="btn ghost sm" id="btn-seed">＋ Seed demo cohort</button>
+    <button class="btn ghost sm" id="btn-csv">⇩ Export CSV</button>
+    <button class="btn ghost sm" id="btn-json">⇩ Export JSON</button>
+    <button class="btn ghost sm" id="btn-reset" style="margin-left:auto;color:#fca5a5">Reset local data</button>
+  </div>
+
+  <!-- compare arms -->
+  <div class="card">
+    <h3>Primary outcome — toxicity rate per arm</h3>
+    <div class="cite">Perspective API + Coe et&nbsp;al. 2014 incivility codebook + validated K-pop lexicon · <b>H1</b></div>
+    <div class="cmp" id="cmp"></div>
+    <div class="contrast" id="contrasts"></div>
+  </div>
+
+  <div class="grid" id="metric-grid"></div>
+
+  <!-- mechanism by arm -->
+  <div class="card" style="margin-top:14px">
+    <h3>Mechanism &amp; dose by arm</h3>
+    <table class="sesstable" id="mech-table"></table>
+  </div>
+
+  <!-- provenance -->
+  <div class="card" style="margin-top:14px">
+    <h3>Measurement provenance — every metric traces to a source paper</h3>
+    <div class="cite" id="model-paper"></div>
+    <table class="prov" id="prov-table"></table>
+    <div class="muted tiny" style="margin-top:8px">Full grounding: <a href="MEASURES.md">MEASURES.md</a> · demo-meter mapping: <a href="METRICS.md">METRICS.md</a> · protocol: <a href="PLAN.md">PLAN.md</a>.</div>
+  </div>
+
+  <!-- sessions -->
+  <div class="card" style="margin-top:14px">
+    <h3>Sessions</h3>
+    <div style="overflow-x:auto"><table class="sesstable" id="sess-table"></table></div>
+  </div>
+
+  <div class="foot">Prototype dashboard · toxicity here is a keyword heuristic for demonstration; the study uses the validated instruments above.</div>
+</div>
+
+<script src="assets/config.js"></script>
+<script src="assets/engine.js"></script>
+<script>
+const $ = (s)=>document.querySelector(s);
+let TOKEN = "";
+
+/* -------- gate -------- */
+$("#gate-go").onclick = openDash;
+$("#pass").addEventListener("keydown", e=>{ if(e.key==="Enter") openDash(); });
+async function openDash(){
+  const pass = $("#pass").value.trim();
+  if(!pass){ $("#gate-err").textContent = "Enter the passphrase."; return; }
+  TOKEN = pass;
+  try{
+    const sum = await STUDY.api.dashboardSummary(TOKEN);   // throws 401/403 in backend mode on bad token
+    $("#gate-wrap").hidden = true; $("#dash").hidden = false;
+    renderAll(sum);
+  }catch(e){
+    $("#gate-err").textContent = (e.status===401||e.status===403) ? "Wrong passphrase." : "Could not load ("+(e.message||"error")+").";
+  }
+}
+
+/* -------- render -------- */
+function pct(v){ return v==null? "—" : Math.round(v*100); }
+function band(v){ return v>0.6?"var(--hot)":v>0.33?"var(--warm)":"var(--cool)"; }
+
+async function renderAll(sum){
+  const backend = !STUDY.api.offline && sum.source!=="offline";
+  $("#mode-pill").textContent = backend ? "LIVE · backend" : "SIMULATED · local";
+  $("#mode-pill").className = "pill " + (backend? "live":"sim");
+  $("#n-pill").textContent = (sum.totals? sum.totals.sessions : 0) + " sessions";
+
+  const A = sum.byArm || {};
+  // compare-arms toxicity
+  const cmp = $("#cmp"); cmp.innerHTML = "";
+  ["C0","C1","C2"].forEach(a=>{
+    const b = A[a]||{}; const v = b.toxRate;
+    const row = document.createElement("div"); row.className="cmprow";
+    row.innerHTML = `<span class="k">${labelArm(a)}</span><span class="bar"><span style="width:${v==null?0:Math.round(v*100)}%;background:${v==null?'var(--line)':band(v)}"></span></span><span class="pv">${pct(v)}</span>`;
+    cmp.appendChild(row);
+  });
+  const t=(a)=>A[a]&&A[a].toxRate!=null?A[a].toxRate*100:null;
+  const diff=(x,y)=> (x==null||y==null)?"—":(Math.round(x-y));
+  $("#contrasts").innerHTML =
+    `Intended pattern <code>C2 &lt; C1 &lt; C0</code>. `+
+    `<code>C2−C0</code> total feature effect: <b>${diff(t('C2'),t('C0'))}</b> · `+
+    `<code>C2−C1</code> superordinate framing (the mechanism): <b>${diff(t('C2'),t('C1'))}</b> · `+
+    `<code>C1−C0</code> generic contact/novelty: <b>${diff(t('C1'),t('C0'))}</b> (points).`;
+
+  // per-metric cards with citation chips
+  const P = Object.fromEntries(STUDY.PROVENANCE.map(p=>[p.key,p]));
+  const grid = $("#metric-grid"); grid.innerHTML="";
+  grid.appendChild(metricCard("Toxicity (mean, C2 arm)", P.toxicity, A.C2? A.C2.toxRate : null, true));
+  grid.appendChild(metricCard("we/they share (C2 arm)", P.wethey, A.C2? A.C2.weShare : null, false));
+  grid.appendChild(metricCard("Common identity proxy (C2)", P.ci, A.C2? A.C2.ci : null, false));
+  grid.appendChild(crossCard(P.cross, A));
+
+  // mechanism table
+  const mt = $("#mech-table");
+  mt.innerHTML = `<tr><th>Arm</th><th>Sessions</th><th>Msgs</th><th>Tox %</th><th>we/they</th><th>Common id %</th><th>Live-paired</th><th>Filler</th></tr>` +
+    ["C0","C1","C2"].map(a=>{ const b=A[a]||{}; return `<tr><td><span class="tag ${a}">${a}</span></td><td>${b.sessions||0}</td><td>${b.msgs||0}</td><td>${pct(b.toxRate)}</td><td>${b.weShare==null?'—':pct(b.weShare)+'%'}</td><td>${pct(b.ci)}</td><td>${b.livePaired||0}</td><td>${b.filler||0}</td></tr>`; }).join("");
+
+  // provenance
+  const m = STUDY.MODEL_PAPER;
+  $("#model-paper").innerHTML = `Anchored to a model paper — <b>${m.label}</b> (${m.cite}), <a href="${m.doi}" target="_blank" rel="noopener">doi</a>. ${m.note}`;
+  $("#prov-table").innerHTML = `<tr><th>Metric</th><th>Validated instrument</th><th>Source paper</th><th>Hyp.</th></tr>` +
+    STUDY.PROVENANCE.map(p=>`<tr><td>${p.metric}</td><td>${p.instrument}</td><td class="src">${p.cite}</td><td>${p.hypo}</td></tr>`).join("");
+
+  // sessions table
+  const sess = await STUDY.api.dashboardSessions(TOKEN);
+  renderSessions(sess);
+}
+function labelArm(a){ return a==="C0"?"C0 control":a==="C1"?"C1 active control":"C2 intervention"; }
+function metricCard(title, prov, val, isTox){
+  const el=document.createElement("div"); el.className="card";
+  const color = isTox? (val==null?'var(--txt)':band(val)) : 'var(--txt)';
+  el.innerHTML = `<h3>${title}</h3>
+    <div class="big-num" style="color:${color}">${val==null?'—':pct(val)+ (isTox?'':'%')}</div>
+    <div class="gauge"><span style="width:${val==null?0:Math.round(val*100)}%;background:${isTox?(val==null?'var(--line)':band(val)):'var(--nov2)'}"></span></div>
+    <div class="cite"><b>src:</b> ${prov?prov.cite:''} — ${prov?prov.instrument:''}</div>`;
+  return el;
+}
+function crossCard(prov, A){
+  const el=document.createElement("div"); el.className="card";
+  const total = ["C0","C1","C2"].reduce((s,a)=>s+((A[a]&&A[a].cross)||0),0);
+  el.innerHTML = `<h3>Cross-fandom engagement</h3>
+    <div class="big-num">${total}</div>
+    <div class="muted tiny">cross-flair replies/likes + Collab co-shares (all arms)</div>
+    <div class="cite"><b>src:</b> ${prov.cite} — ${prov.instrument}</div>`;
+  return el;
+}
+function renderSessions(data){
+  const rows = (data.sessions||[]);
+  const evByS = {}; (data.events||[]).forEach(e=>{ (evByS[e.session_id]=evByS[e.session_id]||[]).push(e); });
+  const st = $("#sess-table");
+  st.innerHTML = `<tr><th>Session</th><th>Arm</th><th>Fandom</th><th>Msgs</th><th>Mean tox %</th><th>Type</th></tr>` +
+    rows.slice().reverse().map(s=>{
+      const evs=(evByS[s.id]||[]).filter(e=>e.type==="post"||e.type==="comment");
+      const tox = evs.length? Math.round(100*evs.reduce((a,e)=>a+(e.toxicity||0),0)/evs.length):"—";
+      return `<tr><td class="tiny">${s.id.slice(0,14)}…</td><td><span class="tag ${s.arm}">${s.arm}</span></td><td>${STUDY.FANDOMS[s.flair]?STUDY.FANDOMS[s.flair].name:s.flair||'—'}</td><td>${evs.length}</td><td>${tox}</td><td class="tiny">${s.demo?'demo':'real'}</td></tr>`;
+    }).join("");
+  if(!rows.length) st.innerHTML += `<tr><td colspan="6" class="muted">No sessions yet. Run the tester app, or seed a demo cohort.</td></tr>`;
+}
+
+/* -------- toolbar -------- */
+$("#btn-refresh").onclick = async ()=> renderAll(await STUDY.api.dashboardSummary(TOKEN));
+$("#btn-seed").onclick = async ()=>{ STUDY.api.seedDemoCohort(); renderAll(await STUDY.api.dashboardSummary(TOKEN)); };
+$("#btn-reset").onclick = async ()=>{ if(confirm("Clear local session data on this device?")){ STUDY.api.resetStore(); renderAll(await STUDY.api.dashboardSummary(TOKEN)); } };
+$("#btn-json").onclick = async ()=>{
+  const d = await STUDY.api.dashboardSessions(TOKEN);
+  download("defuselab-data.json", JSON.stringify(d,null,2), "application/json");
+};
+$("#btn-csv").onclick = async ()=>{
+  const d = await STUDY.api.dashboardSessions(TOKEN);
+  const evByS={}; (d.events||[]).forEach(e=>{(evByS[e.session_id]=evByS[e.session_id]||[]).push(e);});
+  let csv="session_id,arm,fandom,messages,mean_toxicity\n";
+  (d.sessions||[]).forEach(s=>{ const evs=(evByS[s.id]||[]).filter(e=>e.type==="post"||e.type==="comment");
+    const tox=evs.length?(evs.reduce((a,e)=>a+(e.toxicity||0),0)/evs.length).toFixed(3):"";
+    csv+=`${s.id},${s.arm},${s.flair||""},${evs.length},${tox}\n`; });
+  download("defuselab-sessions.csv", csv, "text/csv");
+};
+function download(name, text, type){
+  const a=document.createElement("a"); a.href=URL.createObjectURL(new Blob([text],{type})); a.download=name; a.click(); URL.revokeObjectURL(a.href);
+}
+</script>
+</body>
+</html>
