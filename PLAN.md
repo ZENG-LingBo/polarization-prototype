@@ -388,3 +388,40 @@ After Study 1 establishes the causal effect:
   repeated dosing (the dual-identity guardrail over time); watch the history confound.
 
 Both are scoped as **future** phases, not part of the Study-1 protocol.
+
+## 17. Protocol v3 — advisor revisions (supersedes §5–§8 where they conflict)
+Ray's latest round revises Study 1's execution. Demo: [`demo.html`](demo.html).
+
+- **Platform:** a **1:1 Reddit-style forum** (no follower/credibility graph to bootstrap —
+  contribution is the forum post itself). Fandoms fixed: **ARMY vs BLINK**; recruit the most
+  toxically-identified fans available (Ronaldo-vs-Messi logic), via a **demographic
+  pre-selection form** (age, gender, occupation, fandom, years, language, consent) — **no
+  screening inside the app**.
+- **Design: 2 arms only** (power/N reality; the 3-arm C1 is dropped). **Experiment** = the
+  community-note collab feature; **Control** = a comparable but **inert, non-collaborative**
+  feature (a cross-group collab on non-K-pop content would itself depolarize). Between-subjects,
+  demographics matched across arms (incl. age and English proficiency); ≥30/arm pending power
+  analysis; language cells run **entirely** in one language (English or Chinese, no mixing;
+  surveys may be translated; paper reports both).
+- **Sequence (within-group over ~3 days, ~1 h/day, ≈¥30/day):** Day 1 baseline (heated
+  prompts; **repeat Day 1 until toxicity/polarization is measurably HIGH**) → survey; Day 2
+  feature (note vs inert) → survey; Day 3 feature removed → survey + exit interview.
+  **Hard requirements:** toxicity high pre-intervention; control stays high after its feature;
+  toxicity drops **only** after the community note. If baseline momentum fades, shorten the
+  control phase; small situational encouragement is fine, but **no scripted "spice"** reported
+  in the paper.
+- **Blinding:** the app / recruiting / surveys **never state the study's purpose** — participants
+  are only told **what to do**. All research language lives outside the participant UI (in the
+  demo: the researcher-only panel).
+- **Group sessions** (e.g., 30+30 at once, several days) — bigger contribution, livelier
+  cross-group threads, less calendar time.
+- **LLM evidence:** show how the LLM part works with **worked interaction examples/figures**
+  demonstrating the depolarizing direction (the demo's "researcher view" carries the
+  template/router/verbatim-assembly reveal and a Day-1→Day-2 same-users example pair).
+- **Ownership:** one person owns the study end-to-end (design, measures, interview protocol).
+- **RQs v3:** RQ1 — how does the community note affect polarized groups posting on online
+  forums? (survey) · RQ2 — how does what they post change after the intervention? (qualitative
+  + language behavior). Contribution: shared tasks reduce polarization in online forums.
+- **Follow-up:** reconcile §5–§8 and OUTLINE/MEASURES fully to v3 (three-arm text, pairing
+  logistics, and the day-level timing table need rewriting); write the comprehensive plan into
+  the team Overleaf.

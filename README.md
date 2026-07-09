@@ -10,9 +10,13 @@ on real cross-device logging and live cross-fandom pairing.
 **https://zeng-lingbo.github.io/polarization-prototype/** → then pick an entrance:
 - **📱 Participant** → [`app.html`](app.html): the mobile **kfeed** app (onboarding → session → done).
 - **📊 Researcher** → [`dashboard.html`](dashboard.html): passphrase-gated metrics with source papers.
+- **🧪 Protocol demo** → [`demo.html`](demo.html): a 1:1 **Reddit-style** walkthrough of the revised
+  **2-arm × 3-day protocol** (PLAN.md §17): Day 1 baseline → Day 2 **Community Note** (vs. inert
+  poll control) → Day 3 after, with Ray's three requirement checks, the researcher-only panel, and
+  the LLM-plumbing reveal (template bank / cross-flair router / verbatim assembly).
 
-The two are deliberately **separated** so the participant never sees the toxicity meters, the arm
-they're in, or the hypothesis (blinding — PLAN.md §4.3, §12).
+The participant and researcher views are deliberately **separated** so the participant never sees
+the toxicity meters, the arm they're in, or the hypothesis (blinding — PLAN.md §4.3, §12).
 
 ## The idea
 Rival K-pop fandoms direct real, sustained toxicity at each other online. **Collab Spotlight** tests
@@ -26,6 +30,7 @@ instruments: [`MEASURES.md`](MEASURES.md) · rival-pair decision: [`FANDOM_SELEC
 | `index.html` | Landing / router (participant vs. researcher; status + IRB note). |
 | `app.html` | **Tester** app — Threads/X-style mobile feed. Onboarding → consent + 18+ + eligibility → persistent automation disclosure → session (C0 plain / C1 neutral Collab / C2 K-pop Collab) → done. **No meters, no arm label.** |
 | `dashboard.html` | **Researcher** dashboard — per-arm toxicity (C2<C1<C0 + contrasts), we/they, CIIM proxy, cross-fandom engagement, dose/pairing compliance, session table, CSV/JSON export, and a **measurement-provenance** panel citing each metric's source paper. |
+| `demo.html` | **Protocol demo** — Reddit-style page for the v3 protocol (2-arm × 3-day, Community Note vs. inert poll; PLAN.md §17). Self-contained, for advisor/demo use. |
 | `assets/engine.js` | Shared data + scoring heuristics + provenance table + backend client with offline fallback. |
 | `assets/config.js` | `BACKEND_URL` (empty = offline) and a few knobs. |
 | `assets/ui.css` | Mobile-first styles (phone frame, feed) + dashboard grid. |
