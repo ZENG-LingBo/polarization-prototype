@@ -1,0 +1,677 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>r/kpop — DefuseLab Reddit-style demo (Study 1)</title>
+<style>
+  :root{
+    /* reddit dark chrome */
+    --bg:#0b1416; --card:#101617; --card2:#131c1f; --line:#223034; --line2:#1a262a;
+    --ink:#f0f4f5; --ink2:#b7cad4; --mut:#8ba2ad;
+    --up:#ff4500; --down:#7193ff; --accent:#0079d3; --join:#d93a00;
+    /* fandom flairs */
+    --army:#8a63ff; --blink:#ff5c9e;
+    /* researcher panel */
+    --res:#f59e0b;
+    /* validated chart palette (dark mode, slots 1–2) */
+    --series-1:#3987e5;  /* Experiment */
+    --series-2:#199e70;  /* Control */
+    --hot:#ef4444; --warm:#f59e0b; --cool:#22c55e; --good:#34d399;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);line-height:1.4;
+       font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","IBM Plex Sans",Roboto,Helvetica,Arial,sans-serif;font-size:14px}
+  a{color:var(--ink2);text-decoration:none}
+  button{font:inherit;cursor:pointer}
+
+  /* ---------- top nav ---------- */
+  .topnav{position:sticky;top:0;z-index:30;display:flex;align-items:center;gap:14px;
+    padding:6px 16px;background:var(--bg);border-bottom:1px solid var(--line2)}
+  .logo{display:flex;align-items:center;gap:7px;font-weight:800;font-size:19px;letter-spacing:-.5px}
+  .snoo{width:30px;height:30px;border-radius:50%;background:var(--up);display:flex;align-items:center;justify-content:center;font-size:16px}
+  .search{flex:1;max-width:560px;margin:0 auto}
+  .search input{width:100%;background:var(--card2);border:1px solid var(--line);border-radius:999px;
+    padding:9px 16px;color:var(--ink);font:inherit;font-size:13px}
+  .navicons{display:flex;gap:6px;align-items:center}
+  .navicons .ic{width:34px;height:34px;border-radius:50%;background:transparent;border:none;color:var(--ink2);
+    font-size:16px;display:flex;align-items:center;justify-content:center}
+  .navicons .ic:hover{background:var(--card2)}
+  .avatarme{width:30px;height:30px;border-radius:50%;background:linear-gradient(135deg,#475569,#64748b)}
+
+  /* ---------- 3-col layout ---------- */
+  .page{display:grid;grid-template-columns:250px minmax(0,720px) 340px;gap:16px;max-width:1360px;margin:0 auto;padding:14px 16px}
+  @media(max-width:1180px){.page{grid-template-columns:minmax(0,1fr) 340px}.leftrail{display:none}}
+  @media(max-width:880px){.page{grid-template-columns:1fr}.rightrail{order:3}}
+
+  /* left rail */
+  .leftrail{font-size:14px}
+  .lr{padding:4px 0;border-bottom:1px solid var(--line2);margin-bottom:8px}
+  .lr a{display:flex;align-items:center;gap:10px;padding:8px 12px;border-radius:8px;color:var(--ink)}
+  .lr a:hover{background:var(--card2)}
+  .lr .hd{font-size:10px;letter-spacing:.8px;color:var(--mut);padding:8px 12px 4px;text-transform:uppercase}
+  .cico{width:22px;height:22px;border-radius:50%;flex:0 0 22px;display:flex;align-items:center;justify-content:center;font-size:12px;color:#fff}
+  .lr a.on{background:var(--card2);font-weight:600}
+
+  /* ---------- subreddit header ---------- */
+  .subhead{border-radius:14px;overflow:hidden;border:1px solid var(--line);margin-bottom:12px;background:var(--card)}
+  .banner{height:64px;background:linear-gradient(90deg,#3d1e6d,#7c2d5a 55%,#0e4b53)}
+  .subrow{display:flex;align-items:center;gap:12px;padding:0 16px 12px;margin-top:-18px}
+  .subav{width:56px;height:56px;border-radius:50%;border:3px solid var(--card);background:linear-gradient(135deg,#7c3aed,#ec4899);
+    display:flex;align-items:center;justify-content:center;font-size:24px}
+  .subname{font-size:20px;font-weight:800;margin-top:14px}
+  .subname .small{display:block;font-size:11px;color:var(--mut);font-weight:500}
+  .joinbtn{margin-left:auto;margin-top:14px;background:var(--join);border:none;color:#fff;border-radius:999px;padding:7px 16px;font-weight:700;font-size:13px}
+  .sortbar{display:flex;gap:8px;align-items:center;background:var(--card);border:1px solid var(--line);
+    border-radius:14px;padding:6px 10px;margin-bottom:12px;font-size:12.5px;color:var(--mut)}
+  .sortbar b{color:var(--ink2)}
+  .daychips{margin-left:auto;display:flex;gap:6px}
+  .daychip{border:1px solid var(--line);background:var(--card2);color:var(--mut);border-radius:999px;padding:4px 12px;font-size:12px;font-weight:600}
+  .daychip.on{background:var(--accent);border-color:var(--accent);color:#fff}
+  .daychip:disabled{opacity:.45;cursor:not-allowed}
+
+  /* ---------- posts ---------- */
+  .feed{display:flex;flex-direction:column;gap:10px;min-height:300px}
+  .post{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:10px 14px;animation:fade .3s ease}
+  .post:hover{border-color:#2e4046}
+  @keyframes fade{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+  .pmeta{display:flex;align-items:center;gap:7px;font-size:12px;color:var(--mut);flex-wrap:wrap}
+  .pmeta .uav{width:22px;height:22px;border-radius:50%;flex:0 0 22px}
+  .pmeta b{color:var(--ink2);font-weight:600}
+  .pin{color:var(--good);font-weight:700;font-size:11px;display:flex;align-items:center;gap:4px;margin-bottom:4px}
+  .ptitle{font-size:16.5px;font-weight:650;margin:6px 0 4px;letter-spacing:-.1px}
+  .flair{font-size:10.5px;font-weight:700;padding:2px 8px;border-radius:999px;letter-spacing:.2px}
+  .flair.ARMY{background:rgba(138,99,255,.18);color:#c9b5ff;border:1px solid var(--army)}
+  .flair.BLINK{background:rgba(255,92,158,.16);color:#ffb1cd;border:1px solid var(--blink)}
+  .flair.NOTE{background:rgba(245,158,11,.14);color:#fcd34d;border:1px solid #b45309}
+  .flair.POLL{background:rgba(113,147,255,.14);color:#b9c8ff;border:1px solid #4a63c9}
+  .pbody{font-size:13.5px;color:var(--ink2);margin:2px 0 8px;white-space:pre-wrap}
+  .actions{display:flex;gap:8px;align-items:center;font-size:12px}
+  .pillbtn{display:flex;align-items:center;gap:6px;background:var(--card2);border:1px solid transparent;
+    color:var(--ink2);border-radius:999px;padding:5px 11px;font-weight:600}
+  .pillbtn:hover{border-color:var(--line)}
+  .vote .u:hover{color:var(--up)} .vote .d:hover{color:var(--down)}
+  .vote.voted-u{color:var(--up)} .vote.voted-d{color:var(--down)}
+  .toxdot{width:7px;height:7px;border-radius:50%;display:inline-block;margin-left:2px}
+  .toxtag{font-size:10px;color:var(--mut);display:none;align-items:center;gap:4px}
+  body.research .toxtag{display:inline-flex}
+
+  /* comments */
+  .comments{margin-top:8px;border-top:1px solid var(--line2);padding-top:8px;display:flex;flex-direction:column;gap:8px}
+  .cmt{display:flex;gap:8px}
+  .cmt .uav{width:24px;height:24px;border-radius:50%;flex:0 0 24px}
+  .cmt .cb{min-width:0}
+  .cmt .chead{font-size:11.5px;color:var(--mut)} .cmt .chead b{color:var(--ink2)}
+  .cmt .ctext{font-size:13px;color:var(--ink)}
+  .cmt .cact{font-size:11px;color:var(--mut);margin-top:2px;display:flex;gap:10px;align-items:center}
+  .cmt.depth1{margin-left:32px;border-left:2px solid var(--line2);padding-left:10px}
+  .uav.ARMY{background:linear-gradient(135deg,#5b3bd6,var(--army))}
+  .uav.BLINK{background:linear-gradient(135deg,#d63b7e,var(--blink))}
+  .uav.SYS{background:linear-gradient(135deg,#475569,#64748b)}
+  .uav{display:flex;align-items:center;justify-content:center;color:#fff;font-size:10px;font-weight:800}
+
+  /* ---------- community note (the redesigned collab post) ---------- */
+  .noteslots{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:8px 0}
+  @media(max-width:560px){.noteslots{grid-template-columns:1fr}}
+  .slot{border:1px dashed var(--line);border-radius:10px;padding:9px 11px;min-height:64px;font-size:12.5px}
+  .slot .sh{font-size:10.5px;font-weight:800;letter-spacing:.4px;margin-bottom:5px}
+  .slot.army .sh{color:#c9b5ff} .slot.blink .sh{color:#ffb1cd}
+  .slot.filled{border-style:solid;background:var(--card2)}
+  .slot .who{font-size:11px;color:var(--mut);margin-bottom:2px}.slot .who b{color:var(--ink2)}
+  .slot .empty{color:var(--mut);font-style:italic;display:flex;gap:7px;align-items:center}
+  .spin{width:11px;height:11px;border:2px solid var(--line);border-top-color:var(--res);border-radius:50%;animation:spin .8s linear infinite;flex:0 0 11px}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  .published{margin-top:4px;border:1px solid var(--good);border-radius:10px;padding:9px 11px;background:rgba(52,211,153,.07);font-size:13px}
+  .published .co{font-size:11px;color:var(--mut);margin-top:3px}
+  .published .co b{color:var(--ink2)}
+  .addrow{display:flex;gap:8px;margin-top:8px}
+  .addrow input{flex:1;background:var(--card2);border:1px solid var(--line);border-radius:999px;padding:8px 13px;color:var(--ink);font:inherit;font-size:13px}
+  .addrow button{background:var(--accent);border:none;color:#fff;border-radius:999px;padding:8px 15px;font-weight:700;font-size:12.5px}
+  .addrow button:disabled{opacity:.5;cursor:not-allowed}
+  .llmtag{display:none;font-size:10px;color:var(--res);border:1px dashed rgba(245,158,11,.55);border-radius:6px;padding:2px 7px;margin:2px 4px 0 0}
+  body.research .llmtag{display:inline-block}
+
+  /* poll (control feature) */
+  .poll{display:flex;flex-direction:column;gap:6px;margin:8px 0}
+  .pollopt{position:relative;border:1px solid var(--line);border-radius:8px;padding:7px 11px;font-size:13px;overflow:hidden;background:var(--card2);text-align:left;color:var(--ink)}
+  .pollopt .fillbar{position:absolute;inset:0;width:0;background:rgba(113,147,255,.16);transition:width .5s ease}
+  .pollopt span{position:relative}
+
+  /* composer */
+  .composer{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:10px 14px;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+  .composer select{background:var(--card2);color:var(--ink);border:1px solid var(--line);border-radius:8px;padding:8px 10px;font:inherit;font-size:12.5px}
+  .composer input{flex:1;min-width:200px;background:var(--card2);border:1px solid var(--line);border-radius:999px;padding:9px 14px;color:var(--ink);font:inherit;font-size:13px}
+  .composer button{background:var(--accent);border:none;color:#fff;border-radius:999px;padding:9px 16px;font-weight:700;font-size:13px}
+
+  /* ---------- right rail ---------- */
+  .rightrail{display:flex;flex-direction:column;gap:12px;font-size:13px}
+  .rcard{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:13px 15px}
+  .rcard h4{margin:0 0 8px;font-size:11px;letter-spacing:.6px;text-transform:uppercase;color:var(--mut)}
+  .stats{display:flex;gap:22px;margin:6px 0 10px}
+  .stats b{display:block;font-size:15px}
+  .stats span{font-size:11px;color:var(--mut)}
+  .rules{margin:0;padding-left:18px;color:var(--ink2);font-size:12.5px}
+  .rules li{margin-bottom:5px}
+
+  /* researcher panel */
+  .research-p{border:1.5px dashed var(--res);border-radius:14px;background:rgba(245,158,11,.045)}
+  .research-p .rhead{display:flex;align-items:center;gap:8px;padding:11px 14px;cursor:pointer;user-select:none}
+  .research-p .rhead b{color:#fcd34d;font-size:12px;letter-spacing:.6px}
+  .research-p .rhead .hint{font-size:10.5px;color:var(--mut)}
+  .research-p .rbody{padding:0 14px 14px;display:flex;flex-direction:column;gap:14px}
+  .armrow{display:flex;gap:6px}
+  .armbtn{flex:1;border:1px solid var(--line);background:var(--card2);color:var(--mut);border-radius:9px;padding:7px 6px;font-size:12px;font-weight:700}
+  .armbtn.on.expt{background:rgba(57,135,229,.16);border-color:var(--series-1);color:#9cc4f2}
+  .armbtn.on.ctrl{background:rgba(25,158,112,.15);border-color:var(--series-2);color:#7fd6b4}
+  .runrow{display:flex;gap:8px;align-items:center}
+  .runbtn{background:var(--res);color:#3b2a05;border:none;border-radius:9px;padding:8px 14px;font-weight:800;font-size:12.5px}
+  .runbtn:disabled{opacity:.5;cursor:not-allowed}
+  .ghostbtn{background:var(--card2);color:var(--ink2);border:1px solid var(--line);border-radius:9px;padding:8px 12px;font-size:12px}
+  .rstatus{font-size:11px;color:var(--mut)}
+  .reqs{display:flex;flex-direction:column;gap:6px;font-size:12px}
+  .req{display:flex;gap:8px;align-items:flex-start;color:var(--mut)}
+  .req .rt{flex:0 0 18px;text-align:center}
+  .req.ok{color:var(--good)} .req.bad{color:var(--hot)}
+  .meter{margin-bottom:10px}
+  .meter .lab{display:flex;justify-content:space-between;font-size:11.5px;margin-bottom:4px;color:var(--ink2)}
+  .meter .val{font-weight:700;color:var(--ink)}
+  .gauge{height:10px;border-radius:999px;background:#0a1012;border:1px solid var(--line2);overflow:hidden}
+  .gauge>span{display:block;height:100%;width:0;transition:width .5s ease,background .5s ease}
+  .toggle{display:flex;align-items:center;gap:7px;font-size:12px;color:var(--ink2);cursor:pointer;user-select:none}
+  .toggle input{accent-color:var(--res)}
+  .exlabel{font-size:10px;font-weight:800;letter-spacing:.6px;color:var(--mut);margin:2px 0 4px}
+  .exbub{border:1px solid var(--line);border-radius:10px;padding:7px 10px;font-size:12px;color:var(--ink2);background:var(--card2);margin-bottom:5px}
+  .exbub b{font-size:11px}
+  .exarrow{text-align:center;color:var(--res);font-size:14px;margin:2px 0 6px}
+  .evlog{font-size:11px;color:var(--mut);display:flex;flex-direction:column;gap:4px;max-height:110px;overflow-y:auto}
+  .evlog div{border-left:2px solid var(--line);padding-left:8px}
+
+  /* chart */
+  .viz-root{--surface-1:var(--card)}
+  .viz-legend{display:flex;gap:14px;font-size:11px;color:var(--ink2);margin:2px 0 6px}
+  .viz-legend .sw{width:9px;height:9px;border-radius:3px;display:inline-block;margin-right:5px;vertical-align:-1px}
+  .viztip{position:fixed;z-index:60;pointer-events:none;background:#04090b;border:1px solid var(--line);
+    border-radius:8px;padding:6px 9px;font-size:11px;color:var(--ink);display:none;box-shadow:0 4px 14px rgba(0,0,0,.5)}
+  .viztip b{display:block;font-size:11px}
+
+  footer{max-width:1360px;margin:6px auto 20px;padding:0 16px;font-size:11px;color:var(--mut);text-align:center}
+  footer a{color:var(--ink2);text-decoration:underline}
+</style>
+</head>
+<body>
+
+<!-- top nav -->
+<div class="topnav">
+  <div class="logo"><div class="snoo">🤖</div>reddit</div>
+  <div class="search"><input placeholder="Search r/kpop" /></div>
+  <div class="navicons">
+    <button class="ic" title="chat">💬</button>
+    <button class="ic" title="notifications">🔔</button>
+    <button class="ic" title="create">＋</button>
+    <div class="avatarme"></div>
+  </div>
+</div>
+
+<div class="page">
+  <!-- left rail -->
+  <nav class="leftrail">
+    <div class="lr">
+      <a href="#">🏠 Home</a><a href="#">📈 Popular</a><a href="#">🧭 Explore</a><a href="#">∞ All</a>
+    </div>
+    <div class="lr">
+      <div class="hd">Communities</div>
+      <a href="#" class="on"><span class="cico" style="background:linear-gradient(135deg,#7c3aed,#ec4899)">🎤</span> r/kpop</a>
+      <a href="#"><span class="cico" style="background:#334155">🎧</span> r/popheads</a>
+      <a href="#"><span class="cico" style="background:#3f6212">🎮</span> r/gaming</a>
+      <a href="#"><span class="cico" style="background:#7c2d12">🏀</span> r/nba</a>
+    </div>
+  </nav>
+
+  <!-- center -->
+  <main>
+    <div class="subhead">
+      <div class="banner"></div>
+      <div class="subrow">
+        <div class="subav">🎤</div>
+        <div class="subname">r/kpop <span class="small">The home for K-pop on the internet</span></div>
+        <button class="joinbtn">Joined ✓</button>
+      </div>
+    </div>
+
+    <div class="sortbar">
+      <b>Best</b> ▾ · Hot · New
+      <div class="daychips">
+        <button class="daychip on" data-day="1">Day 1</button>
+        <button class="daychip" data-day="2">Day 2</button>
+        <button class="daychip" data-day="3">Day 3</button>
+      </div>
+    </div>
+
+    <div class="feed" id="feed"></div>
+
+    <div class="composer" style="margin-top:10px">
+      <select id="userFan"><option value="ARMY">u/you · ARMY</option><option value="BLINK">u/you · BLINK</option></select>
+      <input id="input" placeholder="Add a comment to the top thread…" />
+      <button id="send">Comment</button>
+    </div>
+  </main>
+
+  <!-- right rail -->
+  <aside class="rightrail">
+    <div class="rcard">
+      <h4>About community</h4>
+      <div style="font-size:13px;color:var(--ink2)">The home for K-pop: news, performances, discussions and daily community activities.</div>
+      <div class="stats"><div><b>2.4m</b><span>Members</span></div><div><b>11.8k</b><span>Online</span></div><div><b>#3</b><span>in Music</span></div></div>
+      <h4 style="margin-top:6px">Rules</h4>
+      <ol class="rules"><li>Be civil to other fans</li><li>No brigading or vote manipulation</li><li>Flair up before posting</li><li>Daily community activities are for everyone</li></ol>
+    </div>
+
+    <!-- RESEARCHER PANEL — everything study-related lives ONLY here -->
+    <div class="rcard research-p">
+      <div class="rhead" id="rhead">
+        <b>🔬 RESEARCHER VIEW</b>
+        <span class="hint">hidden from participants · click to collapse</span>
+      </div>
+      <div class="rbody" id="rbody">
+        <div>
+          <div class="exlabel">CONDITION (BETWEEN-SUBJECTS)</div>
+          <div class="armrow">
+            <button class="armbtn expt on" data-arm="EXPT">Experiment<br><span style="font-weight:500;font-size:10.5px">day-2 community note</span></button>
+            <button class="armbtn ctrl" data-arm="CTRL">Control<br><span style="font-weight:500;font-size:10.5px">day-2 inert poll</span></button>
+          </div>
+        </div>
+
+        <div>
+          <div class="exlabel">3-DAY PROTOCOL · 1 h/day · SURVEY AFTER EACH DAY</div>
+          <div class="runrow">
+            <button class="runbtn" id="run">▶ Run 3-day protocol</button>
+            <button class="ghostbtn" id="reset">↺ Reset</button>
+          </div>
+          <div class="rstatus" id="rstatus" style="margin-top:6px">Pick an arm, then run. Or click a Day chip.</div>
+        </div>
+
+        <div>
+          <div class="exlabel">REQUIREMENTS (RAY)</div>
+          <div class="reqs">
+            <div class="req" id="req1"><span class="rt">•</span><span>R1 — toxicity HIGH after Day 1, before any intervention</span></div>
+            <div class="req" id="req2"><span class="rt">•</span><span>R2 — control arm STAYS high after its (inert) Day-2 feature</span></div>
+            <div class="req" id="req3"><span class="rt">•</span><span>R3 — toxicity drops ONLY after the community-note intervention</span></div>
+          </div>
+        </div>
+
+        <div>
+          <div class="exlabel">LIVE MEASURES (DEMO HEURISTICS)</div>
+          <div class="meter"><div class="lab"><span>Toxicity (recent posts)</span><span class="val" id="mTox">—</span></div><div class="gauge"><span id="bTox"></span></div></div>
+          <div class="meter"><div class="lab"><span>"we/us" share of pronouns</span><span class="val" id="mPro">—</span></div><div class="gauge"><span id="bPro" style="background:var(--down)"></span></div></div>
+          <div class="meter"><div class="lab"><span>Cross-fandom engagement</span><span class="val" id="mCross">0</span></div><div class="gauge"><span id="bCross" style="background:var(--good)"></span></div></div>
+        </div>
+
+        <div class="viz-root">
+          <div class="exlabel">END-OF-DAY TOXICITY · BY ARM</div>
+          <div class="viz-legend">
+            <span><span class="sw" style="background:var(--series-1)"></span>Experiment</span>
+            <span><span class="sw" style="background:var(--series-2)"></span>Control</span>
+          </div>
+          <svg id="chart" viewBox="0 0 300 150" width="100%" role="img" aria-label="Grouped bar chart of end-of-day toxicity by day and arm"></svg>
+        </div>
+
+        <label class="toggle"><input type="checkbox" id="revealLLM"> Show LLM plumbing on the note (template · router · verbatim assembly)</label>
+
+        <div>
+          <div class="exlabel">WHY IT DEPOLARIZES — SAME TWO USERS, DAY 1 → DAY 2</div>
+          <div class="exbub"><b style="color:#c9b5ff">u/borahae_kim (ARMY), Day 1:</b><br>"ratio + your bias is an industry plant. the whole group is marketing 💀"</div>
+          <div class="exbub"><b style="color:#ffb1cd">u/rosie_posie (BLINK), Day 1:</b><br>"obsessed AND pressed 🤡 most toxic fandom alive, blocked"</div>
+          <div class="exarrow">▼ after co-authoring Community Note #14 ▼</div>
+          <div class="exbub"><b style="color:#ffb1cd">u/rosie_posie (BLINK), Day 2:</b><br>"ok wait 'Spring Day' is actually beautiful. adding it to my rotation"</div>
+          <div class="exbub"><b style="color:#c9b5ff">u/borahae_kim (ARMY), Day 2:</b><br>"the 'PWF' pick is real, that pre-chorus is craft. we have taste on both sides lol"</div>
+          <div class="rstatus">The note never mentions the study or the rivalry — it only says <i>what to do</i> ("add one song each"). The LLM only templates the prompt, routes the cross-flair pairing, and assembles contributions <b>verbatim</b>.</div>
+        </div>
+
+        <div>
+          <div class="exlabel">EVENT LOG</div>
+          <div class="evlog" id="evlog"><div>ready — no events yet</div></div>
+        </div>
+      </div>
+    </div>
+  </aside>
+</div>
+
+<div class="viztip" id="viztip"></div>
+
+<footer>
+  DefuseLab research demo (Study 1: 2-arm × 3-day protocol on a Reddit-style forum). UI mimics Reddit for ecological validity —
+  <b>not affiliated with Reddit, HYBE, or YG</b>. Usernames &amp; posts are fictional. Meters are demo heuristics, not the study
+  instruments — see <a href="PLAN.md">PLAN.md</a> · <a href="MEASURES.md">MEASURES.md</a>.
+</footer>
+
+<script>
+/* ================= config / helpers ================= */
+const FAST = new URLSearchParams(location.search).has("fast");
+const T = ms => FAST ? 30 : ms;
+const $ = s => document.querySelector(s);
+const sleep = ms => new Promise(r=>setTimeout(r,ms));
+const esc = s => { const d=document.createElement("div"); d.textContent=s; return d.innerHTML; };
+const clamp=(v,a=0,b=1)=>Math.max(a,Math.min(b,v));
+const initials = u => u.replace(/^u\//,"").replace(/[^a-zA-Z]/g,"").slice(0,2).toUpperCase()||"?";
+
+const TOX=["clown","clowns","trash","delulu","delusional","ratio","idiot","stupid","talentless","garbage",
+  "cope","copium","washed","fraud","overrated","embarrassing","pathetic","cringe","flop","flopped","nugu",
+  "industry plant","mass-report","mass report","bots","irrelevant","obsessed","pressed","blocked","toxic","🤡","💀"];
+const WE=["we","us","our","ours","we're","weve","both","together"];
+const THEY=["they","them","their","theirs","they're","u","you","your","yall","y'all"];
+function toxScore(t){const s=t.toLowerCase();let h=0;TOX.forEach(w=>{if(s.includes(w))h++});if(/[A-Z]{4,}/.test(t))h++;return clamp(h/3);}
+function wcount(t,list){return t.toLowerCase().split(/[^a-z']+/).filter(x=>list.includes(x)).length;}
+
+/* ================= scripted content ================= */
+const DAY1 = [
+ {kind:"post",fan:"BLINK",user:"u/rosie_posie",time:"7h",title:"the vocal 'superiority' debate is over, sorry",
+  body:"watched the encore fancam three times. zero autotune. THIS is why we stay winning — the other fandom can keep coping 💀",
+  votes:412, comments:[
+   {fan:"ARMY",user:"u/borahae_kim",text:"delulu behavior lmao. your faves had four whole songs this year — talk when they actually perform"},
+   {fan:"BLINK",user:"u/pinkvenom_j",text:"at least we don't mass-report everyone who disagrees. most toxic fandom alive",depth:1},
+   {fan:"ARMY",user:"u/borahae_kim",text:"ratio + your bias is an industry plant. the whole group is marketing 💀",depth:1},
+   {fan:"BLINK",user:"u/rosie_posie",text:"obsessed AND pressed 🤡 blocked",depth:1}
+  ]},
+ {kind:"post",fan:"ARMY",user:"u/otseven_jin",time:"5h",title:"streaming numbers don't lie. it's not even close",
+  body:"record broken AGAIN this week. stay mad, stay irrelevant.",
+  votes:389, comments:[
+   {fan:"BLINK",user:"u/blink_lisa4",text:"bots. everyone knows half those streams are bots, fraud numbers and a fraud fandom"},
+   {fan:"ARMY",user:"u/purple_seoul",text:"cope. y'all are just embarrassing at this point, talentless faves and pressed stans",depth:1},
+   {fan:"BLINK",user:"u/queens_area",text:"the delusion is genuinely fascinating 💀 seek help",depth:1}
+  ]}
+];
+const NOTE = {
+  kind:"note", time:"2h", title:"Community Note #14 — today's playlist: “the song that made you fall for K-pop”",
+  instructions:"Add one song each — one from an ARMY member and one from a BLINK member — and today's note publishes to the community playlist.",
+  a:{fan:"ARMY",user:"u/borahae_kim",text:"“Spring Day” — the bridge got me through finals week. that's the moment it clicked for me"},
+  b:{fan:"BLINK",user:"u/rosie_posie",text:"“Playing With Fire” — the chorus hit once and it was over for me"},
+  artifact:"🎵 Community Playlist #14 — published",
+  after:[
+   {fan:"BLINK",user:"u/rosie_posie",text:"ok wait “Spring Day” is actually beautiful. adding it to my rotation"},
+   {fan:"ARMY",user:"u/borahae_kim",text:"the “PWF” pick is real, that pre-chorus is craft. we have taste on both sides lol",depth:1},
+   {fan:"BLINK",user:"u/blink_lisa4",text:"this playlist thing kind of goes hard. we should keep it going tomorrow",depth:1},
+   {fan:"ARMY",user:"u/otseven_jin",text:"agreed. we're still winning the vocal debate, don't get delulu 😤 but this one's for all of us 🤝",depth:1}
+  ]
+};
+const POLL = {
+  kind:"poll", time:"2h", title:"Daily vibe check — how are we feeling today?",
+  options:[["😤 hyped",41],["😐 meh",23],["🫠 tired",29],["🎧 locked in",57]],
+  after:[
+   {fan:"BLINK",user:"u/queens_area",text:"voted. anyway the bots discussion from yesterday stands — fraud streams, fraud records"},
+   {fan:"ARMY",user:"u/purple_seoul",text:"rent free 🤡 y'all are actually obsessed with us at this point",depth:1},
+   {fan:"BLINK",user:"u/pinkvenom_j",text:"delulu fandom can't accept reality 💀 embarrassing",depth:1}
+  ]
+};
+const DAY3 = {
+ EXPT:[{kind:"post",fan:"BLINK",user:"u/blink_lisa4",time:"3h",title:"unpopular opinion: yesterday's community playlist lowkey slapped",
+   body:"still team BLINK obviously. but some of those picks were undeniable.",
+   votes:271, comments:[
+    {fan:"ARMY",user:"u/purple_seoul",text:"the taste crossover is real. rematch playlist when? we pick a theme together"},
+    {fan:"BLINK",user:"u/queens_area",text:"fine but we choose the genre 😤",depth:1},
+    {fan:"ARMY",user:"u/otseven_jin",text:"deal lol. both fandoms bring one b-side each",depth:1}
+   ]}],
+ CTRL:[{kind:"post",fan:"ARMY",user:"u/purple_seoul",time:"3h",title:"day 3 and they're STILL talking about bots. embarrassing",
+   body:"the obsession is unreal. get a hobby.",
+   votes:301, comments:[
+    {fan:"BLINK",user:"u/pinkvenom_j",text:"delulu fandom can't accept reality 💀 fraud numbers don't become real because you're loud"},
+    {fan:"ARMY",user:"u/otseven_jin",text:"most toxic fanbase and it's not even close 🤡 blocked and reported",depth:1},
+    {fan:"BLINK",user:"u/queens_area",text:"mass report squad assembling as usual. pathetic",depth:1}
+   ]}]
+};
+
+/* ================= state ================= */
+let arm="EXPT", day=1, busy=false, texts=[], crossEng=0;
+const dayTox={EXPT:{1:null,2:null,3:null},CTRL:{1:null,2:null,3:null}};
+const feed=$("#feed");
+
+/* ================= metrics ================= */
+function pushText(t,cross=false){ texts.push({t,tox:toxScore(t)}); if(cross) crossEng++; renderMeters(); }
+function currentTox(){ const r=texts.slice(-6); return r.length? r.reduce((a,x)=>a+x.tox,0)/r.length : 0; }
+function renderMeters(){
+  const tox=currentTox();
+  const bar=$("#bTox"); bar.style.width=Math.round(tox*100)+"%";
+  bar.style.background=tox>.6?"var(--hot)":tox>.33?"var(--warm)":"var(--cool)";
+  $("#mTox").textContent=(tox>.6?"Hot":tox>.33?"Warm":"Cool")+" · "+Math.round(tox*100);
+  let we=0,they=0; texts.forEach(x=>{we+=wcount(x.t,WE);they+=wcount(x.t,THEY)});
+  const share=(we+they)? we/(we+they):0;
+  $("#bPro").style.width=Math.round(share*100)+"%"; $("#mPro").textContent=we+":"+they+" ("+Math.round(share*100)+"% we)";
+  $("#bCross").style.width=Math.round(clamp(crossEng/6)*100)+"%"; $("#mCross").textContent=crossEng;
+}
+
+/* requirements */
+function renderReqs(){
+  const e=dayTox.EXPT,c=dayTox.CTRL;
+  const r1v=[e[1],c[1]].filter(x=>x!=null);
+  set("#req1", r1v.length? (r1v.every(x=>x>=.55)?1:-1):0);
+  set("#req2", c[2]!=null? (c[2]>=.5?1:-1):0);
+  const r3=(e[2]!=null&&c[2]!=null)? ((e[2]<=.35&&c[2]>=.5)?1:-1) : 0;
+  set("#req3", r3);
+  function set(sel,v){const el=$(sel);el.classList.toggle("ok",v===1);el.classList.toggle("bad",v===-1);
+    el.querySelector(".rt").textContent=v===1?"✓":v===-1?"✗":"•";}
+}
+
+/* chart — grouped bars, day × arm (validated palette; thin marks, 4px rounded ends, 2px gaps) */
+function renderChart(){
+  const svg=$("#chart"); const W=300,H=150,padL=26,padB=22,padT=8;
+  const plotW=W-padL-8, plotH=H-padT-padB, bw=16, gap=2;
+  let s='';
+  // gridlines + y labels (recessive)
+  [0,50,100].forEach(v=>{const y=padT+plotH*(1-v/100);
+    s+=`<line x1="${padL}" y1="${y}" x2="${W-8}" y2="${y}" stroke="var(--line2)" stroke-width="1"/>`;
+    s+=`<text x="${padL-5}" y="${y+3}" font-size="8" fill="var(--mut)" text-anchor="end">${v}</text>`;});
+  const arms=[["EXPT","var(--series-1)","Experiment"],["CTRL","var(--series-2)","Control"]];
+  for(let d=1;d<=3;d++){
+    const cx=padL+plotW*(d-.5)/3;
+    s+=`<text x="${cx}" y="${H-8}" font-size="9" fill="var(--mut)" text-anchor="middle">Day ${d}</text>`;
+    arms.forEach(([k,col,name],i)=>{
+      const v=dayTox[k][d]; if(v==null) return;
+      const h=Math.max(3,plotH*v), x=cx-(bw+gap/2)+i*(bw+gap), y=padT+plotH-h;
+      s+=`<path class="bar" data-tip="${name} · Day ${d}|toxicity ${Math.round(v*100)}" d="M${x},${y+4} q0,-4 4,-4 h${bw-8} q4,0 4,4 v${h-4} h${-bw} z" fill="${col}"/>`;
+      s+=`<text x="${x+bw/2}" y="${y-3}" font-size="8.5" font-weight="700" fill="var(--ink2)" text-anchor="middle">${Math.round(v*100)}</text>`;
+    });
+  }
+  svg.innerHTML=s;
+  svg.querySelectorAll(".bar").forEach(b=>{
+    b.addEventListener("mousemove",e=>{const [t1,t2]=b.dataset.tip.split("|");
+      const tip=$("#viztip"); tip.innerHTML=`<b>${esc(t1)}</b>${esc(t2)}`;
+      tip.style.display="block"; tip.style.left=(e.clientX+12)+"px"; tip.style.top=(e.clientY-10)+"px";});
+    b.addEventListener("mouseleave",()=>$("#viztip").style.display="none");
+  });
+}
+
+/* ================= rendering: reddit pieces ================= */
+function metaHTML(fan,user,time){
+  return `<div class="pmeta"><span class="uav ${fan}">${initials(user)}</span>
+    <b>r/kpop</b> · <span>${esc(user)}</span> <span class="flair ${fan}">${fan}</span> · ${time} ago</div>`;
+}
+function toxTag(t){const v=toxScore(t);const c=v>.6?"var(--hot)":v>.33?"var(--warm)":"var(--cool)";
+  return `<span class="toxtag">tox ${Math.round(v*100)}<span class="toxdot" style="background:${c}"></span></span>`;}
+function commentHTML(c){
+  return `<div class="cmt ${c.depth?'depth1':''}"><span class="uav ${c.fan}">${initials(c.user)}</span>
+    <div class="cb"><div class="chead"><b>${esc(c.user)}</b> <span class="flair ${c.fan}">${c.fan}</span> · just now</div>
+    <div class="ctext">${esc(c.text)}</div>
+    <div class="cact"><span class="vote">⬆ ${3+Math.floor(Math.random()*40)} ⬇</span><span>Reply</span><span>Share</span>${toxTag(c.text)}</div></div></div>`;
+}
+function addPostCard(p){
+  const el=document.createElement("div"); el.className="post";
+  el.innerHTML=`${metaHTML(p.fan,p.user,p.time)}
+    <div class="ptitle">${esc(p.title)}</div>
+    <div class="pbody">${esc(p.body)}</div>
+    <div class="actions">
+      <span class="pillbtn vote"><span class="u">⬆</span> <span class="vc">${p.votes}</span> <span class="d">⬇</span></span>
+      <span class="pillbtn">💬 <span class="cc">0</span></span>
+      <span class="pillbtn">↗ Share</span>${toxTag(p.title+" "+p.body)}
+    </div>
+    <div class="comments"></div>`;
+  wireVotes(el);
+  feed.prepend(el); pushText(p.title+" "+p.body);
+  return el;
+}
+async function addComments(el,comments,{cross=false}={}){
+  for(const c of comments){
+    el.querySelector(".comments").insertAdjacentHTML("beforeend",commentHTML(c));
+    el.querySelector(".cc").textContent=+el.querySelector(".cc").textContent+1;
+    pushText(c.text,cross);
+    await sleep(T(700));
+  }
+}
+function wireVotes(el){
+  el.querySelectorAll(".vote").forEach(v=>{
+    const u=v.querySelector(".u"),d=v.querySelector(".d"),vc=v.querySelector(".vc");
+    if(u) u.onclick=()=>{v.classList.toggle("voted-u");v.classList.remove("voted-d");if(vc)vc.textContent=+vc.textContent+ (v.classList.contains("voted-u")?1:-1);};
+    if(d) d.onclick=()=>{v.classList.toggle("voted-d");v.classList.remove("voted-u");};
+  });
+}
+
+/* the community note — a native pinned reddit post */
+async function addNotePost(){
+  const el=document.createElement("div"); el.className="post"; el.id="notepost";
+  el.innerHTML=`
+    <div class="pin">📌 Pinned by moderators</div>
+    <div class="pmeta"><span class="uav SYS">KP</span><b>r/kpop</b> · u/kpop-mod <span class="flair NOTE">Community Note #14</span> · ${NOTE.time} ago</div>
+    <div class="ptitle">${esc(NOTE.title)}</div>
+    <div class="pbody">${esc(NOTE.instructions)}</div>
+    <div>
+      <span class="llmtag">template #14 / bank of 30 · screened: no group-favoring framing</span>
+      <span class="llmtag">router: pairs contributions across flairs</span>
+      <span class="llmtag">assembly: verbatim — no rewriting of user text</span>
+    </div>
+    <div class="noteslots">
+      <div class="slot army" id="slotA"><div class="sh">ARMY PICK</div><div class="empty"><span class="spin"></span> open — add a song…</div></div>
+      <div class="slot blink" id="slotB"><div class="sh">BLINK PICK</div><div class="empty"><span class="spin"></span> open — add a song…</div></div>
+    </div>
+    <div id="noteout"></div>
+    <div class="addrow"><input id="noteInput" placeholder="Add your song + one line on why…"/><button id="noteAdd">Add yours</button></div>
+    <div class="actions" style="margin-top:8px">
+      <span class="pillbtn vote"><span class="u">⬆</span> <span class="vc">96</span> <span class="d">⬇</span></span>
+      <span class="pillbtn">💬 <span class="cc">0</span></span><span class="pillbtn">↗ Share</span>
+    </div>
+    <div class="comments"></div>`;
+  wireVotes(el); feed.prepend(el);
+  $("#noteAdd").onclick=userAddToNote;
+  return el;
+}
+function fillSlot(sel,who){
+  $(sel).classList.add("filled");
+  $(sel).innerHTML=`<div class="sh">${sel==="#slotA"?"ARMY PICK":"BLINK PICK"}</div>
+    <div class="who">by <b>${esc(who.user)}</b> <span class="flair ${who.fan}">${who.fan}</span></div>${esc(who.text)}`;
+  pushText(who.text,true);
+}
+async function publishNote(el){
+  $("#noteout").innerHTML=`<div class="published">${esc(NOTE.artifact)}
+    <div class="co">co-authored by <b>${esc(NOTE.a.user)}</b> <span class="flair ARMY">ARMY</span> × <b>${esc(NOTE.b.user)}</b> <span class="flair BLINK">BLINK</span> · shared to the community feed</div></div>`;
+  const vc=el.querySelector(".vc"); let n=+vc.textContent;
+  for(const k of [31,58,46]){ n+=k; vc.textContent=n; await sleep(T(420)); }
+  crossEng++; renderMeters();
+}
+async function runNoteFlow(el,userContribution){
+  if(userContribution){
+    const fan=$("#userFan").value;
+    fillSlot(fan==="ARMY"?"#slotA":"#slotB",{fan,user:"u/you",text:userContribution});
+    await sleep(T(1000));
+    const o=fan==="ARMY"?NOTE.b:NOTE.a;
+    fillSlot(fan==="ARMY"?"#slotB":"#slotA",o);
+  } else {
+    await sleep(T(800)); fillSlot("#slotA",NOTE.a);
+    await sleep(T(1100)); fillSlot("#slotB",NOTE.b);
+  }
+  await sleep(T(600)); await publishNote(el);
+  await sleep(T(500)); await addComments(el,NOTE.after,{cross:true});
+}
+function userAddToNote(){
+  const v=$("#noteInput").value.trim(); if(!v||busy) return;
+  $("#noteInput").value=""; $("#noteAdd").disabled=true;
+  runNoteFlow(document.querySelector("#notepost"),v).then(()=>{$("#noteAdd").disabled=false; logEv("participant completed Community Note (paired across flairs)");});
+}
+
+/* control inert feature — reddit poll */
+async function addPollPost(){
+  const el=document.createElement("div"); el.className="post";
+  el.innerHTML=`
+    <div class="pin">📌 Pinned by moderators</div>
+    <div class="pmeta"><span class="uav SYS">KP</span><b>r/kpop</b> · u/kpop-mod <span class="flair POLL">Daily Poll</span> · ${POLL.time} ago</div>
+    <div class="ptitle">${esc(POLL.title)}</div>
+    <div>
+      <span class="llmtag">CONTROL feature: solo · no cross-flair pairing · no shared output</span>
+    </div>
+    <div class="poll">${POLL.options.map(o=>`<button class="pollopt"><span>${esc(o[0])}</span><span class="fillbar"></span></button>`).join("")}</div>
+    <div class="actions"><span class="pillbtn vote"><span class="u">⬆</span> <span class="vc">54</span> <span class="d">⬇</span></span>
+      <span class="pillbtn">💬 <span class="cc">0</span></span><span class="pillbtn">↗ Share</span></div>
+    <div class="comments"></div>`;
+  wireVotes(el); feed.prepend(el);
+  const total=POLL.options.reduce((a,o)=>a+o[1],0);
+  el.querySelectorAll(".pollopt").forEach((b,i)=>b.onclick=()=>{
+    el.querySelectorAll(".pollopt .fillbar").forEach((f,j)=>f.style.width=Math.round(POLL.options[j][1]/total*100)+"%");
+  });
+  await sleep(T(600)); await addComments(el,POLL.after);
+  return el;
+}
+
+/* ================= day player ================= */
+function logEv(t){ const d=$("#evlog"); if(d.textContent.includes("no events")) d.innerHTML="";
+  d.insertAdjacentHTML("afterbegin",`<div>Day ${day} · ${esc(t)}</div>`); }
+function setDayChip(d){ document.querySelectorAll(".daychip").forEach(c=>c.classList.toggle("on",+c.dataset.day===d)); }
+function clearFeed(){ feed.innerHTML=""; texts=[]; crossEng=0; renderMeters(); }
+function status(t){ $("#rstatus").textContent=t; }
+
+async function playDay(d){
+  day=d; setDayChip(d); clearFeed();
+  if(d===1){
+    status("Day 1 — within-group baseline: heated threads, no feature.");
+    for(const p of DAY1){ const el=addPostCard(p); await addComments(el,p.comments); await sleep(T(300)); }
+    dayTox[arm][1]=currentTox(); logEv("baseline session ended · 📋 short survey delivered");
+  }
+  if(d===2){
+    if(arm==="EXPT"){
+      status("Day 2 — the community note appears in-feed (participants are only told what to do).");
+      const el=await addNotePost(); await runNoteFlow(el,null);
+      dayTox.EXPT[2]=currentTox(); logEv("community note co-published across flairs · 📋 survey delivered");
+    } else {
+      status("Day 2 — control: an inert solo poll appears; threads keep going.");
+      await addPollPost();
+      dayTox.CTRL[2]=currentTox(); logEv("inert feature shown (no pairing) · 📋 survey delivered");
+    }
+  }
+  if(d===3){
+    status(arm==="EXPT" ? "Day 3 — feature removed; tone carries over." : "Day 3 — feature removed; hostility unchanged.");
+    for(const p of DAY3[arm]){ const el=addPostCard(p); await addComments(el,p.comments,{cross:arm==="EXPT"}); }
+    dayTox[arm][3]=currentTox(); logEv("final session · 📋 survey + exit interview");
+  }
+  renderChart(); renderReqs();
+}
+async function runProtocol(){
+  if(busy) return; busy=true; $("#run").disabled=true;
+  document.querySelectorAll(".daychip").forEach(c=>c.disabled=true);
+  for(let d=1;d<=3;d++){ await playDay(d); await sleep(T(900)); }
+  status(arm==="EXPT"
+    ? "Done — toxicity fell after the community note (Day 2) and held on Day 3. Now run the Control arm."
+    : "Done — the inert feature changed nothing; toxicity stayed high. Compare bars with the Experiment arm.");
+  document.querySelectorAll(".daychip").forEach(c=>c.disabled=false);
+  $("#run").disabled=false; busy=false;
+}
+
+/* ================= wiring ================= */
+document.querySelectorAll(".armbtn").forEach(b=>b.onclick=()=>{ if(busy) return;
+  arm=b.dataset.arm;
+  document.querySelectorAll(".armbtn").forEach(x=>x.classList.toggle("on",x===b));
+  status("Arm set to "+(arm==="EXPT"?"Experiment (community note)":"Control (inert poll)")+". Run the protocol.");
+});
+document.querySelectorAll(".daychip").forEach(c=>c.onclick=()=>{ if(!busy) playDay(+c.dataset.day); });
+$("#run").onclick=runProtocol;
+$("#reset").onclick=()=>{ if(busy) return; ["EXPT","CTRL"].forEach(k=>[1,2,3].forEach(d=>dayTox[k][d]=null));
+  $("#evlog").innerHTML="<div>ready — no events yet</div>"; playDay(1); };
+$("#rhead").onclick=()=>{ const b=$("#rbody"); b.style.display=b.style.display==="none"?"flex":"none"; };
+$("#revealLLM").onchange=e=>document.body.classList.toggle("research",e.target.checked);
+$("#send").onclick=()=>{
+  const v=$("#input").value.trim(); if(!v||busy) return; $("#input").value="";
+  const top=feed.querySelector(".post:not(#notepost)")||feed.querySelector(".post"); if(!top) return;
+  top.querySelector(".comments").insertAdjacentHTML("beforeend",commentHTML({fan:$("#userFan").value,user:"u/you",text:v}));
+  top.querySelector(".cc").textContent=+top.querySelector(".cc").textContent+1;
+  pushText(v);
+};
+$("#input").addEventListener("keydown",e=>{ if(e.key==="Enter"){e.preventDefault();$("#send").click();} });
+
+playDay(1);
+</script>
+</body>
+</html>
