@@ -7,11 +7,13 @@
   .chip{display:inline-block;padding:3px 14px;border-radius:999px;color:#fff;font-size:16px;font-weight:800}
   .army{background:#5b3fc4}.blink{background:#c2255c}
   .panel{position:absolute;width:470px}
-  .phead{display:flex;gap:10px;align-items:center;margin-bottom:8px}
+  .phead{display:flex;gap:10px;align-items:center;margin-bottom:8px;width:470px}
   .pnum{width:34px;height:34px;border-radius:50%;background:#111827;color:#fff;font-size:20px;font-weight:800;
         display:flex;align-items:center;justify-content:center;flex:0 0 34px}
   .pday{font-size:15px;font-weight:800;color:#6b7280;letter-spacing:.5px}
   .ptit{font-size:23px;font-weight:800;color:#111827;line-height:1.1}
+  .temp{margin-left:auto;font-size:17px;font-weight:800;padding:4px 13px;border-radius:999px;white-space:nowrap}
+  .hot{background:#fee2e2;color:#b91c1c}.amb{background:#fef3c7;color:#92400e}.cool{background:#dcfce7;color:#15803d}
   .shot{width:470px;border:1.5px solid #cbd5e1;border-radius:12px;display:block;box-shadow:0 2px 8px rgba(15,23,42,.10)}
   .call{position:absolute;max-width:300px;background:#fffbeb;border:2px dashed #b45309;border-radius:9px;
         padding:6px 11px;font-size:19px;line-height:1.25;color:#92400e;font-weight:600}
@@ -29,48 +31,48 @@
 
   <!-- ============ ROW 1 ============ -->
   <div class="panel" style="left:40px;top:64px">
-    <div class="phead"><div class="pnum">1</div><div><div class="pday">DAY 1 · BASELINE (NO FEATURE)</div><div class="ptit">Rival-fandom thread heats up</div></div></div>
+    <div class="phead"><div class="pnum" style="background:#dc2626">1</div><div><div class="pday" style="color:#dc2626">DAY 1 · BASELINE</div><div class="ptit">Rivals heat up</div></div><div class="temp hot">🔥 tox 78</div></div>
     <img class="shot" src="shots/s1-day1-thread.png" style="width:470px">
   </div>
 
   <div class="panel" style="left:560px;top:64px">
-    <div class="phead"><div class="pnum">2</div><div><div class="pday">DAY 2 · THE FEATURE APPEARS</div><div class="ptit">A pinned task in the normal feed</div></div></div>
+    <div class="phead"><div class="pnum" style="background:#d97706">2</div><div><div class="pday" style="color:#b45309">DAY 2 · FEATURE</div><div class="ptit">A pinned task appears</div></div><div class="temp amb">📌 note</div></div>
     <img class="shot" src="shots/s2-note-appears.png" style="width:470px">
   </div>
 
   <div class="panel" style="left:1080px;top:64px">
-    <div class="phead"><div class="pnum">3</div><div><div class="pday">DAY 2 · CONTRIBUTE</div><div class="ptit">One side posts → gate holds</div></div></div>
+    <div class="phead"><div class="pnum" style="background:#d97706">3</div><div><div class="pday" style="color:#b45309">DAY 2 · CONTRIBUTE</div><div class="ptit">One side in → gate</div></div><div class="temp amb">🔒 waiting</div></div>
     <img class="shot" src="shots/s3-contribute-waiting.png" style="width:470px">
   </div>
 
   <!-- row-1 callouts -->
-  <div class="call" style="left:60px;top:412px;max-width:430px">every post carries the poster's fandom flair; hostility escalates in replies</div>
-  <div class="call" style="left:562px;top:400px;max-width:250px">task is framed around K-pop as a whole — never either fandom</div>
-  <div class="call" style="left:830px;top:400px;max-width:200px">one contribution slot per fandom</div>
-  <div class="call" style="left:1100px;top:400px;max-width:200px">your post fills your fandom's slot</div>
-  <div class="call" style="left:1330px;top:400px;max-width:215px">publication gate: waits for the rival fandom</div>
+  <div class="call" style="left:60px;top:412px;max-width:430px">🏷️ flair on every post · replies escalate 🔥</div>
+  <div class="call" style="left:562px;top:400px;max-width:250px">🎯 task = K-pop as a whole</div>
+  <div class="call" style="left:830px;top:400px;max-width:200px">🟣🩷 one slot per fandom</div>
+  <div class="call" style="left:1100px;top:400px;max-width:200px">✍️ your fandom's slot</div>
+  <div class="call" style="left:1330px;top:400px;max-width:215px">🔒 waits for the rival side</div>
 
   <!-- ============ ROW 2 ============ -->
   <div class="panel" style="left:40px;top:600px">
-    <div class="phead"><div class="pnum">4</div><div><div class="pday">DAY 2 · BOTH SIDES IN</div><div class="ptit">Co-published, co-owned, co-shared</div></div></div>
+    <div class="phead"><div class="pnum" style="background:#d97706">4</div><div><div class="pday" style="color:#b45309">DAY 2 · BOTH SIDES IN</div><div class="ptit">Co-published & co-shared</div></div><div class="temp cool">tox ↓</div></div>
     <img class="shot" src="shots/s4-copublished.png" style="width:470px">
   </div>
 
   <div class="panel" style="left:560px;top:600px">
-    <div class="phead"><div class="pnum">5</div><div><div class="pday">DAY 2 · AFTER PUBLISHING</div><div class="ptit">Tone flips on the same thread</div></div></div>
+    <div class="phead"><div class="pnum" style="background:#d97706">5</div><div><div class="pday" style="color:#b45309">DAY 2 · AFTER</div><div class="ptit">Tone flips</div></div><div class="temp cool">❄️ tox 6</div></div>
     <img class="shot" src="shots/s5-warm-replies.png" style="width:470px">
   </div>
 
   <div class="panel" style="left:1080px;top:600px">
-    <div class="phead"><div class="pnum">6</div><div><div class="pday">DAY 3 · FEATURE REMOVED</div><div class="ptit">The cooperative tone carries over</div></div></div>
+    <div class="phead"><div class="pnum" style="background:#15803d">6</div><div><div class="pday" style="color:#15803d">DAY 3 · REMOVED</div><div class="ptit">Tone carries over</div></div><div class="temp cool">🧊 tox 8</div></div>
     <img class="shot" src="shots/s6-day3.png" style="width:470px">
   </div>
 
   <!-- row-2 callouts -->
-  <div class="call" style="left:60px;top:940px;max-width:220px">both flairs kept — co-credited to one ARMY + one BLINK</div>
-  <div class="call" style="left:300px;top:940px;max-width:200px">upvotes & shares land on the JOINT post</div>
-  <div class="call" style="left:580px;top:848px;max-width:430px">the same rivals now praise each other's picks — "we/us" language rises</div>
-  <div class="call" style="left:1100px;top:892px;max-width:430px">no note on Day 3 — fans propose a rematch playlist on their own</div>
+  <div class="call" style="left:60px;top:940px;max-width:220px">🤝 co-credited · both flairs kept</div>
+  <div class="call" style="left:300px;top:940px;max-width:200px">⬆ upvotes on the JOINT post</div>
+  <div class="call" style="left:580px;top:848px;max-width:430px">🤝 same rivals, now friendly · "we/us" ↑</div>
+  <div class="call" style="left:1100px;top:892px;max-width:430px">🌱 rematch proposed on their own</div>
 
   <!-- ============ connectors ============ -->
   <svg class="overlay">
