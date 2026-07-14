@@ -19,30 +19,36 @@ Include in LaTeX with, e.g.:
 
 ---
 
-## Figure 1 — `fig1-interaction` (the complete interaction; full-width teaser/walkthrough)
+## Figure 1 — `fig1-interaction` (the complete interaction; annotated prototype screenshots)
+
+Built from **real screenshots of the working prototype** (`demo.html`, participant view),
+arranged as six numbered steps with labeled callouts — the walkthrough style of the
+`interaction_01`/`interaction_03` exemplars.
 
 **Caption.**
-*The complete interaction. (1) On Day 1, rival ARMY and BLINK members post in a plain
-Reddit-style forum and hostility escalates (baseline toxicity 78/100 — requirement R1).
-(2) On Day 2 a pinned Community Note appears in-feed: a task framed around K-pop as a
-whole, telling participants only what to do. (3) A participant contributes, and the note
-is held by a publication gate until (4) a member of the rival fandom completes it; the
-merged playlist publishes co-credited under both fandom flairs and is shared as one joint
-post. (5) Cross-fandom replies on the same thread turn warm, with rising "we/us" language.
-(6) On Day 3 the feature is removed and the cooperative tone carries over (toxicity 8/100).
-Bottom: end-of-day toxicity by arm in a demo run — the control arm, which receives an inert
-solo poll instead, stays high (78→78→92), so the drop occurs only after the community note
-(requirements R2, R3).*
+*The complete interaction, shown as screenshots of the working prototype (participant
+view). (1) Day 1, baseline: rival ARMY and BLINK members post in a plain Reddit-style
+forum and hostility escalates in the replies; every post carries the poster's fandom
+flair. (2) Day 2: a pinned Community Note appears in the normal feed — a task framed
+around K-pop as a whole that tells participants only what to do. (3) A participant's post
+fills their fandom's slot, and a publication gate holds the note while it waits for a fan
+from the rival fandom. (4) When both sides are in, the playlist publishes co-credited
+under both fandom flairs and is shared as one joint post, so upvotes land on a shared
+object. (5) On the same thread, the tone flips: the same rivals praise each other's picks
+and "we/us" language rises. (6) Day 3, feature removed: the cooperative tone carries over,
+with fans proposing a rematch playlist on their own.*
 
 **Alt text (`\Description`).**
-Storyboard of six numbered stages across three days on a Reddit-style forum, showing posts
-by ARMY and BLINK users. Day 1: two hostile posts with high measured toxicity. Day 2: a
-pinned "Community Note" task card asks for one song from each fandom; a waiting state says
-a fan from the other group must finish it; the published playlist card credits one ARMY and
-one BLINK user, shared together with 231 upvotes. Warm replies follow. Day 3: with the
-feature removed, a friendly post proposes a rematch playlist. A bar chart below shows
-end-of-day toxicity: experiment arm 78, 6, 8; control arm 78, 78, 92; annotations mark
-requirements R1–R3 as met.
+Six annotated screenshots from a Reddit-style prototype, arranged in two rows with arrows
+showing the interaction order. Step 1: a hostile thread between ARMY- and BLINK-flaired
+users. Step 2: a pinned Community Note post asking for one song from each fandom, with two
+empty contribution slots. Step 3: the ARMY slot is filled and the BLINK slot shows
+"waiting for a fan from the other group to finish this with you." Step 4: the note shows
+both slots filled and a published Community Playlist co-credited to one ARMY and one BLINK
+user, with a shared upvote count. Step 5: warm replies in which the same rival users
+praise each other's picks. Step 6: a Day-3 thread where fans propose a rematch playlist.
+Dashed amber callout labels point at the flairs, the task framing, the slots, the
+publication gate, the co-credit line, and the joint upvotes.
 
 ---
 
@@ -95,8 +101,13 @@ and Survey 3 plus an exit interview. Rotated margin labels mark requirements R1,
 ---
 
 ### Regenerating the exports
-The SVGs are the editable source. To re-export PNG (2×) and PDF after editing, render each
-SVG in headless Chromium at its viewBox size (screenshot → png; print → pdf). The palette
-uses the ARMY/BLINK brand-adjacent hues for actor chips (always paired with text labels)
-and a colorblind-validated blue/green pair (#2a78d6 / #1baf7a, additionally distinguished
-by fill vs. outline) for the Experiment/Control series.
+- **Figure 1** is composed from live prototype screenshots: `tools/capture-steps.mjs`
+  drives `demo.html` in headless Chromium and saves the six step screenshots to `shots/`;
+  `tools/compose-fig1.mjs` renders `fig1-compose.html` (the layout: panels, callouts,
+  leader lines — edit this to change labels/positions) to `fig1-interaction.png` (2×) and
+  `.pdf`. Re-run capture → compose after any prototype UI change.
+- **Figures 2–3** are hand-authored SVGs (the editable source); re-export by rendering
+  each SVG in headless Chromium at its viewBox size (screenshot → png; print → pdf).
+- Palette: ARMY/BLINK brand-adjacent hues for actor chips (always paired with text
+  labels); the Experiment/Control series in fig3 uses a colorblind-validated blue/green
+  pair (#2a78d6 / #1baf7a), additionally distinguished by fill vs. outline.
