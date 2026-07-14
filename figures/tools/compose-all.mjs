@@ -1,4 +1,6 @@
-// Renders all three figures: fig1/fig2 from compose HTML, fig3 from SVG.
+// Renders BOTH variants of all three figures:
+//   -detailed : fuller text annotations (advisor review / appendix)
+//   -diagram  : icon-driven, minimal text (paper / slides)
 import { chromium } from 'playwright-core';
 import { readFileSync, writeFileSync } from 'fs';
 const EXE='/opt/pw-browsers/chromium-1194/chrome-linux/chrome';
@@ -21,7 +23,10 @@ async function renderSVG(file,out,w,h){
   await page.pdf({path:DIR+out+'.pdf',width:(w/96)+'in',height:(h/96)+'in',printBackground:true,pageRanges:'1'});
   await page.close(); console.log('rendered',out);
 }
-await renderHTML('fig1-compose.html','fig1-interaction',1560,1150);
-await renderHTML('fig2-compose.html','fig2-mechanism',1560,940);
-await renderSVG('fig3-protocol.svg','fig3-protocol',1560,950);
+await renderHTML('fig1-compose-detailed.html','fig1-interaction-detailed',1560,1150);
+await renderHTML('fig1-compose-diagram.html','fig1-interaction-diagram',1560,1150);
+await renderSVG('fig2-mechanism-detailed.svg','fig2-mechanism-detailed',1680,1020);
+await renderHTML('fig2-compose-diagram.html','fig2-mechanism-diagram',1560,940);
+await renderSVG('fig3-protocol-detailed.svg','fig3-protocol-detailed',1400,1120);
+await renderSVG('fig3-protocol-diagram.svg','fig3-protocol-diagram',1560,950);
 await browser.close();

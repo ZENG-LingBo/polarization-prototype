@@ -1,5 +1,18 @@
 # Paper figures — the complete interaction
 
+**Each figure ships in two labeled variants** (same content, different density):
+
+| Variant suffix | Style | Use for |
+|---|---|---|
+| `-detailed` | fuller text annotations | advisor review, appendix, anyone reading without the paper |
+| `-diagram` | icon-driven, minimal text, day colors & 🔥/🧊 temperature glyphs | the paper body and slides |
+
+Files: `fig1-interaction-{detailed,diagram}` · `fig2-mechanism-{detailed,diagram}` ·
+`fig3-protocol-{detailed,diagram}`, each as `.png` (2×) + `.pdf` (vector). Editable sources:
+`fig1-compose-detailed.html`, `fig1-compose-diagram.html`, `fig2-mechanism-detailed.svg`,
+`fig2-compose-diagram.html`, `fig3-protocol-detailed.svg`, `fig3-protocol-diagram.svg`.
+The captions below apply to both variants of each figure.
+
 Three figures explaining the full interaction, built to CHI-figure conventions (numbered
 stages, real content, actor color-coding **plus** text labels so identity is never
 color-alone, ≥7 pt type at full-column width, self-contained captions, vector output).
@@ -10,7 +23,7 @@ Include in LaTeX with, e.g.:
 ```latex
 \begin{figure*}[t]
   \centering
-  \includegraphics[width=\textwidth]{figures/fig1-interaction.pdf}
+  \includegraphics[width=\textwidth]{figures/fig1-interaction-diagram.pdf}
   \caption{...caption below...}
   \Description{...alt text below...}
   \label{fig:interaction}
@@ -92,7 +105,9 @@ follows every day; Day 3 adds a semi-structured exit interview. All posts are lo
 toxicity is scored per message.*
 
 **Alt text (`\Description`).**
-Vertical flow diagram. A recruitment box feeds a random-assignment box, which splits into
+Flow diagram (the `-detailed` variant is vertical; the `-diagram` variant is a horizontal
+icon swimlane with fire/ice glyphs for expected toxicity). A recruitment box feeds a
+random-assignment box, which splits into
 a blue Experiment arm (community note) and a green Control arm (inert solo poll). Both
 arms pass through the same Day 1 baseline session with a repeat-until-high loop, Survey 1,
 their respective Day 2 feature, Survey 2, a shared Day 3 session with the feature removed,
@@ -101,13 +116,12 @@ and Survey 3 plus an exit interview. Rotated margin labels mark requirements R1,
 ---
 
 ### Regenerating the exports
-- **Figure 1** is composed from live prototype screenshots: `tools/capture-steps.mjs`
-  drives `demo.html` in headless Chromium and saves the six step screenshots to `shots/`;
-  `tools/compose-fig1.mjs` renders `fig1-compose.html` (the layout: panels, callouts,
-  leader lines — edit this to change labels/positions) to `fig1-interaction.png` (2×) and
-  `.pdf`. Re-run capture → compose after any prototype UI change.
-- **Figures 2–3** are hand-authored SVGs (the editable source); re-export by rendering
-  each SVG in headless Chromium at its viewBox size (screenshot → png; print → pdf).
+- `tools/capture-steps.mjs` drives `demo.html` in headless Chromium and saves the six
+  step screenshots to `shots/` (both Figure-1 variants and the fig2 diagram embed them).
+  Re-run after any prototype UI change.
+- `tools/compose-all.mjs` renders **all six outputs** (both variants of all three
+  figures) from their sources to `.png` (2×) + `.pdf` in one command (needs
+  `playwright-core`; run from a directory where it is installed).
 - Palette: ARMY/BLINK brand-adjacent hues for actor chips (always paired with text
   labels); the Experiment/Control series in fig3 uses a colorblind-validated blue/green
   pair (#2a78d6 / #1baf7a), additionally distinguished by fill vs. outline.
