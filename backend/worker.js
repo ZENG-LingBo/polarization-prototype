@@ -1,17 +1,30 @@
-// DefuseLab — Study 1 backend (Cloudflare Worker + D1).
+// DefuseLab — Study 1 backend, protocol v3 (Cloudflare Worker + D1).
 //
-// Handles the participant app + researcher dashboard:
-//   POST /api/session/start        -> assign arm (balanced) + fandom flair, create a session
-//   POST /api/event                -> log a behavioral event (pre-moderation text + toxicity/we-they)
-//   POST /api/collab/contribute    -> submit a Collab contribution; match a waiting rival-fandom one
-//   GET  /api/collab/status?id=     -> poll the pairing gate (live pair, or a DISCLOSED sample on timeout)
-//   POST /api/session/end          -> close a session
-//   GET  /api/dashboard/summary     -> per-arm aggregates          (Bearer RESEARCHER_TOKEN)
-//   GET  /api/dashboard/sessions    -> raw sessions/events/collabs  (Bearer RESEARCHER_TOKEN)
+// 2 arms (EXPT = Community Note · CTRL = inert poll) × 3 days, run as COHORT group
+// sessions. Each cohort×arm is a shared live feed (same-cohort/same-arm participants see
+// each other's posts via polling). Participants get a REJOIN CODE on Day 1 that links
+// them across Days 2–3.
 //
-// Blinding: the dashboard endpoints require the researcher token so participants never see analytics.
-// Toxicity here is the same keyword heuristic as the demo meters; the real study rescoreson the
-// stored pre-moderation text with Perspective API + the validated K-pop lexicon (see MEASURES.md).
+//   POST /api/session/start        {cohort, flair?, rejoin?}    -> join/rejoin a cohort
+//   GET  /api/feed?sessionId&since                              -> shared feed (cohort+arm)
+//   POST /api/event                {sessionId,type,textRaw,threadId} -> log + publish
+//   POST /api/collab/contribute    {sessionId,text}             -> Community Note (EXPT day 2)
+//   GET  /api/collab/status?id                                  -> pairing gate poll
+//   POST /api/poll/vote            {sessionId,option}           -> inert poll (CTRL day 2)
+//   GET  /api/poll/results?sessionId                            -> poll counts
+//   GET  /api/survey-link?sessionId                             -> end-of-day survey URL
+//   POST /api/session/end          {sessionId}
+//   -- researcher (Bearer RESEARCHER_TOKEN) --
+//   POST /api/dashboard/cohort       {code,label,language}      -> create cohort
+//   POST /api/dashboard/cohort/day   {code,day}                 -> advance day (re-seeds prompts)
+//   POST /api/dashboard/cohort/close {code}
+//   GET  /api/dashboard/summary                                 -> arm×day aggregates + R1-R3
+//   GET  /api/dashboard/sessions                                -> raw export
+//
+// Blinding: participant endpoints never mention arms/purpose; analytics are token-gated.
+// Toxicity is the demo keyword heuristic; text_raw (pre-moderation) is stored so the real
+// study rescores with Perspective API + the validated K-pop lexicon (MEASURES.md).
+// Vars/secrets: DB (D1 binding), RESEARCHER_TOKEN (secret), SURVEY_URL_D1..D3 (+_ZH) vars.
 //
 // Deploy (no terminal): see backend/README.md.
 
@@ -20,13 +33,47 @@ const ALLOWED_ORIGINS = [
   "http://localhost:8000",
   "http://127.0.0.1:8000",
 ];
-const ARMS = ["C0", "C1", "C2"];
+const ARMS = ["EXPT", "CTRL"];
 const other = (f) => (f === "ARMY" ? "BLINK" : "ARMY");
 
-// Minimal server-side sample partner content for the DISCLOSED filler (no live partner online).
-const SAMPLE = {
-  C2: { kind: "super", text: "throwing in 'As If It's Your Last' — the energy pulled me in", artifact: '🎵 "The songs that made us fall for K-pop"' },
-  C1: { kind: "neutral", text: "ok fair, adding ramen + extra cheese", artifact: '🍜 "Comfort foods"' },
+// ---- Community Note config (EXPT day 2). Static, pre-screened template — no LLM call.
+const NOTE = {
+  en: {
+    prompt: "Community Note — today's playlist: add the song that made YOU fall for K-pop. Publishes once one ARMY and one BLINK have both added one.",
+    artifact: '🎵 Community Playlist — "the songs that made us fall for K-pop"',
+    fillerText: "adding 'As If It's Your Last' — the energy pulled me in",
+  },
+  zh: {
+    prompt: "社区共创 — 今日歌单：添加那首让你爱上K-pop的歌。需要一位ARMY和一位BLINK各添加一首后发布。",
+    artifact: '🎵 社区歌单 — "让我们爱上K-pop的歌"',
+    fillerText: "加一首《As If It's Your Last》——是那种能量吸引了我",
+  },
+};
+// ---- Inert daily poll (CTRL day 2). Solo, no pairing, no shared output.
+const POLL = {
+  en: { prompt: "Daily vibe check — how are we feeling today?", options: ["😤 hyped", "😐 meh", "🫠 tired", "🎧 locked in"] },
+  zh: { prompt: "今日心情打卡 — 你今天感觉如何？", options: ["😤 兴奋", "😐 一般", "🫠 很累", "🎧 沉浸中"] },
+};
+// ---- Day seed prompts (discussion-provoking posts inserted for BOTH arms when a day
+// opens). Anonymized/paraphrased fan-war register; group-vs-group only (ethics: PLAN §12).
+// NOTE for the real run: replace Day-1 seeds with the team's finalized prompts.
+const SEEDS = {
+  en: {
+    1: [
+      { flair: "ARMY", author: "seed_mod_a", text: "BTS is the defining group of this generation, it's genuinely not close 🏆 discuss." },
+      { flair: "BLINK", author: "seed_mod_b", text: "BLACKPINK outsold and outperformed — the numbers don't lie. change my mind." },
+    ],
+    2: [{ flair: "SYS", author: "kpop_mod", text: "New day, same energy — what's everyone's take today?" }],
+    3: [{ flair: "SYS", author: "kpop_mod", text: "Final day — biggest hot take of the week?" }],
+  },
+  zh: {
+    1: [
+      { flair: "ARMY", author: "seed_mod_a", text: "BTS就是这一代的代表团体，真的没有悬念 🏆 来讨论。" },
+      { flair: "BLINK", author: "seed_mod_b", text: "BLACKPINK销量和舞台都更强——数据不会说谎。来反驳我。" },
+    ],
+    2: [{ flair: "SYS", author: "kpop_mod", text: "新的一天，继续聊——今天大家怎么看？" }],
+    3: [{ flair: "SYS", author: "kpop_mod", text: "最后一天——本周最敢说的观点是什么？" }],
+  },
 };
 
 const TOX = ["clown", "clowns", "trash", "delusional", "delulu", "ratio", "idiot", "stupid",
@@ -43,10 +90,6 @@ function toxicity(t) {
   return clamp(hits / 3);
 }
 const countWords = (t, list) => String(t).toLowerCase().split(/[^a-z']+/).filter((x) => list.includes(x)).length;
-function commonIdentity(weShare, kind, crossNorm) {
-  const boost = kind === "super" ? 0.55 : kind === "neutral" ? 0.20 : 0;
-  return clamp(0.05 + 0.25 * weShare + boost + 0.12 * clamp(crossNorm));
-}
 
 function corsHeaders(origin) {
   const allow = ALLOWED_ORIGINS.includes(origin) ? origin : ALLOWED_ORIGINS[0];
@@ -61,6 +104,49 @@ function corsHeaders(origin) {
 const json = (obj, status, origin) =>
   new Response(JSON.stringify(obj), { status, headers: { ...corsHeaders(origin), "content-type": "application/json" } });
 const uid = (p) => p + "_" + Math.random().toString(36).slice(2, 9) + Date.now().toString(36).slice(-4);
+const rejoinCode = () => Math.random().toString(36).slice(2, 8).toUpperCase();
+const mkHandle = (flair) => (flair === "ARMY" ? "army" : "blink") + "_" + Math.random().toString(36).slice(2, 6);
+
+// Constant-time-ish token compare (avoid early-exit string !==).
+function safeEqual(a, b) {
+  const A = String(a || ""), B = String(b || "");
+  if (A.length !== B.length) return false;
+  let diff = 0;
+  for (let i = 0; i < A.length; i++) diff |= A.charCodeAt(i) ^ B.charCodeAt(i);
+  return diff === 0;
+}
+
+async function getSession(DB, sid) {
+  if (!sid) return null;
+  return await DB.prepare(
+    `SELECT s.*, c.language, c.day AS cohort_day, c.status AS cohort_status, p.handle, p.rejoin_code
+     FROM sessions s JOIN cohorts c ON s.cohort_id=c.id JOIN participants p ON s.participant_id=p.id
+     WHERE s.id=?`).bind(sid).first();
+}
+
+async function insertEvent(DB, sess, type, text, threadId, authorOverride, flairOverride) {
+  const t = String(text || "").slice(0, 2000);
+  await DB.prepare(
+    `INSERT INTO events (id,session_id,cohort_id,day,arm,flair,author,type,text_raw,toxicity,we,they,thread_id,created_at)
+     VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)`
+  ).bind(uid("ev"), sess.id || null, sess.cohort_id, sess.cohort_day || sess.day, sess.arm,
+    flairOverride || sess.flair, authorOverride || sess.handle, type, t,
+    toxicity(t), countWords(t, WE), countWords(t, THEY), String(threadId || "seed"), Date.now()).run();
+}
+
+async function seedDay(DB, cohort, day) {
+  const lang = cohort.language === "zh" ? "zh" : "en";
+  const seeds = (SEEDS[lang] || SEEDS.en)[day] || [];
+  for (const arm of ARMS) {
+    for (const s of seeds) {
+      await DB.prepare(
+        `INSERT INTO events (id,session_id,cohort_id,day,arm,flair,author,type,text_raw,toxicity,we,they,thread_id,created_at)
+         VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)`
+      ).bind(uid("ev"), null, cohort.id, day, arm, s.flair, s.author, "post", s.text,
+        toxicity(s.text), countWords(s.text, WE), countWords(s.text, THEY), "seed", Date.now()).run();
+    }
+  }
+}
 
 export default {
   async fetch(request, env) {
@@ -75,49 +161,89 @@ export default {
     try {
       // ---------------- participant endpoints ----------------
       if (path === "/api/session/start" && request.method === "POST") {
-        const body = await request.json().catch(() => ({}));
-        let arm = ARMS.includes(body.arm) ? body.arm : null;
-        if (!arm) {
-          const { n } = (await DB.prepare("SELECT COUNT(*) AS n FROM sessions").first()) || { n: 0 };
-          arm = ARMS[n % 3];                                 // balanced round-robin
+        const b = await request.json().catch(() => ({}));
+        const code = String(b.cohort || "").trim().toUpperCase();
+        const cohort = await DB.prepare("SELECT * FROM cohorts WHERE id=?").bind(code).first();
+        if (!cohort) return json({ error: "no_cohort" }, 404, origin);
+        if (cohort.status !== "open") return json({ error: "cohort_closed" }, 403, origin);
+
+        let part = null;
+        if (b.rejoin) {
+          part = await DB.prepare("SELECT * FROM participants WHERE cohort_id=? AND rejoin_code=?")
+            .bind(code, String(b.rejoin).trim().toUpperCase()).first();
+          if (!part) return json({ error: "bad_rejoin" }, 404, origin);
         }
-        const flair = body.flair === "ARMY" || body.flair === "BLINK" ? body.flair : (Math.random() < 0.5 ? "ARMY" : "BLINK");
-        const pid = uid("p"), sid = uid("sess"), now = Date.now();
-        await DB.prepare("INSERT INTO participants (id,arm,flair,created_at) VALUES (?,?,?,?)").bind(pid, arm, flair, now).run();
-        await DB.prepare("INSERT INTO sessions (id,participant_id,arm,flair,started_at) VALUES (?,?,?,?,?)").bind(sid, pid, arm, flair, now).run();
-        return json({ sessionId: sid, arm, flair }, 200, origin);
+        if (!part) {
+          // balanced arm within cohort; balanced flair within cohort×arm (body.flair wins)
+          const { n } = (await DB.prepare("SELECT COUNT(*) n FROM participants WHERE cohort_id=?").bind(code).first()) || { n: 0 };
+          const arm = ARMS[n % 2];
+          let flair = b.flair === "ARMY" || b.flair === "BLINK" ? b.flair : null;
+          if (!flair) {
+            const { a } = (await DB.prepare("SELECT COUNT(*) a FROM participants WHERE cohort_id=? AND arm=? AND flair='ARMY'").bind(code, arm).first()) || { a: 0 };
+            const { bl } = (await DB.prepare("SELECT COUNT(*) bl FROM participants WHERE cohort_id=? AND arm=? AND flair='BLINK'").bind(code, arm).first()) || { bl: 0 };
+            flair = a <= bl ? "ARMY" : "BLINK";
+          }
+          part = { id: uid("p"), cohort_id: code, rejoin_code: rejoinCode(), handle: mkHandle(flair), arm, flair, created_at: Date.now() };
+          await DB.prepare("INSERT INTO participants (id,cohort_id,rejoin_code,handle,arm,flair,created_at) VALUES (?,?,?,?,?,?,?)")
+            .bind(part.id, part.cohort_id, part.rejoin_code, part.handle, part.arm, part.flair, part.created_at).run();
+        }
+        const sid = uid("sess");
+        await DB.prepare("INSERT INTO sessions (id,participant_id,cohort_id,day,arm,flair,started_at) VALUES (?,?,?,?,?,?,?)")
+          .bind(sid, part.id, code, cohort.day, part.arm, part.flair, Date.now()).run();
+        const lang = cohort.language === "zh" ? "zh" : "en";
+        return json({
+          sessionId: sid, participantId: part.id, rejoinCode: part.rejoin_code, handle: part.handle,
+          arm: part.arm, flair: part.flair, day: cohort.day, language: lang, cohortLabel: cohort.label || code,
+          note: part.arm === "EXPT" && cohort.day === 2 ? NOTE[lang] : null,
+          poll: part.arm === "CTRL" && cohort.day === 2 ? POLL[lang] : null,
+        }, 200, origin);
+      }
+
+      if (path === "/api/feed" && request.method === "GET") {
+        const sess = await getSession(DB, url.searchParams.get("sessionId"));
+        if (!sess) return json({ error: "no_session" }, 400, origin);
+        const since = Number(url.searchParams.get("since") || 0);
+        const rows = (await DB.prepare(
+          `SELECT id,session_id,flair,author,type,text_raw,thread_id,created_at FROM events
+           WHERE cohort_id=? AND arm=? AND day=? AND created_at>? AND type IN ('post','comment','note_published')
+           ORDER BY created_at ASC LIMIT 200`
+        ).bind(sess.cohort_id, sess.arm, sess.cohort_day, since).all()).results || [];
+        return json({ day: sess.cohort_day, posts: rows }, 200, origin);
       }
 
       if (path === "/api/event" && request.method === "POST") {
         const b = await request.json().catch(() => ({}));
-        if (!b.sessionId) return json({ error: "no_session" }, 400, origin);
-        const text = String(b.textRaw || "").slice(0, 2000);
-        await DB.prepare(
-          "INSERT INTO events (id,session_id,type,text_raw,toxicity,we,they,thread_id,created_at) VALUES (?,?,?,?,?,?,?,?,?)"
-        ).bind(uid("ev"), b.sessionId, String(b.type || "post"), text, toxicity(text), countWords(text, WE), countWords(text, THEY), String(b.threadId || "seed"), Date.now()).run();
+        const sess = await getSession(DB, b.sessionId);
+        if (!sess) return json({ error: "no_session" }, 400, origin);
+        const type = ["post", "comment", "like", "share", "cross"].includes(b.type) ? b.type : "post";
+        await insertEvent(DB, sess, type, b.textRaw, b.threadId);
         return json({ ok: true }, 200, origin);
       }
 
       if (path === "/api/collab/contribute" && request.method === "POST") {
         const b = await request.json().catch(() => ({}));
-        const sess = await DB.prepare("SELECT arm,flair FROM sessions WHERE id=?").bind(b.sessionId).first();
+        const sess = await getSession(DB, b.sessionId);
         if (!sess) return json({ error: "no_session" }, 400, origin);
+        if (sess.arm !== "EXPT" || sess.cohort_day !== 2) return json({ error: "not_available" }, 403, origin);
+        const lang = sess.language === "zh" ? "zh" : "en";
         const text = String(b.text || "").slice(0, 500);
-        const kind = sess.arm === "C2" ? "super" : "neutral";
-        // try to match a waiting contribution from the OTHER fandom in the same arm
         const match = await DB.prepare(
-          "SELECT * FROM collabs WHERE arm=? AND status='waiting' AND a_flair=? ORDER BY created_at ASC LIMIT 1"
-        ).bind(sess.arm, other(sess.flair)).first();
+          "SELECT * FROM collabs WHERE cohort_id=? AND arm='EXPT' AND status='waiting' AND a_flair=? ORDER BY created_at ASC LIMIT 1"
+        ).bind(sess.cohort_id, other(sess.flair)).first();
         if (match) {
-          await DB.prepare("UPDATE collabs SET b_flair=?, b_text=?, status='paired', is_live_paired=1, paired_at=? WHERE id=?")
-            .bind(sess.flair, text, Date.now(), match.id).run();
+          await DB.prepare("UPDATE collabs SET b_flair=?, b_text=?, b_handle=?, status='paired', is_live_paired=1, paired_at=? WHERE id=?")
+            .bind(sess.flair, text, sess.handle, Date.now(), match.id).run();
+          // publish the co-authored note into the shared EXPT feed (verbatim assembly)
+          const artifactLine = `${NOTE[lang].artifact} — "${match.a_text}" (${match.a_handle} · ${match.a_flair}) × "${text}" (${sess.handle} · ${sess.flair})`;
+          await insertEvent(DB, sess, "note_published", artifactLine, "note", "kpop_mod", "SYS");
           return json({ collabId: match.id, status: "paired", isLivePaired: true,
-            partner: { flair: match.a_flair, text: match.a_text }, artifact: SAMPLE[sess.arm].artifact }, 200, origin);
+            partner: { flair: match.a_flair, text: match.a_text, handle: match.a_handle },
+            artifact: NOTE[lang].artifact }, 200, origin);
         }
         const cid = uid("col");
         await DB.prepare(
-          "INSERT INTO collabs (id,session_id,arm,kind,a_flair,a_text,status,is_live_paired,filler,artifact,created_at) VALUES (?,?,?,?,?,?, 'waiting',0,0,?,?)"
-        ).bind(cid, b.sessionId, sess.arm, kind, sess.flair, text, SAMPLE[sess.arm].artifact, Date.now()).run();
+          "INSERT INTO collabs (id,session_id,cohort_id,day,arm,a_flair,a_text,a_handle,status,is_live_paired,filler,artifact,created_at) VALUES (?,?,?,?,?,?,?,?,'waiting',0,0,?,?)"
+        ).bind(cid, sess.id, sess.cohort_id, sess.cohort_day, "EXPT", sess.flair, text, sess.handle, NOTE[lang].artifact, Date.now()).run();
         return json({ collabId: cid, status: "waiting" }, 200, origin);
       }
 
@@ -125,21 +251,59 @@ export default {
         const id = url.searchParams.get("id");
         const col = await DB.prepare("SELECT * FROM collabs WHERE id=?").bind(id).first();
         if (!col) return json({ status: "unknown" }, 200, origin);
-        const timeout = 15000;
-        if (col.status === "waiting" && Date.now() - col.created_at > timeout) {
-          // no live partner arrived -> DISCLOSED system-generated sample (PLAN.md §4.3)
-          const s = SAMPLE[col.arm];
-          await DB.prepare("UPDATE collabs SET status='filler', filler=1, b_flair=?, b_text=? WHERE id=?")
-            .bind(other(col.a_flair), s.text, id).run();
+        const timeoutMs = Number(env.PAIRING_TIMEOUT_MS || 90000); // group sessions: wait longer before filler
+        if (col.status === "waiting" && Date.now() - col.created_at > timeoutMs) {
+          const cohort = await DB.prepare("SELECT language FROM cohorts WHERE id=?").bind(col.cohort_id).first();
+          const lang = cohort && cohort.language === "zh" ? "zh" : "en";
+          await DB.prepare("UPDATE collabs SET status='filler', filler=1, b_flair=?, b_text=?, b_handle='system_sample' WHERE id=?")
+            .bind(other(col.a_flair), NOTE[lang].fillerText, id).run();
           return json({ status: "filler", isLivePaired: false, filler: true,
-            partner: { flair: other(col.a_flair), text: s.text }, artifact: col.artifact }, 200, origin);
+            partner: { flair: other(col.a_flair), text: NOTE[lang].fillerText, handle: "system_sample" },
+            artifact: col.artifact }, 200, origin);
         }
         return json({
-          status: col.status,
-          isLivePaired: !!col.is_live_paired, filler: !!col.filler,
-          partner: col.b_text ? { flair: col.b_flair, text: col.b_text } : null,
+          status: col.status, isLivePaired: !!col.is_live_paired, filler: !!col.filler,
+          partner: col.b_text ? { flair: col.b_flair, text: col.b_text, handle: col.b_handle } : null,
           artifact: col.artifact,
         }, 200, origin);
+      }
+
+      if (path === "/api/poll/vote" && request.method === "POST") {
+        const b = await request.json().catch(() => ({}));
+        const sess = await getSession(DB, b.sessionId);
+        if (!sess) return json({ error: "no_session" }, 400, origin);
+        if (sess.arm !== "CTRL" || sess.cohort_day !== 2) return json({ error: "not_available" }, 403, origin);
+        await DB.prepare("INSERT INTO poll_votes (id,session_id,cohort_id,day,option_idx,created_at) VALUES (?,?,?,?,?,?)")
+          .bind(uid("pv"), sess.id, sess.cohort_id, sess.cohort_day, Number(b.option) || 0, Date.now()).run();
+        await insertEvent(DB, sess, "cross", "poll_vote:" + b.option, "poll"); // engagement log only (type not in feed)
+        return json({ ok: true }, 200, origin);
+      }
+
+      if (path === "/api/poll/results" && request.method === "GET") {
+        const sess = await getSession(DB, url.searchParams.get("sessionId"));
+        if (!sess) return json({ error: "no_session" }, 400, origin);
+        const rows = (await DB.prepare(
+          "SELECT option_idx, COUNT(*) n FROM poll_votes WHERE cohort_id=? AND day=? GROUP BY option_idx"
+        ).bind(sess.cohort_id, sess.cohort_day).all()).results || [];
+        const lang = sess.language === "zh" ? "zh" : "en";
+        const counts = POLL[lang].options.map((_, i) => (rows.find((r) => r.option_idx === i) || {}).n || 0);
+        return json({ counts }, 200, origin);
+      }
+
+      if (path === "/api/survey-link" && request.method === "GET") {
+        const sess = await getSession(DB, url.searchParams.get("sessionId"));
+        if (!sess) return json({ error: "no_session" }, 400, origin);
+        const day = sess.cohort_day, lang = sess.language === "zh" ? "zh" : "en";
+        const base = (lang === "zh" && env["SURVEY_URL_D" + day + "_ZH"]) || env["SURVEY_URL_D" + day] || "";
+        if (!base) return json({ url: null }, 200, origin);
+        const u = new URL(base);
+        u.searchParams.set("pid", sess.participant_id);
+        u.searchParams.set("day", String(day));
+        u.searchParams.set("arm", sess.arm);
+        u.searchParams.set("lang", lang);
+        u.searchParams.set("cohort", sess.cohort_id);
+        await insertEvent(DB, sess, "survey_opened", "day" + day, "survey");
+        return json({ url: u.toString() }, 200, origin);
       }
 
       if (path === "/api/session/end" && request.method === "POST") {
@@ -152,41 +316,74 @@ export default {
       if (path.startsWith("/api/dashboard/")) {
         const auth = request.headers.get("Authorization") || "";
         const token = auth.replace(/^Bearer\s+/i, "");
-        if (!env.RESEARCHER_TOKEN || token !== env.RESEARCHER_TOKEN) return json({ error: "unauthorized" }, 401, origin);
+        if (!env.RESEARCHER_TOKEN || !safeEqual(token, env.RESEARCHER_TOKEN)) return json({ error: "unauthorized" }, 401, origin);
+
+        if (path === "/api/dashboard/cohort" && request.method === "POST") {
+          const b = await request.json().catch(() => ({}));
+          const code = String(b.code || "").trim().toUpperCase();
+          if (!/^[A-Z0-9]{3,12}$/.test(code)) return json({ error: "bad_code" }, 400, origin);
+          const lang = b.language === "zh" ? "zh" : "en";
+          const cohort = { id: code, label: String(b.label || code).slice(0, 60), language: lang, day: 1, status: "open", created_at: Date.now() };
+          await DB.prepare("INSERT INTO cohorts (id,label,language,day,status,created_at) VALUES (?,?,?,?,?,?)")
+            .bind(cohort.id, cohort.label, cohort.language, 1, "open", cohort.created_at).run();
+          await seedDay(DB, cohort, 1);
+          return json({ ok: true, cohort }, 200, origin);
+        }
+        if (path === "/api/dashboard/cohort/day" && request.method === "POST") {
+          const b = await request.json().catch(() => ({}));
+          const code = String(b.code || "").trim().toUpperCase();
+          const day = Math.min(3, Math.max(1, Number(b.day) || 1));
+          const cohort = await DB.prepare("SELECT * FROM cohorts WHERE id=?").bind(code).first();
+          if (!cohort) return json({ error: "no_cohort" }, 404, origin);
+          await DB.prepare("UPDATE cohorts SET day=? WHERE id=?").bind(day, code).run();
+          if (day !== cohort.day) await seedDay(DB, { ...cohort, day }, day);
+          return json({ ok: true, code, day }, 200, origin);
+        }
+        if (path === "/api/dashboard/cohort/close" && request.method === "POST") {
+          const b = await request.json().catch(() => ({}));
+          await DB.prepare("UPDATE cohorts SET status='closed' WHERE id=?").bind(String(b.code || "").toUpperCase()).run();
+          return json({ ok: true }, 200, origin);
+        }
 
         if (path === "/api/dashboard/summary") {
-          const byArm = {};
-          ARMS.forEach((a) => (byArm[a] = { arm: a, sessions: 0, msgs: 0, toxSum: 0, we: 0, they: 0, cross: 0, livePaired: 0, filler: 0 }));
-          const sc = await DB.prepare("SELECT arm, COUNT(*) n FROM sessions GROUP BY arm").all();
-          (sc.results || []).forEach((r) => { if (byArm[r.arm]) byArm[r.arm].sessions = r.n; });
-          const ec = await DB.prepare(
-            "SELECT s.arm arm, COUNT(*) msgs, SUM(e.toxicity) toxSum, SUM(e.we) we, SUM(e.they) they FROM events e JOIN sessions s ON e.session_id=s.id WHERE e.type IN ('post','comment') GROUP BY s.arm"
-          ).all();
-          (ec.results || []).forEach((r) => { const b = byArm[r.arm]; if (b) { b.msgs = r.msgs; b.toxSum = r.toxSum || 0; b.we = r.we || 0; b.they = r.they || 0; } });
-          const cc = await DB.prepare(
-            "SELECT s.arm arm, COUNT(*) n FROM events e JOIN sessions s ON e.session_id=s.id WHERE e.type='cross' GROUP BY s.arm"
-          ).all();
-          (cc.results || []).forEach((r) => { if (byArm[r.arm]) byArm[r.arm].cross += r.n; });
-          const col = await DB.prepare(
-            "SELECT arm, SUM(is_live_paired) live, SUM(filler) fill, COUNT(*) n FROM collabs GROUP BY arm"
-          ).all();
-          (col.results || []).forEach((r) => { const b = byArm[r.arm]; if (b) { b.livePaired = r.live || 0; b.filler = r.fill || 0; b.cross += r.n || 0; } });
-          ARMS.forEach((a) => {
-            const b = byArm[a];
-            b.toxRate = b.msgs ? b.toxSum / b.msgs : null;
-            const tot = b.we + b.they; b.weShare = tot ? b.we / tot : null;
-            const kind = a === "C2" ? "super" : a === "C1" ? "neutral" : null;
-            b.ci = b.weShare == null ? null : commonIdentity(b.weShare, kind, b.cross / 6);
-          });
+          const cohorts = (await DB.prepare("SELECT * FROM cohorts ORDER BY created_at DESC").all()).results || [];
+          const cell = () => ({ sessions: 0, msgs: 0, toxSum: 0, we: 0, they: 0, cross: 0, livePaired: 0, filler: 0, pollVotes: 0 });
+          const byArmDay = { EXPT: { 1: cell(), 2: cell(), 3: cell() }, CTRL: { 1: cell(), 2: cell(), 3: cell() } };
+          const get = (a, d) => (byArmDay[a] && byArmDay[a][d]) || null;
+
+          const sc = (await DB.prepare("SELECT arm, day, COUNT(*) n FROM sessions GROUP BY arm, day").all()).results || [];
+          sc.forEach((r) => { const c = get(r.arm, r.day); if (c) c.sessions = r.n; });
+          const ec = (await DB.prepare(
+            "SELECT arm, day, COUNT(*) msgs, SUM(toxicity) toxSum, SUM(we) we, SUM(they) they FROM events WHERE type IN ('post','comment') AND session_id IS NOT NULL GROUP BY arm, day"
+          ).all()).results || [];
+          ec.forEach((r) => { const c = get(r.arm, r.day); if (c) { c.msgs = r.msgs; c.toxSum = r.toxSum || 0; c.we = r.we || 0; c.they = r.they || 0; } });
+          const cc = (await DB.prepare("SELECT arm, day, COUNT(*) n FROM events WHERE type='cross' GROUP BY arm, day").all()).results || [];
+          cc.forEach((r) => { const c = get(r.arm, r.day); if (c) c.cross = r.n; });
+          const col = (await DB.prepare("SELECT day, SUM(is_live_paired) live, SUM(filler) fill FROM collabs GROUP BY day").all()).results || [];
+          col.forEach((r) => { const c = get("EXPT", r.day); if (c) { c.livePaired = r.live || 0; c.filler = r.fill || 0; } });
+          const pv = (await DB.prepare("SELECT day, COUNT(*) n FROM poll_votes GROUP BY day").all()).results || [];
+          pv.forEach((r) => { const c = get("CTRL", r.day); if (c) c.pollVotes = r.n; });
+
+          for (const a of ARMS) for (const d of [1, 2, 3]) {
+            const c = byArmDay[a][d];
+            c.toxRate = c.msgs ? c.toxSum / c.msgs : null;
+            const tot = c.we + c.they; c.weShare = tot ? c.we / tot : null;
+          }
+          // R1–R3 requirement checks (same thresholds as the demo: high ≥.55 · stay ≥.50 · drop ≤.35)
+          const t = (a, d) => byArmDay[a][d].toxRate;
+          const R1 = t("EXPT", 1) == null || t("CTRL", 1) == null ? null : (t("EXPT", 1) >= 0.55 && t("CTRL", 1) >= 0.55);
+          const R2 = t("CTRL", 2) == null ? null : t("CTRL", 2) >= 0.5;
+          const R3 = t("EXPT", 2) == null || t("CTRL", 2) == null ? null : (t("EXPT", 2) <= 0.35 && t("CTRL", 2) >= 0.5);
           const { n: sessions } = (await DB.prepare("SELECT COUNT(*) n FROM sessions").first()) || { n: 0 };
-          return json({ source: "backend", byArm, totals: { sessions } }, 200, origin);
+          return json({ source: "backend", version: "v3", cohorts, byArmDay, checks: { R1, R2, R3 }, totals: { sessions } }, 200, origin);
         }
 
         if (path === "/api/dashboard/sessions") {
           const sessions = (await DB.prepare("SELECT * FROM sessions ORDER BY started_at DESC LIMIT 1000").all()).results || [];
-          const events = (await DB.prepare("SELECT id,session_id,type,text_raw,toxicity,we,they,created_at FROM events ORDER BY created_at DESC LIMIT 5000").all()).results || [];
+          const events = (await DB.prepare("SELECT id,session_id,cohort_id,day,arm,flair,author,type,text_raw,toxicity,we,they,thread_id,created_at FROM events ORDER BY created_at DESC LIMIT 5000").all()).results || [];
           const collabs = (await DB.prepare("SELECT * FROM collabs ORDER BY created_at DESC LIMIT 1000").all()).results || [];
-          return json({ source: "backend", sessions, events, collabs }, 200, origin);
+          const participants = (await DB.prepare("SELECT id,cohort_id,handle,arm,flair,created_at FROM participants LIMIT 2000").all()).results || [];
+          return json({ source: "backend", version: "v3", sessions, events, collabs, participants }, 200, origin);
         }
       }
 

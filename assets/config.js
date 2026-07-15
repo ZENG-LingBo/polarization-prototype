@@ -9,6 +9,8 @@
  * and live cross-fandom pairing. (Same fall-back-on-error pattern as the legacy proxy.)
  */
 window.STUDY_CONFIG = {
+  // Consumed by study.html (v3 participant app) and dashboard.html. Both also accept a
+  // ?backend=https://... query override for staging/local dev (wrangler dev).
   BACKEND_URL: "",
 
   // Fixed interaction-session length shown to testers (PLAN.md §8 step 5: "e.g. 20–30 min").

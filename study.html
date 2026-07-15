@@ -1,0 +1,547 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>r/kpop — community</title>
+<link rel="icon" href="data:," />
+<style>
+  :root{
+    --bg:#0b1416; --card:#101617; --card2:#131c1f; --line:#223034; --line2:#1a262a;
+    --ink:#f0f4f5; --ink2:#b7cad4; --mut:#8ba2ad;
+    --up:#ff4500; --down:#7193ff; --accent:#0079d3; --join:#d93a00; --good:#34d399;
+    --army:#8a63ff; --blink:#ff5c9e; --note:#f59e0b;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);line-height:1.4;
+       font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","IBM Plex Sans",Roboto,Helvetica,Arial,sans-serif;font-size:14.5px}
+  button{font:inherit;cursor:pointer}
+  input,textarea,select{font:inherit;background:var(--card2);color:var(--ink);border:1px solid var(--line);border-radius:10px;padding:10px 12px}
+  .wrap{max-width:760px;margin:0 auto;padding:0 12px 40px}
+  /* top bar */
+  .topnav{position:sticky;top:0;z-index:30;display:flex;align-items:center;gap:12px;
+    padding:8px 14px;background:var(--bg);border-bottom:1px solid var(--line2)}
+  .logo{display:flex;align-items:center;gap:7px;font-weight:800;font-size:18px}
+  .snoo{width:28px;height:28px;border-radius:50%;background:var(--up);display:flex;align-items:center;justify-content:center;font-size:15px}
+  .who{margin-left:auto;font-size:12px;color:var(--mut)}
+  .flair{font-size:10.5px;font-weight:800;padding:2px 8px;border-radius:999px;letter-spacing:.2px}
+  .flair.ARMY{background:rgba(138,99,255,.18);color:#c9b5ff;border:1px solid var(--army)}
+  .flair.BLINK{background:rgba(255,92,158,.16);color:#ffb1cd;border:1px solid var(--blink)}
+  .flair.SYS{background:rgba(139,162,173,.15);color:#cbd5e1;border:1px solid #475569}
+  .flair.NOTE{background:rgba(245,158,11,.14);color:#fcd34d;border:1px solid #b45309}
+  /* disclosure */
+  .disclose{background:rgba(245,158,11,.07);border-bottom:1px solid rgba(245,158,11,.35);
+    padding:6px 14px;font-size:12px;color:#fcd34d}
+  /* screens */
+  .screen{display:none}.screen.on{display:block}
+  .panel{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:20px;margin-top:16px}
+  .panel h2{margin:0 0 6px;font-size:20px}
+  .panel .sub{color:var(--mut);font-size:13px;margin-bottom:14px}
+  .field{margin:14px 0}
+  .field label{display:block;font-weight:700;font-size:13.5px;margin-bottom:6px}
+  .opts{display:flex;gap:8px;flex-wrap:wrap}
+  .opt{background:var(--card2);border:1.5px solid var(--line);border-radius:12px;color:var(--ink2);padding:10px 14px;font-weight:600}
+  .opt.on{border-color:var(--accent);color:var(--ink);background:rgba(0,121,211,.12)}
+  .check{display:flex;gap:9px;align-items:flex-start;font-size:13.5px;color:var(--ink2);margin:12px 0}
+  .check input{accent-color:var(--accent);margin-top:2px}
+  .consentbox{background:var(--card2);border:1px solid var(--line);border-radius:12px;padding:12px 14px;font-size:13px;color:var(--ink2)}
+  .btn{background:var(--accent);border:none;color:#fff;border-radius:999px;padding:11px 20px;font-weight:700;font-size:14px}
+  .btn:disabled{opacity:.45;cursor:not-allowed}
+  .btn.gold{background:var(--note);color:#3b2a05}
+  .btn.ghost{background:var(--card2);border:1px solid var(--line);color:var(--ink)}
+  .err{color:#fca5a5;font-size:13px;min-height:18px;margin-top:8px}
+  .langbtn{margin-left:10px;background:var(--card2);border:1px solid var(--line);color:var(--ink2);border-radius:999px;padding:4px 12px;font-size:12px}
+  .offline-note{font-size:12px;color:var(--mut);border:1px dashed var(--line);border-radius:10px;padding:8px 11px;margin-top:12px}
+  /* day banner */
+  .daybar{display:flex;align-items:center;gap:10px;background:var(--card);border:1px solid var(--line);
+    border-radius:14px;padding:9px 14px;margin-top:14px;font-size:13px;color:var(--ink2)}
+  .daybar b{color:var(--ink)}
+  .daybar .end{margin-left:auto}
+  /* posts */
+  .feed{display:flex;flex-direction:column;gap:10px;margin-top:12px}
+  .post{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:10px 14px}
+  .pmeta{display:flex;align-items:center;gap:7px;font-size:12px;color:var(--mut);flex-wrap:wrap}
+  .uav{width:24px;height:24px;border-radius:50%;flex:0 0 24px;display:flex;align-items:center;justify-content:center;color:#fff;font-size:10px;font-weight:800}
+  .uav.ARMY{background:linear-gradient(135deg,#5b3bd6,var(--army))}
+  .uav.BLINK{background:linear-gradient(135deg,#d63b7e,var(--blink))}
+  .uav.SYS{background:linear-gradient(135deg,#475569,#64748b)}
+  .pmeta b{color:var(--ink2)}
+  .ptext{font-size:14px;margin:6px 0 8px;white-space:pre-wrap;overflow-wrap:anywhere}
+  .actions{display:flex;gap:8px;font-size:12px}
+  .pillbtn{display:flex;align-items:center;gap:6px;background:var(--card2);border:1px solid transparent;
+    color:var(--ink2);border-radius:999px;padding:4px 11px;font-weight:600}
+  .pillbtn:hover{border-color:var(--line)}
+  .pillbtn.voted{color:var(--up)}
+  .cmt{margin:8px 0 0 30px;border-left:2px solid var(--line2);padding:6px 0 0 10px}
+  .replying{font-size:12px;color:var(--note);margin-top:6px;display:none}
+  /* pinned feature cards */
+  .pinned{border:1px solid var(--note);border-radius:14px;background:linear-gradient(180deg,rgba(245,158,11,.10),rgba(245,158,11,.02));padding:12px 14px;margin-top:12px}
+  .pinned .ph{display:flex;align-items:center;gap:8px;font-weight:800;font-size:13px;color:#fde68a;margin-bottom:4px}
+  .pinned .pp{font-size:13.5px;color:var(--ink)}
+  .slotwrap{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:10px 0}
+  @media(max-width:560px){.slotwrap{grid-template-columns:1fr}}
+  .slot{border:1px dashed var(--line);border-radius:10px;padding:9px 11px;min-height:56px;font-size:12.5px}
+  .slot .sh{font-size:10.5px;font-weight:800;margin-bottom:4px}
+  .slot.army .sh{color:#c9b5ff}.slot.blink .sh{color:#ffb1cd}
+  .slot.filled{border-style:solid;background:var(--card2)}
+  .spin{display:inline-block;width:11px;height:11px;border:2px solid var(--line);border-top-color:var(--note);border-radius:50%;animation:spin .8s linear infinite;vertical-align:-1px}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  .published{margin-top:6px;border:1px solid var(--good);border-radius:10px;padding:9px 11px;background:rgba(52,211,153,.07);font-size:13px}
+  .addrow{display:flex;gap:8px;margin-top:8px}
+  .addrow input{flex:1;border-radius:999px}
+  .pollopt{position:relative;display:block;width:100%;text-align:left;border:1px solid var(--line);border-radius:9px;
+    padding:8px 12px;font-size:13.5px;background:var(--card2);color:var(--ink);margin-top:6px;overflow:hidden}
+  .pollopt .fillbar{position:absolute;inset:0;width:0;background:rgba(113,147,255,.16);transition:width .5s ease}
+  .pollopt span{position:relative}
+  .sysnote{font-size:12px;color:var(--mut);border:1px dashed var(--line);border-radius:9px;padding:7px 10px;margin-top:8px}
+  /* composer */
+  .composer{position:sticky;bottom:0;background:var(--bg);padding:10px 0 14px;border-top:1px solid var(--line2);margin-top:14px}
+  .composer .row{display:flex;gap:8px}
+  .composer textarea{flex:1;resize:none;min-height:44px;border-radius:12px}
+  /* done */
+  .rejoin{font-size:22px;font-weight:800;letter-spacing:3px;background:var(--card2);border:1px dashed var(--note);
+    color:#fde68a;border-radius:12px;padding:10px 18px;display:inline-block;margin:10px 0}
+  footer{max-width:760px;margin:20px auto;padding:0 14px;font-size:11px;color:var(--mut);text-align:center}
+</style>
+</head>
+<body>
+
+<div class="topnav">
+  <div class="logo"><div class="snoo">🎤</div><span id="t-brand">r/kpop</span></div>
+  <span class="who" id="who" hidden>· <b id="me-handle"></b> <span class="flair" id="me-flair"></span></span>
+  <button class="langbtn" id="langbtn">中文</button>
+</div>
+<div class="disclose" id="disclose"></div>
+
+<div class="wrap">
+
+  <!-- ============ JOIN + CONSENT ============ -->
+  <section class="screen on" id="s-join">
+    <div class="panel">
+      <h2 id="t-join-h"></h2>
+      <div class="sub" id="t-join-sub"></div>
+      <div class="field"><label id="t-cohort"></label><input id="in-cohort" maxlength="12" style="text-transform:uppercase" placeholder="e.g. PILOT1"/></div>
+      <div class="field"><label id="t-rejoin"></label><input id="in-rejoin" maxlength="8" style="text-transform:uppercase" placeholder="—"/></div>
+      <div class="field"><label id="t-fandom"></label>
+        <div class="opts" id="fandom-opts">
+          <button class="opt" data-f="ARMY">ARMY <span style="color:var(--mut);font-weight:500">(BTS)</span></button>
+          <button class="opt" data-f="BLINK">BLINK <span style="color:var(--mut);font-weight:500">(BLACKPINK)</span></button>
+        </div>
+      </div>
+      <label class="check"><input type="checkbox" id="c-age"/><span id="t-age"></span></label>
+      <div class="consentbox"><b id="t-consent-h"></b> <span id="t-consent-b"></span>
+        <label class="check" style="margin:10px 0 0"><input type="checkbox" id="c-consent"/><span id="t-consent-ok"></span></label>
+      </div>
+      <div class="err" id="join-err"></div>
+      <button class="btn" id="join-go" disabled></button>
+      <div class="offline-note" id="offline-note" hidden></div>
+    </div>
+  </section>
+
+  <!-- ============ SESSION ============ -->
+  <section class="screen" id="s-session">
+    <div class="daybar"><span id="t-daylab"></span><b id="day-num"></b><button class="btn ghost end" id="finish-btn" style="padding:7px 16px;font-size:13px"></button></div>
+    <div id="pinned-mount"></div>
+    <div class="feed" id="feed"></div>
+    <div class="composer">
+      <div class="replying" id="replying"></div>
+      <div class="row">
+        <textarea id="composer-input"></textarea>
+        <button class="btn" id="post-btn"></button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ DONE ============ -->
+  <section class="screen" id="s-done">
+    <div class="panel" style="text-align:center">
+      <h2 id="t-done-h"></h2>
+      <div class="sub" id="t-done-sub"></div>
+      <div><span class="rejoin" id="rejoin-code"></span></div>
+      <div class="sub" id="t-rejoin-keep"></div>
+      <div style="margin:14px 0"><button class="btn gold" id="survey-btn" hidden></button></div>
+      <div class="consentbox" style="text-align:left"><b id="t-debrief-h"></b> <span id="t-debrief-b"></span></div>
+    </div>
+  </section>
+
+</div>
+<footer id="t-footer"></footer>
+
+<script src="assets/config.js?v=4"></script>
+<script>
+/* ================================================================== i18n */
+const STR = {
+  en: {
+    brand:"r/kpop", disclose:"ⓘ automated: daily activities and layout on this community are automated. your posts are your own.",
+    join_h:"Join today's community session", join_sub:"A small K-pop community. Browse, react, and post like you would on any forum.",
+    cohort:"Session code (from the study team)", rejoin:"Your personal code (if you joined on a previous day — leave empty on Day 1)",
+    fandom:"Which fandom are you part of?", age:"I confirm I am 18 or older.",
+    consent_h:"Consent & what's logged.", consent_b:"This is a research platform. Your posts, reactions, and the text you write are recorded for research, including the original (pre-moderation) wording. You may see uncivil content. Participation is voluntary and you can stop anytime.",
+    consent_ok:"I understand and consent.", join_go:"Enter the community",
+    offline:"No backend configured — running in single-browser preview mode (open two windows to simulate two participants).",
+    daylab:"Day", finish:"Finish today", post:"Post", composer_ph:"add to the discussion…",
+    replying_to:"replying to", cancel:"(tap to cancel)",
+    note_ph:"your song + one line on why…", note_add:"Add yours", note_pin:"📌 Pinned · Community Note",
+    note_wait:"waiting for a fan from the other group to finish this with you…",
+    note_you:"you", note_sys:"No live partner was available just now, so a clearly-labelled system-generated sample completed the note. In a live session this comes from a fan in the other group.",
+    poll_pin:"📌 Pinned · Daily Poll", published:"published to the community",
+    done_h:"That's it for today 🎉", done_sub:"Thanks for taking part. Your personal code (needed to rejoin on the next day):",
+    rejoin_keep:"Screenshot or write it down — you'll enter it tomorrow.",
+    survey:"📋 Open today's short survey", debrief_h:"About this community.",
+    debrief_b:"This platform is part of a research study on how online communities talk to each other. Some daily activities are automated (they never write your posts). If any content upset you, please contact the study team.",
+    err_cohort:"Enter the session code from the study team.", err_nocohort:"That session code wasn't found.",
+    err_closed:"This session is closed.", err_rejoin:"That personal code wasn't found for this session.",
+    footer:"Research platform · not affiliated with Reddit, HYBE, or YG · posts are recorded for research",
+    seedname:"community", err_generic:"Could not connect — try again.",
+  },
+  zh: {
+    brand:"r/kpop", disclose:"ⓘ 自动化说明：本社区的每日活动与排版由系统自动生成。你的发言完全由你自己撰写。",
+    join_h:"加入今天的社区活动", join_sub:"一个小型K-pop社区。像在任何论坛一样浏览、互动、发帖。",
+    cohort:"场次代码（由研究团队提供）", rejoin:"你的个人代码（如果你前一天参加过——第一天留空）",
+    fandom:"你属于哪个粉丝群体？", age:"我确认我已年满18岁。",
+    consent_h:"知情同意与数据记录。", consent_b:"这是一个研究平台。你的发帖、互动及输入的文字（包括未经处理的原文）将被记录用于研究。你可能会看到不文明的内容。参与完全自愿，你可以随时退出。",
+    consent_ok:"我已了解并同意。", join_go:"进入社区",
+    offline:"未配置后端——当前为单机预览模式（打开两个窗口可模拟两名参与者）。",
+    daylab:"第", finish:"结束今天", post:"发布", composer_ph:"参与讨论…",
+    replying_to:"回复", cancel:"（点击取消）",
+    note_ph:"你的歌 + 一句理由…", note_add:"添加我的", note_pin:"📌 置顶 · 社区共创",
+    note_wait:"等待另一个粉丝群体的成员来完成…",
+    note_you:"你", note_sys:"刚才没有在线的搭档，因此由明确标注的系统示例完成了这次共创。正式场次中这将来自另一群体的真实粉丝。",
+    poll_pin:"📌 置顶 · 每日投票", published:"已发布到社区",
+    done_h:"今天到此为止 🎉", done_sub:"感谢参与。你的个人代码（下次进入时需要）：",
+    rejoin_keep:"请截图或记下来——明天进入时输入。",
+    survey:"📋 填写今日简短问卷", debrief_h:"关于本社区。",
+    debrief_b:"该平台属于一项关于网络社区交流方式的研究。部分每日活动由系统自动生成（它们不会代写你的发言）。如有内容令你不适，请联系研究团队。",
+    err_cohort:"请输入研究团队提供的场次代码。", err_nocohort:"未找到该场次代码。",
+    err_closed:"该场次已关闭。", err_rejoin:"未找到该个人代码。",
+    footer:"研究平台 · 与Reddit、HYBE、YG无关 · 发言将被记录用于研究",
+    seedname:"社区", err_generic:"连接失败——请重试。",
+  },
+};
+let LANG = "en";
+const T = (k) => (STR[LANG] && STR[LANG][k]) || STR.en[k] || k;
+
+/* ================================================================== client */
+const $ = (s) => document.querySelector(s);
+const qs = new URLSearchParams(location.search);
+const CFG = window.STUDY_CONFIG || {};
+const BACKEND = (qs.get("backend") || CFG.BACKEND_URL || "").replace(/\/$/, "");
+const hasBackend = !!BACKEND;
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+const esc = (s) => { const d = document.createElement("div"); d.textContent = s; return d.innerHTML; };
+const initials = (n) => String(n||"?").replace(/[^a-zA-Z]/g, "").slice(0, 2).toUpperCase() || "?";
+const uid = (p) => p + "_" + Math.random().toString(36).slice(2, 9) + Date.now().toString(36).slice(-4);
+
+async function call(path, opts = {}) {
+  const r = await fetch(BACKEND + path, {
+    method: opts.method || "GET",
+    headers: { "content-type": "application/json" },
+    body: opts.body ? JSON.stringify(opts.body) : undefined,
+  });
+  const data = await r.json().catch(() => ({}));
+  if (!r.ok) throw Object.assign(new Error(data.error || "http " + r.status), { status: r.status, code: data.error });
+  return data;
+}
+
+/* ---- offline preview client (single browser, localStorage-shared across windows) ---- */
+const LSK = "defuselab_v3_local";
+const NOTE_LOCAL = { en: { prompt: "Community Note — today's playlist: add the song that made YOU fall for K-pop. Publishes once one ARMY and one BLINK have both added one.", artifact: '🎵 Community Playlist — "the songs that made us fall for K-pop"', fillerText: "adding 'As If It's Your Last' — the energy pulled me in" } };
+const POLL_LOCAL = { en: { prompt: "Daily vibe check — how are we feeling today?", options: ["😤 hyped", "😐 meh", "🫠 tired", "🎧 locked in"] } };
+const lload = () => { try { return JSON.parse(localStorage.getItem(LSK)) || { participants: [], events: [], collabs: [], votes: [] }; } catch { return { participants: [], events: [], collabs: [], votes: [] }; } };
+const lsave = (s) => localStorage.setItem(LSK, JSON.stringify(s));
+const OFFLINE = {
+  start(b) {
+    const s = lload();
+    const day = Number(qs.get("day")) || 1;
+    let part = b.rejoin ? s.participants.find((p) => p.rejoin_code === String(b.rejoin).toUpperCase()) : null;
+    if (!part) {
+      const arm = ["EXPT", "CTRL"].includes(qs.get("arm")) ? qs.get("arm") : ["EXPT", "CTRL"][s.participants.length % 2];
+      const flair = b.flair || "ARMY";
+      part = { id: uid("p"), rejoin_code: Math.random().toString(36).slice(2, 8).toUpperCase(), handle: (flair === "ARMY" ? "army_" : "blink_") + Math.random().toString(36).slice(2, 6), arm, flair };
+      s.participants.push(part); lsave(s);
+    }
+    if (!s.events.some((e) => e.type === "post" && e.day === day)) {
+      [["ARMY","seed_mod_a","BTS is the defining group of this generation, it's genuinely not close 🏆 discuss."],
+       ["BLINK","seed_mod_b","BLACKPINK outsold and outperformed — the numbers don't lie. change my mind."]].forEach(([flair, author, text]) => {
+        ["EXPT","CTRL"].forEach((arm) => s.events.push({ id: uid("ev"), session_id: null, arm, day, flair, author, type: "post", text_raw: text, thread_id: "seed", created_at: Date.now() }));
+      });
+      lsave(s);
+    }
+    return { sessionId: uid("sess") , participantId: part.id, rejoinCode: part.rejoin_code, handle: part.handle,
+      arm: part.arm, flair: part.flair, day, language: "en", cohortLabel: "LOCAL PREVIEW", offline: true, _part: part,
+      note: part.arm === "EXPT" && day === 2 ? NOTE_LOCAL.en : null, poll: part.arm === "CTRL" && day === 2 ? POLL_LOCAL.en : null };
+  },
+  feed(sess, since) {
+    const s = lload();
+    return { posts: s.events.filter((e) => e.arm === sess.arm && e.day === sess.day && e.created_at > since && ["post","comment","note_published"].includes(e.type)).slice(-200) };
+  },
+  event(sess, type, text, threadId) {
+    const s = lload();
+    s.events.push({ id: uid("ev"), session_id: sess.sessionId, arm: sess.arm, day: sess.day, flair: sess.flair, author: sess.handle, type, text_raw: text, thread_id: threadId || "seed", created_at: Date.now() });
+    lsave(s);
+  },
+  contribute(sess, text) {
+    const s = lload();
+    const match = s.collabs.find((c) => c.status === "waiting" && c.a_flair !== sess.flair);
+    if (match) {
+      match.status = "paired"; match.b_flair = sess.flair; match.b_text = text; match.b_handle = sess.handle; match.is_live_paired = 1;
+      s.events.push({ id: uid("ev"), session_id: sess.sessionId, arm: "EXPT", day: sess.day, flair: "SYS", author: "kpop_mod", type: "note_published",
+        text_raw: `${NOTE_LOCAL.en.artifact} — "${match.a_text}" (${match.a_handle} · ${match.a_flair}) × "${text}" (${sess.handle} · ${sess.flair})`, thread_id: "note", created_at: Date.now() });
+      lsave(s);
+      return { collabId: match.id, status: "paired", isLivePaired: true, partner: { flair: match.a_flair, text: match.a_text, handle: match.a_handle }, artifact: NOTE_LOCAL.en.artifact };
+    }
+    const col = { id: uid("col"), a_flair: sess.flair, a_text: text, a_handle: sess.handle, status: "waiting", created_at: Date.now() };
+    s.collabs.push(col); lsave(s);
+    return { collabId: col.id, status: "waiting" };
+  },
+  status(id) {
+    const s = lload();
+    const col = s.collabs.find((c) => c.id === id);
+    if (!col) return { status: "unknown" };
+    if (col.status === "waiting" && Date.now() - col.created_at > (CFG.PAIRING_TIMEOUT_MS || 12000)) {
+      col.status = "filler"; col.filler = 1; col.b_flair = col.a_flair === "ARMY" ? "BLINK" : "ARMY"; col.b_text = NOTE_LOCAL.en.fillerText; col.b_handle = "system_sample"; lsave(s);
+    }
+    return { status: col.status, isLivePaired: !!col.is_live_paired, filler: !!col.filler,
+      partner: col.b_text ? { flair: col.b_flair, text: col.b_text, handle: col.b_handle } : null, artifact: NOTE_LOCAL.en.artifact };
+  },
+  vote(sess, opt) { const s = lload(); s.votes.push({ day: sess.day, option_idx: opt }); lsave(s); },
+  results(sess) { const s = lload(); return { counts: POLL_LOCAL.en.options.map((_, i) => s.votes.filter((v) => v.day === sess.day && v.option_idx === i).length) }; },
+};
+
+/* ================================================================== state */
+let SESS = null;           // {sessionId, arm, flair, day, handle, rejoinCode, language, note, poll}
+let lastTs = 0, replyTo = null, pollTimer = null;
+const seenIds = new Set();
+
+/* ================================================================== i18n render */
+function renderStrings() {
+  $("#t-brand").textContent = T("brand");
+  $("#disclose").textContent = T("disclose");
+  $("#t-join-h").textContent = T("join_h"); $("#t-join-sub").textContent = T("join_sub");
+  $("#t-cohort").textContent = T("cohort"); $("#t-rejoin").textContent = T("rejoin");
+  $("#t-fandom").textContent = T("fandom"); $("#t-age").textContent = T("age");
+  $("#t-consent-h").textContent = T("consent_h"); $("#t-consent-b").textContent = T("consent_b");
+  $("#t-consent-ok").textContent = T("consent_ok"); $("#join-go").textContent = T("join_go");
+  $("#t-daylab").textContent = T("daylab"); $("#finish-btn").textContent = T("finish");
+  $("#post-btn").textContent = T("post"); $("#composer-input").placeholder = T("composer_ph");
+  $("#t-done-h").textContent = T("done_h"); $("#t-done-sub").textContent = T("done_sub");
+  $("#t-rejoin-keep").textContent = T("rejoin_keep"); $("#survey-btn").textContent = T("survey");
+  $("#t-debrief-h").textContent = T("debrief_h"); $("#t-debrief-b").textContent = T("debrief_b");
+  $("#t-footer").textContent = T("footer");
+  $("#langbtn").textContent = LANG === "en" ? "中文" : "EN";
+}
+$("#langbtn").onclick = () => { LANG = LANG === "en" ? "zh" : "en"; renderStrings(); };
+
+/* ================================================================== join */
+let pickFlair = null;
+$("#fandom-opts").addEventListener("click", (e) => {
+  const b = e.target.closest("[data-f]"); if (!b) return;
+  pickFlair = b.dataset.f;
+  [...$("#fandom-opts").children].forEach((x) => x.classList.toggle("on", x === b));
+  validate();
+});
+$("#c-age").onchange = validate; $("#c-consent").onchange = validate;
+$("#in-cohort").oninput = validate;
+function validate() {
+  $("#join-go").disabled = !(pickFlair && $("#c-age").checked && $("#c-consent").checked && ($("#in-cohort").value.trim() || !hasBackend));
+}
+function screen(id) { document.querySelectorAll(".screen").forEach((s) => s.classList.toggle("on", s.id === "s-" + id)); }
+
+async function join() {
+  $("#join-err").textContent = "";
+  const body = { cohort: $("#in-cohort").value.trim().toUpperCase(), flair: pickFlair, rejoin: $("#in-rejoin").value.trim() || undefined };
+  try {
+    const s = hasBackend ? await call("/api/session/start", { method: "POST", body }) : OFFLINE.start(body);
+    SESS = s;
+    if (s.language && STR[s.language]) { LANG = s.language; renderStrings(); }
+    localStorage.setItem("defuselab_v3_rejoin", JSON.stringify({ cohort: body.cohort, rejoin: s.rejoinCode, flair: s.flair }));
+    $("#who").hidden = false;
+    $("#me-handle").textContent = s.handle;
+    $("#me-flair").className = "flair " + s.flair; $("#me-flair").textContent = s.flair;
+    $("#day-num").textContent = LANG === "zh" ? s.day + "天" : s.day;
+    screen("session");
+    mountPinned();
+    startFeed();
+  } catch (e) {
+    const map = { no_cohort: "err_nocohort", cohort_closed: "err_closed", bad_rejoin: "err_rejoin" };
+    $("#join-err").textContent = T(map[e.code] || (body.cohort ? "err_generic" : "err_cohort"));
+  }
+}
+$("#join-go").onclick = join;
+
+/* ================================================================== feed */
+function postCard(e) {
+  const mine = SESS && e.session_id === SESS.sessionId;
+  const isNote = e.type === "note_published";
+  const el = document.createElement("div");
+  el.className = "post"; el.dataset.id = e.id;
+  el.innerHTML = `
+    <div class="pmeta"><span class="uav ${e.flair}">${initials(e.author)}</span>
+      <b>${esc(e.author || "")}</b>
+      <span class="flair ${isNote ? "NOTE" : e.flair}">${isNote ? "Community Note" : e.flair}</span>
+      ${mine ? '<span style="color:var(--note)">· ' + esc(T("note_you")) + "</span>" : ""}</div>
+    <div class="ptext"></div>
+    <div class="actions">
+      <span class="pillbtn vote">⬆ <span class="n">${1 + Math.floor(Math.random() * 30)}</span> ⬇</span>
+      <button class="pillbtn reply">↩ reply</button>
+      <button class="pillbtn share">↗</button>
+    </div>
+    <div class="cmts"></div>`;
+  el.querySelector(".ptext").textContent = e.text_raw;
+  el.querySelector(".vote").onclick = (ev) => {
+    const v = ev.currentTarget; const n = v.querySelector(".n");
+    const on = v.classList.toggle("voted");
+    n.textContent = +n.textContent + (on ? 1 : -1);
+    if (!mine) apiEvent(SESS.flair !== e.flair && e.flair !== "SYS" ? "cross" : "like", "like:" + e.text_raw.slice(0, 40), e.id);
+  };
+  el.querySelector(".reply").onclick = () => {
+    replyTo = e;
+    const r = $("#replying");
+    r.style.display = "block";
+    r.textContent = T("replying_to") + " " + (e.author || "") + " " + T("cancel");
+    $("#composer-input").focus();
+  };
+  el.querySelector(".share").onclick = (ev) => {
+    ev.currentTarget.style.color = "var(--good)";
+    apiEvent("share", e.text_raw.slice(0, 40), e.id);
+  };
+  return el;
+}
+function placeEvent(e) {
+  if (seenIds.has(e.id)) return;
+  seenIds.add(e.id);
+  lastTs = Math.max(lastTs, e.created_at);
+  if (e.type === "comment" && e.thread_id && e.thread_id !== "seed") {
+    const parent = document.querySelector(`.post[data-id="${e.thread_id}"] .cmts`);
+    if (parent) {
+      const c = document.createElement("div"); c.className = "cmt";
+      c.innerHTML = `<div class="pmeta"><span class="uav ${e.flair}">${initials(e.author)}</span><b>${esc(e.author||"")}</b> <span class="flair ${e.flair}">${e.flair}</span></div><div class="ptext"></div>`;
+      c.querySelector(".ptext").textContent = e.text_raw;
+      parent.appendChild(c);
+      return;
+    }
+  }
+  $("#feed").appendChild(postCard(e));
+}
+async function pollFeed() {
+  try {
+    const data = hasBackend
+      ? await call(`/api/feed?sessionId=${encodeURIComponent(SESS.sessionId)}&since=${lastTs}`)
+      : OFFLINE.feed(SESS, lastTs);
+    (data.posts || []).forEach(placeEvent);
+  } catch {}
+}
+function startFeed() { pollFeed(); pollTimer = setInterval(pollFeed, 4000); }
+
+async function apiEvent(type, text, threadId) {
+  try {
+    if (hasBackend) await call("/api/event", { method: "POST", body: { sessionId: SESS.sessionId, type, textRaw: text, threadId } });
+    else OFFLINE.event(SESS, type, text, threadId);
+  } catch {}
+}
+
+$("#post-btn").onclick = async () => {
+  const i = $("#composer-input"); const t = i.value.trim(); if (!t) return;
+  const threadId = replyTo ? replyTo.id : "seed";
+  const type = replyTo ? "comment" : "post";
+  i.value = ""; replyTo = null; $("#replying").style.display = "none";
+  await apiEvent(type, t, threadId);
+  pollFeed();
+};
+$("#replying").onclick = () => { replyTo = null; $("#replying").style.display = "none"; };
+
+/* ================================================================== pinned features (day 2) */
+function mountPinned() {
+  const m = $("#pinned-mount"); m.innerHTML = "";
+  if (SESS.note) mountNote(m);
+  if (SESS.poll) mountPoll(m);
+}
+function mountNote(m) {
+  const card = document.createElement("div"); card.className = "pinned";
+  card.innerHTML = `
+    <div class="ph">${esc(T("note_pin"))}</div>
+    <div class="pp"></div>
+    <div class="slotwrap">
+      <div class="slot army" id="slotA"><div class="sh">ARMY</div><div class="empty"><span class="spin"></span> …</div></div>
+      <div class="slot blink" id="slotB"><div class="sh">BLINK</div><div class="empty"><span class="spin"></span> …</div></div>
+    </div>
+    <div id="note-out"></div>
+    <div class="addrow"><input id="note-input" placeholder="${esc(T("note_ph"))}" maxlength="300"/><button class="btn gold" id="note-go">${esc(T("note_add"))}</button></div>`;
+  card.querySelector(".pp").textContent = SESS.note.prompt;
+  m.appendChild(card);
+  $("#note-go").onclick = () => runNote(card);
+}
+function fillSlot(sel, who) {
+  const el = $(sel); el.classList.add("filled");
+  el.innerHTML = `<div class="sh">${sel === "#slotA" ? "ARMY" : "BLINK"}</div>
+    <div style="font-size:11px;color:var(--mut);margin-bottom:2px">${esc(who.handle || "")}</div>${esc(who.text)}`;
+  const otherSel = sel === "#slotA" ? "#slotB" : "#slotA";
+  const o = $(otherSel);
+  if (o && !o.classList.contains("filled")) o.querySelector(".empty").innerHTML = `<span class="spin"></span> ` + esc(T("note_wait"));
+}
+async function runNote(card) {
+  const input = $("#note-input"); const text = input.value.trim(); if (!text) return;
+  $("#note-go").disabled = true; input.disabled = true;
+  fillSlot(SESS.flair === "ARMY" ? "#slotA" : "#slotB", { handle: SESS.handle, text });
+  let res;
+  try { res = hasBackend ? await call("/api/collab/contribute", { method: "POST", body: { sessionId: SESS.sessionId, text } }) : OFFLINE.contribute(SESS, text); }
+  catch { $("#note-go").disabled = false; input.disabled = false; return; }
+  let st = res.status === "paired" ? res : null;
+  while (!st || st.status === "waiting") {
+    await sleep(3000);
+    st = hasBackend ? await call("/api/collab/status?id=" + encodeURIComponent(res.collabId)) : OFFLINE.status(res.collabId);
+    if (st.status === "paired" || st.status === "filler") break;
+  }
+  if (st.partner) fillSlot(st.partner.flair === "ARMY" ? "#slotA" : "#slotB", st.partner);
+  const out = $("#note-out");
+  out.innerHTML = `<div class="published">✅ ${esc(st.artifact || "")} · ${esc(T("published"))}</div>` +
+    (st.filler ? `<div class="sysnote">${esc(T("note_sys"))}</div>` : "");
+  pollFeed();
+}
+function mountPoll(m) {
+  const card = document.createElement("div"); card.className = "pinned";
+  card.innerHTML = `<div class="ph">${esc(T("poll_pin"))}</div><div class="pp"></div><div id="poll-opts"></div>`;
+  card.querySelector(".pp").textContent = SESS.poll.prompt;
+  m.appendChild(card);
+  const opts = card.querySelector("#poll-opts");
+  SESS.poll.options.forEach((o, i) => {
+    const b = document.createElement("button"); b.className = "pollopt";
+    b.innerHTML = `<span class="fillbar"></span><span>${esc(o)}</span>`;
+    b.onclick = async () => {
+      try { hasBackend ? await call("/api/poll/vote", { method: "POST", body: { sessionId: SESS.sessionId, option: i } }) : OFFLINE.vote(SESS, i); } catch {}
+      const r = hasBackend ? await call("/api/poll/results?sessionId=" + encodeURIComponent(SESS.sessionId)).catch(() => null) : OFFLINE.results(SESS);
+      if (r && r.counts) {
+        const total = r.counts.reduce((a, x) => a + x, 0) || 1;
+        [...opts.children].forEach((el, j) => { el.querySelector(".fillbar").style.width = Math.round((r.counts[j] / total) * 100) + "%"; el.disabled = true; });
+      }
+    };
+    opts.appendChild(b);
+  });
+}
+
+/* ================================================================== finish */
+$("#finish-btn").onclick = async () => {
+  clearInterval(pollTimer);
+  try { if (hasBackend) await call("/api/session/end", { method: "POST", body: { sessionId: SESS.sessionId } }); } catch {}
+  $("#rejoin-code").textContent = SESS.rejoinCode || "—";
+  if (hasBackend) {
+    try {
+      const s = await call("/api/survey-link?sessionId=" + encodeURIComponent(SESS.sessionId));
+      if (s.url) { const b = $("#survey-btn"); b.hidden = false; b.onclick = () => window.open(s.url, "_blank"); }
+    } catch {}
+  }
+  screen("done");
+};
+
+/* ================================================================== boot */
+renderStrings();
+if (!hasBackend) { $("#offline-note").hidden = false; $("#offline-note").textContent = T("offline"); $("#in-cohort").value = "LOCAL"; }
+if (qs.get("cohort")) $("#in-cohort").value = qs.get("cohort").toUpperCase();
+try {
+  const saved = JSON.parse(localStorage.getItem("defuselab_v3_rejoin") || "null");
+  if (saved && saved.rejoin) { $("#in-rejoin").value = saved.rejoin; if (!$("#in-cohort").value) $("#in-cohort").value = saved.cohort || ""; }
+} catch {}
+validate();
+</script>
+</body>
+</html>

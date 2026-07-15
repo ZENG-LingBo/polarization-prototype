@@ -8,8 +8,13 @@ on real cross-device logging and live cross-fandom pairing.
 
 ## ▶ Live
 **https://zeng-lingbo.github.io/polarization-prototype/** → then pick an entrance:
-- **📱 Participant** → [`app.html`](app.html): the mobile **kfeed** app (onboarding → session → done).
-- **📊 Researcher** → [`dashboard.html`](dashboard.html): passphrase-gated metrics with source papers.
+- **💬 Participant (protocol v3)** → [`study.html`](study.html): join a **cohort session** with the
+  code from the study team — a live, shared Reddit-style forum (2 arms × 3 days, EN/中文, rejoin
+  codes, Day-2 Community Note vs. inert poll, end-of-day surveys). Needs the deployed
+  [`backend/`](backend/README.md); shows a single-browser preview mode without it.
+- **📊 Researcher** → [`dashboard.html`](dashboard.html): passphrase-gated — cohort/day control,
+  toxicity by arm × day, R1–R3 requirement checks, CSV/JSON export.
+- **📱 Legacy walkthrough** → [`app.html`](app.html): the earlier single-user 3-arm demo app.
 - **🧪 Protocol demo** → [`demo.html`](demo.html): a 1:1 **Reddit-style** walkthrough of the revised
   **2-arm × 3-day protocol** (PLAN.md §17): Day 1 baseline → Day 2 **Community Note** (vs. inert
   poll control) → Day 3 after, with Ray's three requirement checks, the researcher-only panel, and
@@ -28,6 +33,7 @@ instruments: [`MEASURES.md`](MEASURES.md) · rival-pair decision: [`FANDOM_SELEC
 | File | Role |
 |---|---|
 | `index.html` | Landing / router (participant vs. researcher; status + IRB note). |
+| `study.html` | **Participant app, protocol v3** — cohort join/rejoin, consent + 18+ + automation disclosure, live shared feed (polling), Day-2 Community Note (EXPT) / inert poll (CTRL), survey handoff, EN/中文. |
 | `app.html` | **Tester** app — Threads/X-style mobile feed. Onboarding → consent + 18+ + eligibility → persistent automation disclosure → session (C0 plain / C1 neutral Collab / C2 K-pop Collab) → done. **No meters, no arm label.** |
 | `dashboard.html` | **Researcher** dashboard — per-arm toxicity (C2<C1<C0 + contrasts), we/they, CIIM proxy, cross-fandom engagement, dose/pairing compliance, session table, CSV/JSON export, and a **measurement-provenance** panel citing each metric's source paper. |
 | `demo.html` | **Protocol demo** — Reddit-style page for the v3 protocol (2-arm × 3-day, Community Note vs. inert poll; PLAN.md §17). Self-contained, for advisor/demo use. |

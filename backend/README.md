@@ -1,60 +1,113 @@
-# DefuseLab Study 1 — backend (Cloudflare Worker + D1)
+# DefuseLab backend — deploy guide (protocol v3)
 
-Turns the prototype from an offline demo into a **real, cross-device study platform**: it assigns
-each participant an arm (C0/C1/C2) and fandom flair, logs every post/reaction with its
-pre-moderation text, drives **live cross-fandom Collab pairing**, and serves the researcher
-dashboard's aggregates behind a passphrase.
+The study backend is **one Cloudflare Worker + one D1 database** (both free tier). It powers
+`study.html` (participant app) and `dashboard.html` (researcher view): cohort group sessions,
+2-arm assignment (EXPT community note / CTRL inert poll), the shared live feed, Day 1–3
+tracking with rejoin codes, live cross-fandom Community-Note pairing, poll votes, end-of-day
+survey links, and token-gated aggregates/export.
 
-> The frontend works **fully offline** with no backend (localStorage + a disclosed sample partner).
-> Deploy this only when you want real cross-device logging and live pairing. Nothing here is needed
-> for a single-machine walkthrough.
+It calls **no LLM** — the note templates are static, pre-screened strings, and contributions
+are assembled verbatim. Toxicity stored here is the demo heuristic; the pre-moderation
+`text_raw` is kept so the real study rescores with Perspective API + the validated lexicon.
+(Separate from the legacy [`../worker/`](../worker/) OpenAI proxy of the archived
+Lakers/Celtics demo.)
 
-## ✅ Deploy from the dashboard (no terminal)
-1. **Create the database.** Cloudflare dashboard → **Storage & Databases → D1 → Create** →
-   name it `defuselab-study`. Open its **Console**, paste all of [`schema.sql`](schema.sql), **Run**.
-2. **Create the Worker.** **Workers & Pages → Create → Worker** → name it `defuselab-study` →
-   **Deploy** (starter), then **Edit code** → delete the starter, **paste all of [`worker.js`](worker.js)** → **Deploy**.
-3. **Bind D1.** Worker → **Settings → Bindings → Add → D1 database** → variable name **`DB`** →
-   select `defuselab-study` → **Deploy**.
-4. **Set the researcher passphrase.** Worker → **Settings → Variables and Secrets → Add** →
-   name **`RESEARCHER_TOKEN`**, value = a passphrase you choose, **Encrypt** → **Deploy**.
-5. **Point the frontend at it.** Copy the Worker URL
-   (`https://defuselab-study.<your-subdomain>.workers.dev`) into `assets/config.js` →
-   `BACKEND_URL`. Commit + push. Done — the app now logs to D1 and the dashboard reads live data.
+---
 
-Prefer the CLI? `npx wrangler d1 create defuselab-study` → put the id in `wrangler.toml` →
-`npx wrangler d1 execute defuselab-study --file=backend/schema.sql` →
-`npx wrangler secret put RESEARCHER_TOKEN` → `npx wrangler deploy`.
+## ✅ Deploy from the Cloudflare dashboard (no terminal, ~15 minutes)
 
-## Test live cross-fandom pairing
-Open the app in two windows forcing the **same arm** and **opposite fandoms**:
-- `app.html?arm=C2&flair=ARMY`  and  `app.html?arm=C2&flair=BLINK`
+1. **Create the database.** Cloudflare dashboard → *Storage & Databases → D1 → Create
+   database* → name it exactly `defuselab-study`.
+2. **Apply the schema.** Open the database → *Console* → paste the whole of
+   [`schema.sql`](schema.sql) → *Run*.
+3. **Create the Worker.** *Workers & Pages → Create → Worker* → name `defuselab-study` →
+   *Deploy* the starter, then *Edit code* → replace everything with
+   [`worker.js`](worker.js) → *Deploy*.
+4. **Bind the database.** Worker → *Settings → Bindings → Add → D1 database* →
+   Variable name **`DB`** → select `defuselab-study` → Save/redeploy.
+5. **Add the researcher passphrase.** Worker → *Settings → Variables and Secrets → Add* →
+   name **`RESEARCHER_TOKEN`**, type **Secret** → value = the passphrase the team will type
+   into the dashboard. Save.
+6. **Add the survey URLs** (plain-text variables; can be added later):
+   **`SURVEY_URL_D1`**, **`SURVEY_URL_D2`**, **`SURVEY_URL_D3`** (+ `_ZH` variants for
+   Chinese cohorts, e.g. **`SURVEY_URL_D1_ZH`**). The worker appends
+   `?pid=&day=&arm=&lang=&cohort=` so survey responses join to platform data.
+   Optional: **`PAIRING_TIMEOUT_MS`** (default 90000) — how long a Community Note waits for
+   a live rival-fandom partner before a clearly-disclosed system sample completes it.
+7. **Copy the Worker URL** (`https://defuselab-study.<subdomain>.workers.dev`) and send it
+   to whoever maintains the repo. They will:
+   - set `BACKEND_URL` in [`../assets/config.js`](../assets/config.js) to that URL, and
+   - if the site is *not* served from `https://zeng-lingbo.github.io`, add the real origin
+     to `ALLOWED_ORIGINS` at the top of `worker.js`,
+   then commit + push so GitHub Pages serves the connected frontend.
 
-Start the Collab in both. Each waits on the pairing gate until the other contributes, then both
-co-publish the **same** joint artifact — a true live pair (`is_live_paired=1`), not a filler.
+### CLI alternative (wrangler)
+```
+cd backend
+npx wrangler d1 create defuselab-study          # paste the returned id into wrangler.toml
+npx wrangler d1 execute defuselab-study --file=schema.sql --remote
+npx wrangler secret put RESEARCHER_TOKEN
+npx wrangler deploy
+```
+
+---
+
+## Running a session (researcher workflow)
+
+1. Open `dashboard.html`, enter the passphrase.
+2. **Create a cohort** (code like `PILOT1`, pick EN or 中文). Creation seeds the Day-1
+   discussion prompts for both arms.
+3. Send participants to `study.html` with the cohort code. They pick their fandom, consent
+   (18+, logging disclosure), and land in a **live shared feed** — participants in the same
+   cohort+arm see each other's posts. Arms and flairs auto-balance; participants never see
+   arm names (blinding).
+4. End of each day: participants tap **Finish today** → get their **rejoin code** (links
+   them across days) → the **survey button** (your SURVEY_URL for that day, with
+   pid/day/arm/lang/cohort prefilled).
+5. Next day: **advance the cohort's day** on the dashboard (re-seeds that day's prompts).
+   Day 2 shows the **Community Note** to EXPT and the **inert poll** to CTRL; Day 3 has no
+   feature (carry-over). Participants rejoin with cohort code + rejoin code.
+6. Watch the **R1–R3 requirement checks** and arm×day toxicity live; export CSV/JSON anytime.
+7. **Close** the cohort when done.
+
+### Local development / testing
+```
+npx wrangler d1 execute defuselab-study --local --file=backend/schema.sql --config backend/wrangler.toml
+npx wrangler dev --config backend/wrangler.toml --local --port 8787 \
+  --var RESEARCHER_TOKEN:test123 --var SURVEY_URL_D1:https://example.com/s1
+python -m http.server 8000
+# then open: http://127.0.0.1:8000/study.html?backend=http://127.0.0.1:8787
+#            http://127.0.0.1:8000/dashboard.html?backend=http://127.0.0.1:8787
+```
 
 ## Endpoints
 | Method · path | Purpose | Auth |
 |---|---|---|
-| `POST /api/session/start` | assign arm + flair, create session | — |
-| `POST /api/event` | log post/comment/like/share/cross (stores pre-moderation text) | — |
-| `POST /api/collab/contribute` | submit a Collab piece; match a waiting rival-fandom one | — |
-| `GET /api/collab/status?id=` | poll the pairing gate (live pair, or disclosed sample on timeout) | — |
+| `POST /api/session/start` | join/rejoin a cohort (balanced arm+flair, rejoin codes) | — |
+| `GET /api/feed?sessionId&since` | shared live feed for the participant's cohort+arm+day | — |
+| `POST /api/event` | log post/comment/like/share/cross (pre-moderation text) | — |
+| `POST /api/collab/contribute` | Community Note contribution; pairs across fandoms (EXPT day 2) | — |
+| `GET /api/collab/status?id=` | pairing gate (live pair, or disclosed sample on timeout) | — |
+| `POST /api/poll/vote` · `GET /api/poll/results` | inert daily poll (CTRL day 2) | — |
+| `GET /api/survey-link?sessionId` | end-of-day survey URL with pid/day/arm/lang/cohort | — |
 | `POST /api/session/end` | close a session | — |
-| `GET /api/dashboard/summary` | per-arm aggregates | **Bearer `RESEARCHER_TOKEN`** |
-| `GET /api/dashboard/sessions` | raw sessions/events/collabs | **Bearer `RESEARCHER_TOKEN`** |
+| `POST /api/dashboard/cohort` · `…/cohort/day` · `…/cohort/close` | cohort admin | **Bearer `RESEARCHER_TOKEN`** |
+| `GET /api/dashboard/summary` | arm×day aggregates + R1–R3 checks | **Bearer** |
+| `GET /api/dashboard/sessions` | raw export (sessions/events/collabs/participants) | **Bearer** |
 
-## Notes
-- **CORS:** edit `ALLOWED_ORIGINS` in `worker.js` if your Pages origin differs.
-- **Blinding:** dashboard endpoints require the token so participants can't reach the analytics.
-- **Toxicity** stored here is the demo keyword heuristic; `text_raw` keeps the pre-moderation wording
-  so the study can rescore it with **Perspective API + the validated K-pop lexicon** (see `MEASURES.md`).
-- **IRB:** logging real participants' data is IRB-gated (`PLAN.md` §11) — this is for internal
-  instrument-building until approval.
-- Separate from the legacy [`../worker/`](../worker/) OpenAI proxy (that served the archived
-  Lakers/Celtics demo); this backend does not call any LLM.
+## What the backend expects (exact names)
+| Thing | Name | Where |
+|---|---|---|
+| D1 binding | `DB` | Worker → Settings → Bindings |
+| Researcher passphrase | `RESEARCHER_TOKEN` | Secret |
+| Survey URLs | `SURVEY_URL_D1..D3` (+`_ZH`) | Plain variables |
+| Pairing filler timeout | `PAIRING_TIMEOUT_MS` (optional) | Plain variable |
+| Frontend origin | `ALLOWED_ORIGINS` list | top of `worker.js` |
+| Frontend → backend | `BACKEND_URL` | `assets/config.js` |
 
-## Files
-- `worker.js` — the Worker (D1-backed session logging + pairing + dashboard aggregates)
-- `schema.sql` — D1 tables
-- `wrangler.toml` — config (D1 binding + secret placeholders; no secrets committed)
+## Ethics / IRB reminders (before any real recruitment)
+Pre-moderation text is stored by design (PLAN.md §10–§11): agree a retention window, restrict
+dashboard-passphrase circulation, run the demographic pre-selection form **outside** the app,
+and confirm IRB status. This build is for **internal pilot testing** until those are settled.
+The Day-1 seed prompts in `worker.js` (`SEEDS`) are placeholders — replace with the team's
+finalized discussion prompts before a real run.
