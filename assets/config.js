@@ -11,7 +11,7 @@
 window.STUDY_CONFIG = {
   // Consumed by study.html (v3 participant app) and dashboard.html. Both also accept a
   // ?backend=https://... query override for staging/local dev (wrangler dev).
-  BACKEND_URL: "https://defuselab-study.lbzeng.workers.dev",
+  BACKEND_URL: "https://defuselab-study.lingpo-tseng.workers.dev",
 
   // Fixed interaction-session length shown to testers (PLAN.md §8 step 5: "e.g. 20–30 min").
   // Kept short here so a walkthrough is quick; the real study uses the full duration.
