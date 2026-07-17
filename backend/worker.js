@@ -174,15 +174,13 @@ export default {
           if (!part) return json({ error: "bad_rejoin" }, 404, origin);
         }
         if (!part) {
-          // balanced arm within cohort; balanced flair within cohort×arm (body.flair wins)
+          // Fandom is collected in the pre-selection form and carried by the personalized
+          // invite link (?flair=). Never fabricate it — refuse if absent (PLAN.md §17).
+          const flair = b.flair === "ARMY" || b.flair === "BLINK" ? b.flair : null;
+          if (!flair) return json({ error: "no_flair" }, 400, origin);
+          // balanced arm within cohort
           const { n } = (await DB.prepare("SELECT COUNT(*) n FROM participants WHERE cohort_id=?").bind(code).first()) || { n: 0 };
           const arm = ARMS[n % 2];
-          let flair = b.flair === "ARMY" || b.flair === "BLINK" ? b.flair : null;
-          if (!flair) {
-            const { a } = (await DB.prepare("SELECT COUNT(*) a FROM participants WHERE cohort_id=? AND arm=? AND flair='ARMY'").bind(code, arm).first()) || { a: 0 };
-            const { bl } = (await DB.prepare("SELECT COUNT(*) bl FROM participants WHERE cohort_id=? AND arm=? AND flair='BLINK'").bind(code, arm).first()) || { bl: 0 };
-            flair = a <= bl ? "ARMY" : "BLINK";
-          }
           part = { id: uid("p"), cohort_id: code, rejoin_code: rejoinCode(), handle: mkHandle(flair), arm, flair, created_at: Date.now() };
           await DB.prepare("INSERT INTO participants (id,cohort_id,rejoin_code,handle,arm,flair,created_at) VALUES (?,?,?,?,?,?,?)")
             .bind(part.id, part.cohort_id, part.rejoin_code, part.handle, part.arm, part.flair, part.created_at).run();

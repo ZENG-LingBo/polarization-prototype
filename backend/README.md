@@ -57,10 +57,15 @@ npx wrangler deploy
 1. Open `dashboard.html`, enter the passphrase.
 2. **Create a cohort** (code like `PILOT1`, pick EN or 中文). Creation seeds the Day-1
    discussion prompts for both arms.
-3. Send participants to `study.html` with the cohort code. They pick their fandom, consent
-   (18+, logging disclosure), and land in a **live shared feed** — participants in the same
-   cohort+arm see each other's posts. Arms and flairs auto-balance; participants never see
-   arm names (blinding).
+3. **Send personalized invite links.** Fandom, consent, and 18+ are all collected in the
+   **pre-selection form outside the app** (PLAN.md §17) — the app asks none of it. From the
+   form results, send each participant the link matching their fandom:
+   - ARMY members → `study.html?cohort=PILOT1&flair=ARMY`
+   - BLINK members → `study.html?cohort=PILOT1&flair=BLINK`
+   They land in a **live shared feed** — participants in the same cohort+arm see each
+   other's posts. Arms auto-balance; participants never see arm names (blinding). A visitor
+   without an invite link (or a rejoin code) cannot join — the backend refuses to invent a
+   fandom (`no_flair`).
 4. End of each day: participants tap **Finish today** → get their **rejoin code** (links
    them across days) → the **survey button** (your SURVEY_URL for that day, with
    pid/day/arm/lang/cohort prefilled).
