@@ -1,0 +1,116 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1400 1120" font-family="Helvetica, Arial, sans-serif">
+  <defs>
+    <marker id="arr3" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#374151"/>
+    </marker>
+  </defs>
+  <style>
+    .panel{fill:#ffffff;stroke:#374151;stroke-width:2.5}
+    .soft{fill:#f4f6f8;stroke:#c7ced6;stroke-width:1.5}
+    .h1{font-size:25px;font-weight:800;fill:#111827}
+    .body{font-size:21px;fill:#111827}
+    .small{font-size:19px;fill:#4b5563}
+    .stage{font-size:22px;font-weight:800;fill:#374151;letter-spacing:1px}
+    .flow{stroke:#374151;stroke-width:3;fill:none}
+    .pill{fill:#ffffff;stroke:#374151;stroke-width:2.5}
+    .req{font-size:19px;font-weight:800}
+    .expt{fill:#2a78d6}.ctrl{fill:#1baf7a}
+  </style>
+
+  <!-- ========== recruit ========== -->
+  <text x="30" y="80" class="stage" transform="rotate(-90 30 80)" text-anchor="end"></text>
+  <g transform="translate(180,30)">
+    <rect width="1040" height="120" rx="14" class="panel"/>
+    <text x="24" y="40" class="h1">Recruit via demographic pre-selection form — outside the app</text>
+    <text x="24" y="74" class="body">age (18+) · gender · occupation · fandom (ARMY / BLINK) · years of fandom · language · consent</text>
+    <text x="24" y="104" class="small">No study-purpose disclosure anywhere — participants are only told what to do. Target strongly identified fans.</text>
+  </g>
+  <text x="70" y="105" class="stage" text-anchor="middle" transform="rotate(-90 70 105)">RECRUIT</text>
+
+  <!-- assignment -->
+  <path class="flow" d="M700,150 V190" marker-end="url(#arr3)"/>
+  <g transform="translate(330,190)">
+    <rect width="740" height="112" rx="14" class="panel"/>
+    <text x="370" y="38" text-anchor="middle" class="h1">Random assignment · demographics matched across arms</text>
+    <text x="370" y="68" text-anchor="middle" class="small">balanced ARMY / BLINK per arm · ≥30 per arm (power analysis)</text>
+    <text x="370" y="94" text-anchor="middle" class="small">language cells run entirely in English or entirely in Chinese (no mixing)</text>
+  </g>
+  <path class="flow" d="M520,302 V330" marker-end="url(#arr3)"/>
+  <path class="flow" d="M880,302 V330" marker-end="url(#arr3)"/>
+
+  <!-- ========== arm headers ========== -->
+  <g transform="translate(180,330)">
+    <rect width="500" height="56" rx="14" class="expt"/>
+    <text x="250" y="36" text-anchor="middle" font-size="24" font-weight="800" fill="#ffffff">EXPERIMENT · community note</text>
+  </g>
+  <g transform="translate(720,330)">
+    <rect width="500" height="56" rx="14" class="ctrl"/>
+    <text x="250" y="36" text-anchor="middle" font-size="24" font-weight="800" fill="#ffffff">CONTROL · inert feature</text>
+  </g>
+
+  <!-- ========== Day 1 ========== -->
+  <text x="70" y="500" class="stage" text-anchor="middle" transform="rotate(-90 70 500)">DAY 1 · BASELINE</text>
+  <path class="flow" d="M430,386 V420" marker-end="url(#arr3)"/>
+  <path class="flow" d="M970,386 V420" marker-end="url(#arr3)"/>
+  <g transform="translate(180,420)">
+    <rect width="1040" height="120" rx="14" class="panel"/>
+    <text x="24" y="40" class="h1">Group session (~1 h) on the Reddit-style forum — identical in both arms</text>
+    <text x="24" y="74" class="body">Rival fandoms post together on seeded, discussion-provoking prompts; all posts logged; no feature present.</text>
+    <text x="24" y="104" class="small">Toxicity / polarization must be HIGH before any intervention — otherwise Day 1 repeats with new prompts.</text>
+  </g>
+  <!-- repeat loop -->
+  <path class="flow" d="M1220,480 H1288 V440 H1224" marker-end="url(#arr3)"/>
+  <text x="1298" y="452" class="small" transform="rotate(90 1298 452)">repeat until high</text>
+  <circle cx="1258" cy="510" r="4" fill="none"/>
+  <text x="1332" y="486" class="req" fill="#111827" text-anchor="middle" transform="rotate(90 1332 486)">R1: baseline HIGH ✓</text>
+  <!-- survey -->
+  <path class="flow" d="M700,540 V576" marker-end="url(#arr3)"/>
+  <g transform="translate(520,576)">
+    <rect width="360" height="52" rx="26" class="pill"/>
+    <text x="180" y="34" text-anchor="middle" class="body" font-weight="700">📋 Survey 1 (short, end of day)</text>
+  </g>
+
+  <!-- ========== Day 2 ========== -->
+  <text x="70" y="750" class="stage" text-anchor="middle" transform="rotate(-90 70 750)">DAY 2 · FEATURE</text>
+  <path class="flow" d="M560,628 L430,668" marker-end="url(#arr3)"/>
+  <path class="flow" d="M840,628 L970,668" marker-end="url(#arr3)"/>
+  <g transform="translate(180,668)">
+    <rect width="500" height="164" rx="14" class="panel" stroke="#2a78d6"/>
+    <text x="24" y="38" class="h1" fill="#1c5cab">📌 Community Note in-feed</text>
+    <text x="24" y="72" class="body">Cross-fandom co-creation task: one</text>
+    <text x="24" y="100" class="body">ARMY + one BLINK pick to publish a</text>
+    <text x="24" y="128" class="body">joint, co-credited community playlist.</text>
+    <text x="24" y="156" class="small">LLM: template · pair · assemble verbatim (disclosed)</text>
+  </g>
+  <g transform="translate(720,668)">
+    <rect width="500" height="164" rx="14" class="panel" stroke="#1baf7a"/>
+    <text x="24" y="38" class="h1" fill="#0e7a52">🗳 Inert solo feature (poll)</text>
+    <text x="24" y="72" class="body">Same look &amp; placement, but solo and</text>
+    <text x="24" y="100" class="body">non-collaborative — NO cross-group</text>
+    <text x="24" y="128" class="body">pairing, no shared output.</text>
+    <text x="24" y="156" class="small">comparable engagement, mechanism removed</text>
+  </g>
+  <text x="1332" y="750" class="req" fill="#111827" text-anchor="middle" transform="rotate(90 1332 750)">R2: control stays HIGH ✓</text>
+  <path class="flow" d="M430,832 V868" marker-end="url(#arr3)"/>
+  <path class="flow" d="M970,832 V868" marker-end="url(#arr3)"/>
+  <g transform="translate(520,868)">
+    <rect width="360" height="52" rx="26" class="pill"/>
+    <text x="180" y="34" text-anchor="middle" class="body" font-weight="700">📋 Survey 2 (end of day)</text>
+  </g>
+  <path class="flow" d="M520,894 H430 V868" fill="none" stroke="none"/>
+
+  <!-- ========== Day 3 ========== -->
+  <text x="70" y="990" class="stage" text-anchor="middle" transform="rotate(-90 70 990)">DAY 3 · AFTER</text>
+  <path class="flow" d="M700,920 V952" marker-end="url(#arr3)"/>
+  <g transform="translate(180,952)">
+    <rect width="1040" height="88" rx="14" class="panel"/>
+    <text x="24" y="38" class="h1">Feature removed — same forum, same prompts, both arms</text>
+    <text x="24" y="70" class="body">Does the Day-2 effect carry over on its own? Posts logged; toxicity scored per message.</text>
+  </g>
+  <text x="1332" y="996" class="req" fill="#111827" text-anchor="middle" transform="rotate(90 1332 996)">R3: drop ONLY in expt ✓</text>
+  <path class="flow" d="M700,1040 V1064" marker-end="url(#arr3)"/>
+  <g transform="translate(430,1064)">
+    <rect width="540" height="52" rx="26" class="pill"/>
+    <text x="270" y="34" text-anchor="middle" class="body" font-weight="700">📋 Survey 3 + 🎙 semi-structured exit interview</text>
+  </g>
+</svg>

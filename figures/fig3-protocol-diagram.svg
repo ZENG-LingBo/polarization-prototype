@@ -1,0 +1,142 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1560 950" font-family="Helvetica, Arial, sans-serif">
+  <defs>
+    <marker id="ar" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#374151"/>
+    </marker>
+  </defs>
+  <style>
+    .box{fill:#ffffff;stroke:#374151;stroke-width:2.5}
+    .soft{fill:#f4f6f8;stroke:#c7ced6;stroke-width:1.5}
+    .t1{font-size:25px;font-weight:800;fill:#111827}
+    .t2{font-size:19px;font-weight:700;fill:#374151}
+    .t3{font-size:17px;font-weight:600;fill:#6b7280}
+    .ico{font-size:34px}
+    .icoB{font-size:44px}
+    .day{font-size:21px;font-weight:800;letter-spacing:1px}
+    .flow{stroke:#374151;stroke-width:3.5;fill:none}
+    .lane{font-size:19px;font-weight:800;fill:#ffffff}
+    .temp{font-size:26px}
+    .rlab{font-size:16px;font-weight:800;fill:#111827}
+  </style>
+
+  <!-- ============ recruit row ============ -->
+  <g transform="translate(120,28)">
+    <rect class="box" width="520" height="112" rx="16"/>
+    <text x="24" y="44" class="t1">📋 Pre-selection form</text>
+    <text x="24" y="78" class="t2">👤 18+ · 🏷️ fandom · 🌐 EN/中文 · ✍️ consent</text>
+    <text x="24" y="102" class="t3">🙈 purpose never told — only what to do</text>
+  </g>
+  <path class="flow" d="M644,84 H700" marker-end="url(#ar)"/>
+  <g transform="translate(704,28)">
+    <rect class="box" width="420" height="112" rx="16"/>
+    <text x="24" y="44" class="t1">🎲 Randomize</text>
+    <text x="24" y="78" class="t2">matched demographics · ≥30 / arm</text>
+    <text x="24" y="102" class="t3">each cell fully EN or fully 中文</text>
+  </g>
+  <path class="flow" d="M860,140 V168 H465 V262" marker-end="url(#ar)"/>
+
+  <!-- ============ day headers ============ -->
+  <rect x="300" y="212" width="330" height="40" rx="10" fill="#fee2e2"/><text x="465" y="240" text-anchor="middle" class="day" fill="#b91c1c">DAY 1 · BASELINE</text>
+  <rect x="720" y="212" width="330" height="40" rx="10" fill="#fef3c7"/><text x="885" y="240" text-anchor="middle" class="day" fill="#92400e">DAY 2 · FEATURE</text>
+  <rect x="1140" y="212" width="300" height="40" rx="10" fill="#dcfce7"/><text x="1290" y="240" text-anchor="middle" class="day" fill="#15803d">DAY 3 · REMOVED</text>
+
+  <!-- ============ lane chips ============ -->
+  <rect x="40" y="380" width="180" height="46" rx="23" fill="#2a78d6"/>
+  <text x="130" y="410" text-anchor="middle" class="lane">EXPERIMENT</text>
+  <rect x="40" y="680" width="180" height="46" rx="23" fill="none" stroke="#1baf7a" stroke-width="3.5"/>
+  <text x="130" y="710" text-anchor="middle" font-size="19" font-weight="800" style="fill:#0e7a52">CONTROL</text>
+
+  <!-- ============ DAY 1 (shared) ============ -->
+  <g transform="translate(300,270)">
+    <rect class="box" width="330" height="560" rx="18"/>
+    <text x="165" y="70" text-anchor="middle" class="icoB">💬</text>
+    <text x="165" y="112" text-anchor="middle" class="t1">Hot threads</text>
+    <text x="165" y="142" text-anchor="middle" class="t3">no feature · identical for all</text>
+    <text x="165" y="205" text-anchor="middle" class="temp">🔥 🔥 🔥</text>
+    <!-- repeat loop -->
+    <text x="165" y="300" text-anchor="middle" class="t2">↻ repeat Day 1 until 🔥</text>
+    <!-- R1 -->
+    <circle cx="165" cy="392" r="27" fill="#b91c1c"/>
+    <text x="165" y="401" text-anchor="middle" class="lane">R1</text>
+    <text x="165" y="444" text-anchor="middle" class="rlab">must be 🔥 before the feature</text>
+    <text x="165" y="516" text-anchor="middle" class="t2">both arms together</text>
+    <text x="165" y="542" text-anchor="middle" class="t3">group session · ~1 h · all posts logged</text>
+  </g>
+
+  <!-- survey pill 1 -->
+  <g transform="translate(636,520)">
+    <rect width="76" height="76" rx="38" class="box"/>
+    <text x="38" y="36" text-anchor="middle" class="ico">📋</text>
+    <text x="38" y="62" text-anchor="middle" class="t3">survey</text>
+  </g>
+  <path class="flow" d="M630,450 L640,520" opacity="0"/>
+  <path class="flow" d="M630,558 H634" opacity="0"/>
+
+  <!-- ============ DAY 2 ============ -->
+  <path class="flow" d="M712,540 Q740,430 758,404" marker-end="url(#ar)"/>
+  <path class="flow" d="M712,576 Q740,690 758,714" marker-end="url(#ar)"/>
+  <g transform="translate(760,270)">
+    <rect class="box" width="290" height="260" rx="18" stroke="#2a78d6" stroke-width="3.5"/>
+    <text x="145" y="62" text-anchor="middle" class="icoB">📌</text>
+    <text x="145" y="106" text-anchor="middle" class="t1" fill="#1c5cab">Community Note</text>
+    <text x="145" y="136" text-anchor="middle" class="t3">🎯 K-pop-wide task</text>
+    <text x="145" y="160" text-anchor="middle" class="t3">🔒 both sides · 🤝 joint post</text>
+    <text x="145" y="196" text-anchor="middle" class="temp">🔥 → 🧊</text>
+    <circle cx="66" cy="228" r="24" fill="#1c5cab"/><text x="66" y="236" text-anchor="middle" class="lane">R3</text>
+    <text x="182" y="235" text-anchor="middle" class="rlab">drop ONLY here</text>
+  </g>
+  <g transform="translate(760,570)">
+    <rect class="box" width="290" height="260" rx="18" stroke="#1baf7a" stroke-width="3.5"/>
+    <text x="145" y="62" text-anchor="middle" class="icoB">🗳</text>
+    <text x="145" y="106" text-anchor="middle" class="t1" fill="#0e7a52">Solo poll (inert)</text>
+    <text x="145" y="136" text-anchor="middle" class="t3">same look, same placement</text>
+    <text x="145" y="160" text-anchor="middle" class="t3">🚫 no pairing · 🚫 no joint post</text>
+    <text x="145" y="196" text-anchor="middle" class="temp">🔥 → 🔥</text>
+    <circle cx="66" cy="228" r="24" fill="#0e7a52"/><text x="66" y="236" text-anchor="middle" class="lane">R2</text>
+    <text x="180" y="235" text-anchor="middle" class="rlab">must STAY 🔥</text>
+  </g>
+
+  <!-- survey pill 2 -->
+  <g transform="translate(1066,520)">
+    <rect width="76" height="76" rx="38" class="box"/>
+    <text x="38" y="36" text-anchor="middle" class="ico">📋</text>
+    <text x="38" y="62" text-anchor="middle" class="t3">survey</text>
+  </g>
+
+  <!-- ============ DAY 3 ============ -->
+  <path class="flow" d="M1142,540 Q1160,430 1176,404" marker-end="url(#ar)"/>
+  <path class="flow" d="M1142,576 Q1160,690 1176,714" marker-end="url(#ar)"/>
+  <g transform="translate(1180,270)">
+    <rect class="box" width="260" height="260" rx="18" stroke="#2a78d6" stroke-width="3.5"/>
+    <text x="130" y="66" text-anchor="middle" class="icoB">🚫📌</text>
+    <text x="130" y="112" text-anchor="middle" class="t1">Feature removed</text>
+    <text x="130" y="146" text-anchor="middle" class="t3">same forum, same prompts</text>
+    <text x="130" y="205" text-anchor="middle" class="temp">🧊 stays low?</text>
+    <text x="130" y="240" text-anchor="middle" class="t3">carry-over is the measure</text>
+  </g>
+  <g transform="translate(1180,570)">
+    <rect class="box" width="260" height="260" rx="18" stroke="#1baf7a" stroke-width="3.5"/>
+    <text x="130" y="66" text-anchor="middle" class="icoB">🚫🗳</text>
+    <text x="130" y="112" text-anchor="middle" class="t1">Feature removed</text>
+    <text x="130" y="146" text-anchor="middle" class="t3">same forum, same prompts</text>
+    <text x="130" y="205" text-anchor="middle" class="temp">🔥 stays high</text>
+  </g>
+
+  <!-- survey + interview pill -->
+  <g transform="translate(1456,500)">
+    <rect width="84" height="116" rx="20" class="box"/>
+    <text x="42" y="42" text-anchor="middle" class="ico">📋</text>
+    <text x="42" y="82" text-anchor="middle" class="ico">🎙</text>
+    <text x="42" y="106" text-anchor="middle" class="t3">exit</text>
+  </g>
+  <path class="flow" d="M1440,400 Q1470,470 1478,500" marker-end="url(#ar)"/>
+  <path class="flow" d="M1440,716 Q1470,650 1478,616" marker-end="url(#ar)"/>
+
+  <!-- day1 -> survey -> day2 connectors -->
+  <path class="flow" d="M630,558 H636"/>
+  <path class="flow" d="M1050,404 Q1090,470 1066,540"/>
+  <path class="flow" d="M1050,714 Q1090,650 1066,596"/>
+
+  <!-- legend -->
+  <text x="300" y="900" class="t2">🔥 toxicity high &#160;&#160; 🧊 toxicity low &#160;&#160; 📋 short survey after every day &#160;&#160; R1–R3 = pass requirements</text>
+</svg>

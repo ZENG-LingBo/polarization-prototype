@@ -555,6 +555,11 @@ function fillSlot(sel,who){
   $(sel).classList.add("filled");
   $(sel).innerHTML=`<div class="sh">${sel==="#slotA"?"ARMY PICK":"BLINK PICK"}</div>
     <div class="who">by <b>${esc(who.user)}</b> <span class="flair ${who.fan}">${who.fan}</span></div>${esc(who.text)}`;
+  const other=$(sel==="#slotA"?"#slotB":"#slotA");
+  if(other && !other.classList.contains("filled")){
+    const e=other.querySelector(".empty");
+    if(e) e.innerHTML=`<span class="spin"></span> waiting for a fan from the other group to finish this with you…`;
+  }
   pushText(who.text,true);
 }
 async function publishNote(el){

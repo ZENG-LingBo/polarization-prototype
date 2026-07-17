@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html><head><meta charset="utf-8"><style>
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{background:#ffffff;font-family:Helvetica,Arial,sans-serif;width:1560px}
+  #fig{position:relative;width:1560px;height:1150px;background:#fff}
+  .legend{position:absolute;top:18px;left:40px;font-size:20px;color:#4b5563;display:flex;gap:14px;align-items:center}
+  .chip{display:inline-block;padding:3px 14px;border-radius:999px;color:#fff;font-size:16px;font-weight:800}
+  .army{background:#5b3fc4}.blink{background:#c2255c}
+  .panel{position:absolute;width:470px}
+  .phead{display:flex;gap:10px;align-items:center;margin-bottom:8px;width:470px}
+  .pnum{width:34px;height:34px;border-radius:50%;background:#111827;color:#fff;font-size:20px;font-weight:800;
+        display:flex;align-items:center;justify-content:center;flex:0 0 34px}
+  .pday{font-size:15px;font-weight:800;color:#6b7280;letter-spacing:.5px}
+  .ptit{font-size:23px;font-weight:800;color:#111827;line-height:1.1}
+  .temp{margin-left:auto;font-size:17px;font-weight:800;padding:4px 13px;border-radius:999px;white-space:nowrap}
+  .hot{background:#fee2e2;color:#b91c1c}.amb{background:#fef3c7;color:#92400e}.cool{background:#dcfce7;color:#15803d}
+  .shot{width:470px;border:1.5px solid #cbd5e1;border-radius:12px;display:block;box-shadow:0 2px 8px rgba(15,23,42,.10)}
+  .call{position:absolute;max-width:300px;background:#fffbeb;border:2px dashed #b45309;border-radius:9px;
+        padding:6px 11px;font-size:19px;line-height:1.25;color:#92400e;font-weight:600}
+  svg.overlay{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
+  .lead{stroke:#b45309;stroke-width:2.5;fill:none;stroke-dasharray:4 5}
+  .tdot{fill:#b45309}
+  .flow{stroke:#374151;stroke-width:3.5;fill:none}
+</style></head><body>
+<div id="fig">
+  <div class="legend">
+    <span>Screenshots from the working prototype (participant view) —</span>
+    <span class="chip army">ARMY</span><span>= BTS fan</span>
+    <span class="chip blink">BLINK</span><span>= BLACKPINK fan</span>
+  </div>
+
+  <!-- ============ ROW 1 ============ -->
+  <div class="panel" style="left:40px;top:64px">
+    <div class="phead"><div class="pnum" style="background:#dc2626">1</div><div><div class="pday" style="color:#dc2626">DAY 1 · BASELINE</div><div class="ptit">Rivals heat up</div></div><div class="temp hot">🔥 tox 78</div></div>
+    <img class="shot" src="shots/s1-day1-thread.png" style="width:470px">
+  </div>
+
+  <div class="panel" style="left:560px;top:64px">
+    <div class="phead"><div class="pnum" style="background:#d97706">2</div><div><div class="pday" style="color:#b45309">DAY 2 · FEATURE</div><div class="ptit">A pinned task appears</div></div><div class="temp amb">📌 note</div></div>
+    <img class="shot" src="shots/s2-note-appears.png" style="width:470px">
+  </div>
+
+  <div class="panel" style="left:1080px;top:64px">
+    <div class="phead"><div class="pnum" style="background:#d97706">3</div><div><div class="pday" style="color:#b45309">DAY 2 · CONTRIBUTE</div><div class="ptit">One side in → gate</div></div><div class="temp amb">🔒 waiting</div></div>
+    <img class="shot" src="shots/s3-contribute-waiting.png" style="width:470px">
+  </div>
+
+  <!-- row-1 callouts -->
+  <div class="call" style="left:60px;top:412px;max-width:430px">🏷️ flair on every post · replies escalate 🔥</div>
+  <div class="call" style="left:562px;top:400px;max-width:250px">🎯 task = K-pop as a whole</div>
+  <div class="call" style="left:830px;top:400px;max-width:200px">🟣🩷 one slot per fandom</div>
+  <div class="call" style="left:1100px;top:400px;max-width:200px">✍️ your fandom's slot</div>
+  <div class="call" style="left:1330px;top:400px;max-width:215px">🔒 waits for the rival side</div>
+
+  <!-- ============ ROW 2 ============ -->
+  <div class="panel" style="left:40px;top:600px">
+    <div class="phead"><div class="pnum" style="background:#d97706">4</div><div><div class="pday" style="color:#b45309">DAY 2 · BOTH SIDES IN</div><div class="ptit">Co-published & co-shared</div></div><div class="temp cool">tox ↓</div></div>
+    <img class="shot" src="shots/s4-copublished.png" style="width:470px">
+  </div>
+
+  <div class="panel" style="left:560px;top:600px">
+    <div class="phead"><div class="pnum" style="background:#d97706">5</div><div><div class="pday" style="color:#b45309">DAY 2 · AFTER</div><div class="ptit">Tone flips</div></div><div class="temp cool">❄️ tox 6</div></div>
+    <img class="shot" src="shots/s5-warm-replies.png" style="width:470px">
+  </div>
+
+  <div class="panel" style="left:1080px;top:600px">
+    <div class="phead"><div class="pnum" style="background:#15803d">6</div><div><div class="pday" style="color:#15803d">DAY 3 · REMOVED</div><div class="ptit">Tone carries over</div></div><div class="temp cool">🧊 tox 8</div></div>
+    <img class="shot" src="shots/s6-day3.png" style="width:470px">
+  </div>
+
+  <!-- row-2 callouts -->
+  <div class="call" style="left:60px;top:940px;max-width:220px">🤝 co-credited · both flairs kept</div>
+  <div class="call" style="left:300px;top:940px;max-width:200px">⬆ upvotes on the JOINT post</div>
+  <div class="call" style="left:580px;top:848px;max-width:430px">🤝 same rivals, now friendly · "we/us" ↑</div>
+  <div class="call" style="left:1100px;top:892px;max-width:430px">🌱 rematch proposed on their own</div>
+
+  <!-- ============ connectors ============ -->
+  <svg class="overlay">
+    <defs><marker id="a" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#374151"/></marker></defs>
+    <!-- flow arrows -->
+    <path class="flow" d="M512,250 H558" marker-end="url(#a)"/>
+    <path class="flow" d="M1032,250 H1078" marker-end="url(#a)"/>
+    <path class="flow" d="M1315,505 V545 H275 V592" marker-end="url(#a)"/>
+    <path class="flow" d="M512,790 H558" marker-end="url(#a)"/>
+    <path class="flow" d="M1032,790 H1078" marker-end="url(#a)"/>
+    <!-- leader lines: callout -> target dot in screenshot -->
+    <path class="lead" d="M250,410 L245,292"/><circle class="tdot" cx="245" cy="290" r="5"/>
+    <path class="lead" d="M680,398 L690,182"/><circle class="tdot" cx="690" cy="180" r="5"/>
+    <path class="lead" d="M920,398 L905,248"/><circle class="tdot" cx="905" cy="246" r="5"/>
+    <path class="lead" d="M1195,398 L1200,262"/><circle class="tdot" cx="1200" cy="260" r="5"/>
+    <path class="lead" d="M1430,398 L1428,258"/><circle class="tdot" cx="1428" cy="256" r="5"/>
+    <path class="lead" d="M165,938 L230,870"/><circle class="tdot" cx="232" cy="868" r="5"/>
+    <path class="lead" d="M395,938 L370,905"/><circle class="tdot" cx="370" cy="903" r="5"/>
+    <path class="lead" d="M790,846 L785,745"/><circle class="tdot" cx="785" cy="743" r="5"/>
+    <path class="lead" d="M1310,890 L1315,822"/><circle class="tdot" cx="1315" cy="820" r="5"/>
+  </svg>
+</div>
+</body></html>
