@@ -26,8 +26,15 @@ SURVEY_URL_D3_ZH = ""
 # How long a Community Note waits for a live rival-fandom partner before offering a
 # clearly DISCLOSED system sample (ms). Group sessions run long waits on purpose.
 PAIRING_TIMEOUT_MS = "90000"
+# LLM merge of paired Community Notes (EXPT day 2). Used only when the LLM_API_KEY
+# secret is set; any failure falls back to verbatim assembly. OpenAI-compatible API.
+# Mainland-China DashScope accounts: set LLM_BASE_URL = "https://dashscope.aliyuncs.com/compatible-mode/v1"
+LLM_MODEL = "qwen-plus"
+LLM_BASE_URL = "https://dashscope-intl.aliyuncs.com/compatible-mode/v1"
 
 # --- Secrets (NOT stored here) ---
 # Researcher passphrase that gates /api/dashboard/*  (keeps testers out of analytics):
 #   npx wrangler secret put RESEARCHER_TOKEN
+# LLM key for note merging (optional):
+#   npx wrangler secret put LLM_API_KEY
 # or dashboard: Worker -> Settings -> Variables and Secrets -> Add -> Encrypt.

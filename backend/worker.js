@@ -24,7 +24,8 @@
 // Blinding: participant endpoints never mention arms/purpose; analytics are token-gated.
 // Toxicity is the demo keyword heuristic; text_raw (pre-moderation) is stored so the real
 // study rescores with Perspective API + the validated K-pop lexicon (MEASURES.md).
-// Vars/secrets: DB (D1 binding), RESEARCHER_TOKEN (secret), SURVEY_URL_D1..D3 (+_ZH) vars.
+// Vars/secrets: DB (D1 binding), RESEARCHER_TOKEN (secret), SURVEY_URL_D1..D3 (+_ZH) vars,
+// LLM_API_KEY (secret, optional — enables LLM note merge), LLM_MODEL + LLM_BASE_URL vars.
 //
 // Deploy (no terminal): see backend/README.md.
 
@@ -36,7 +37,9 @@ const ALLOWED_ORIGINS = [
 const ARMS = ["EXPT", "CTRL"];
 const other = (f) => (f === "ARMY" ? "BLINK" : "ARMY");
 
-// ---- Community Note config (EXPT day 2). Static, pre-screened template — no LLM call.
+// ---- Community Note config (EXPT day 2). Pre-screened template; when the optional
+// LLM_API_KEY secret is set, paired halves are merged by the LLM (see llmMerge below),
+// otherwise (or on any LLM failure) the verbatim mechanical assembly is published.
 const NOTE = {
   en: {
     prompt: "Community Note — today's playlist: add the song that made YOU fall for K-pop. Publishes once one ARMY and one BLINK have both added one.",
@@ -83,6 +86,36 @@ const TOX = ["clown", "clowns", "trash", "delusional", "delulu", "ratio", "idiot
 const WE = ["we", "us", "our", "ours", "we're", "weve", "both", "together"];
 const THEY = ["they", "them", "their", "theirs", "they're", "u", "you", "your", "yall", "y'all"];
 const clamp = (v, a = 0, b = 1) => Math.max(a, Math.min(b, v));
+// ---- LLM note merge. OpenAI-compatible endpoint (Qwen/DashScope by default). The key
+// lives ONLY in the LLM_API_KEY secret — never in code or [vars]. Any failure (no key,
+// timeout, bad response) returns null and the caller falls back to mechanical assembly.
+async function llmMerge(env, lang, a, b) {
+  if (!env.LLM_API_KEY) return null;
+  const base = (env.LLM_BASE_URL || "https://dashscope-intl.aliyuncs.com/compatible-mode/v1").replace(/\/$/, "");
+  const sys = lang === "zh"
+    ? "你是K-pop粉丝社区的共创笔记助手。把来自两个不同粉丝团成员的两条贡献合并成一条温暖、简短的社区笔记（不超过60字）。保留双方原意，不新增事实或名字，只输出合并后的笔记正文。"
+    : "You merge two K-pop fans' contributions into ONE short, warm community note (max 50 words). Keep the spirit of both contributions, invent no new facts or names, and output ONLY the merged note text.";
+  try {
+    const r = await fetch(base + "/chat/completions", {
+      method: "POST",
+      headers: { "content-type": "application/json", authorization: "Bearer " + env.LLM_API_KEY },
+      body: JSON.stringify({
+        model: env.LLM_MODEL || "qwen-plus",
+        messages: [
+          { role: "system", content: sys },
+          { role: "user", content: `${a.flair} fan (${a.handle}): "${a.text}"\n${b.flair} fan (${b.handle}): "${b.text}"` },
+        ],
+        max_tokens: 200, temperature: 0.4,
+      }),
+      signal: AbortSignal.timeout(12000),
+    });
+    if (!r.ok) return null;
+    const j = await r.json();
+    const t = (j.choices?.[0]?.message?.content || "").trim().replace(/^["“]+|["”]+$/g, "");
+    return t ? t.slice(0, 400) : null;
+  } catch { return null; }
+}
+
 function toxicity(t) {
   const s = String(t).toLowerCase(); let hits = 0;
   TOX.forEach((w) => { if (s.includes(w)) hits++; });
@@ -229,12 +262,18 @@ export default {
           "SELECT * FROM collabs WHERE cohort_id=? AND arm='EXPT' AND status='waiting' AND a_flair=? ORDER BY created_at ASC LIMIT 1"
         ).bind(sess.cohort_id, other(sess.flair)).first();
         if (match) {
-          await DB.prepare("UPDATE collabs SET b_flair=?, b_text=?, b_handle=?, status='paired', is_live_paired=1, paired_at=? WHERE id=?")
-            .bind(sess.flair, text, sess.handle, Date.now(), match.id).run();
-          // publish the co-authored note into the shared EXPT feed (verbatim assembly)
-          const artifactLine = `${NOTE[lang].artifact} — "${match.a_text}" (${match.a_handle} · ${match.a_flair}) × "${text}" (${sess.handle} · ${sess.flair})`;
+          // publish the co-authored note into the shared EXPT feed: LLM-merged when the
+          // LLM_API_KEY secret is configured, verbatim assembly otherwise / on failure
+          const merged = await llmMerge(env, lang,
+            { flair: match.a_flair, handle: match.a_handle, text: match.a_text },
+            { flair: sess.flair, handle: sess.handle, text });
+          const artifactLine = merged
+            ? `${NOTE[lang].artifact} — ${merged} (co-written by ${match.a_handle} · ${match.a_flair} × ${sess.handle} · ${sess.flair} · AI-merged)`
+            : `${NOTE[lang].artifact} — "${match.a_text}" (${match.a_handle} · ${match.a_flair}) × "${text}" (${sess.handle} · ${sess.flair})`;
+          await DB.prepare("UPDATE collabs SET b_flair=?, b_text=?, b_handle=?, status='paired', is_live_paired=1, paired_at=?, artifact=? WHERE id=?")
+            .bind(sess.flair, text, sess.handle, Date.now(), artifactLine, match.id).run();
           await insertEvent(DB, sess, "note_published", artifactLine, "note", "kpop_mod", "SYS");
-          return json({ collabId: match.id, status: "paired", isLivePaired: true,
+          return json({ collabId: match.id, status: "paired", isLivePaired: true, aiMerged: !!merged,
             partner: { flair: match.a_flair, text: match.a_text, handle: match.a_handle },
             artifact: NOTE[lang].artifact }, 200, origin);
         }
