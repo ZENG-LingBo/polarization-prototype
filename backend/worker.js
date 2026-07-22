@@ -83,8 +83,16 @@ const TOX = ["clown", "clowns", "trash", "delusional", "delulu", "ratio", "idiot
   "talentless", "untalented", "garbage", "cope", "copium", "washed", "fraud", "overrated",
   "embarrassing", "pathetic", "cringe", "mid", "flop", "flopped", "nugu", "industry plant",
   "mass-report", "mass report", "brainrot", "shut up", "🤡", "💀"];
+// Chinese fan-war snark/insults, substring-matched (CJK has no word boundaries). Like the
+// EN list this is a crude live-gate heuristic — real scoring happens post-hoc on text_raw.
+const TOX_ZH = ["呵呵", "也配", "也算", "就这", "糊了", "糊咖", "过气", "拉胯", "尬黑", "黑子",
+  "脑残", "白痴", "智障", "有病", "恶心", "垃圾", "闭嘴", "滚吧", "滚开", "笑死", "碰瓷",
+  "蹭热度", "柠檬精", "装什么", "洗白", "不能看", "打不过", "眼瞎", "下头"];
 const WE = ["we", "us", "our", "ours", "we're", "weve", "both", "together"];
 const THEY = ["they", "them", "their", "theirs", "they're", "u", "you", "your", "yall", "y'all"];
+const WE_ZH = ["我们", "咱们", "一起", "大家"];
+const THEY_ZH = ["他们", "她们", "你们", "那边", "对家", "你家"];
+const countZh = (t, list) => list.reduce((n, w) => n + (String(t).split(w).length - 1), 0);
 const clamp = (v, a = 0, b = 1) => Math.max(a, Math.min(b, v));
 // ---- LLM note merge. OpenAI-compatible endpoint (Qwen/DashScope by default). The key
 // lives ONLY in the LLM_API_KEY secret — never in code or [vars]. Any failure (no key,
@@ -119,10 +127,12 @@ async function llmMerge(env, lang, a, b) {
 function toxicity(t) {
   const s = String(t).toLowerCase(); let hits = 0;
   TOX.forEach((w) => { if (s.includes(w)) hits++; });
+  TOX_ZH.forEach((w) => { if (s.includes(w)) hits++; });
   if (/[A-Z]{4,}/.test(String(t))) hits++;
   return clamp(hits / 3);
 }
-const countWords = (t, list) => String(t).toLowerCase().split(/[^a-z']+/).filter((x) => list.includes(x)).length;
+const countWords = (t, list) => String(t).toLowerCase().split(/[^a-z']+/).filter((x) => list.includes(x)).length
+  + countZh(t, list === WE ? WE_ZH : list === THEY ? THEY_ZH : []);
 
 function corsHeaders(origin) {
   const allow = ALLOWED_ORIGINS.includes(origin) ? origin : ALLOWED_ORIGINS[0];
