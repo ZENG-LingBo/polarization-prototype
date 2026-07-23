@@ -24,7 +24,8 @@
 // Blinding: participant endpoints never mention arms/purpose; analytics are token-gated.
 // Toxicity is the demo keyword heuristic; text_raw (pre-moderation) is stored so the real
 // study rescores with Perspective API + the validated K-pop lexicon (MEASURES.md).
-// Vars/secrets: DB (D1 binding), RESEARCHER_TOKEN (secret), SURVEY_URL_D1..D3 (+_ZH) vars.
+// Vars/secrets: DB (D1 binding), RESEARCHER_TOKEN (secret), SURVEY_URL_D1..D3 (+_ZH) vars,
+// LLM_API_KEY (secret, optional — enables LLM note merge), LLM_MODEL + LLM_BASE_URL vars.
 //
 // Deploy (no terminal): see backend/README.md.
 
@@ -36,7 +37,9 @@ const ALLOWED_ORIGINS = [
 const ARMS = ["EXPT", "CTRL"];
 const other = (f) => (f === "ARMY" ? "BLINK" : "ARMY");
 
-// ---- Community Note config (EXPT day 2). Static, pre-screened template — no LLM call.
+// ---- Community Note config (EXPT day 2). Pre-screened template; when the optional
+// LLM_API_KEY secret is set, paired halves are merged by the LLM (see llmMerge below),
+// otherwise (or on any LLM failure) the verbatim mechanical assembly is published.
 const NOTE = {
   en: {
     prompt: "Community Note — today's playlist: add the song that made YOU fall for K-pop. Publishes once one ARMY and one BLINK have both added one.",
@@ -80,16 +83,83 @@ const TOX = ["clown", "clowns", "trash", "delusional", "delulu", "ratio", "idiot
   "talentless", "untalented", "garbage", "cope", "copium", "washed", "fraud", "overrated",
   "embarrassing", "pathetic", "cringe", "mid", "flop", "flopped", "nugu", "industry plant",
   "mass-report", "mass report", "brainrot", "shut up", "🤡", "💀"];
+// Chinese fan-war snark/insults, substring-matched (CJK has no word boundaries). Like the
+// EN list this is a crude live-gate heuristic — real scoring happens post-hoc on text_raw.
+const TOX_ZH = ["呵呵", "也配", "也算", "就这", "糊了", "糊咖", "过气", "拉胯", "尬黑", "黑子",
+  "脑残", "白痴", "智障", "有病", "恶心", "垃圾", "闭嘴", "滚吧", "滚开", "笑死", "碰瓷",
+  "蹭热度", "柠檬精", "装什么", "洗白", "不能看", "打不过", "眼瞎", "下头"];
 const WE = ["we", "us", "our", "ours", "we're", "weve", "both", "together"];
 const THEY = ["they", "them", "their", "theirs", "they're", "u", "you", "your", "yall", "y'all"];
+const WE_ZH = ["我们", "咱们", "一起", "大家"];
+const THEY_ZH = ["他们", "她们", "你们", "那边", "对家", "你家"];
+const countZh = (t, list) => list.reduce((n, w) => n + (String(t).split(w).length - 1), 0);
 const clamp = (v, a = 0, b = 1) => Math.max(a, Math.min(b, v));
+// ---- LLM note merge. OpenAI-compatible endpoint (Qwen/DashScope by default). The key
+// lives ONLY in the LLM_API_KEY secret — never in code or [vars]. Any failure (no key,
+// timeout, bad response) returns null and the caller falls back to mechanical assembly.
+async function llmMerge(env, lang, a, b) {
+  if (!env.LLM_API_KEY) return null;
+  const base = (env.LLM_BASE_URL || "https://dashscope-intl.aliyuncs.com/compatible-mode/v1").replace(/\/$/, "");
+  const sys = lang === "zh"
+    ? "你是K-pop粉丝社区的共创笔记助手。把来自两个不同粉丝团成员的两条贡献合并成一条温暖、简短的社区笔记（不超过60字）。保留双方原意，不新增事实或名字，只输出合并后的笔记正文。"
+    : "You merge two K-pop fans' contributions into ONE short, warm community note (max 50 words). Keep the spirit of both contributions, invent no new facts or names, and output ONLY the merged note text.";
+  try {
+    const r = await fetch(base + "/chat/completions", {
+      method: "POST",
+      headers: { "content-type": "application/json", authorization: "Bearer " + env.LLM_API_KEY },
+      body: JSON.stringify({
+        model: env.LLM_MODEL || "qwen-plus",
+        messages: [
+          { role: "system", content: sys },
+          { role: "user", content: `${a.flair} fan (${a.handle}): "${a.text}"\n${b.flair} fan (${b.handle}): "${b.text}"` },
+        ],
+        max_tokens: 200, temperature: 0.4,
+      }),
+      signal: AbortSignal.timeout(12000),
+    });
+    if (!r.ok) return null;
+    const j = await r.json();
+    const t = (j.choices?.[0]?.message?.content || "").trim().replace(/^["“]+|["”]+$/g, "");
+    return t ? t.slice(0, 400) : null;
+  } catch { return null; }
+}
+
+// Rates one message's toxicity 0-100 via the LLM; null on any failure. Used live via
+// ctx.waitUntil right after insert (the heuristic score stands until this lands) and by
+// the dashboard /rescore backfill. Same key/endpoint as llmMerge; cheaper default model.
+async function llmToxicity(env, text) {
+  if (!env.LLM_API_KEY || !text) return null;
+  const base = (env.LLM_BASE_URL || "https://dashscope-intl.aliyuncs.com/compatible-mode/v1").replace(/\/$/, "");
+  try {
+    const r = await fetch(base + "/chat/completions", {
+      method: "POST",
+      headers: { "content-type": "application/json", authorization: "Bearer " + env.LLM_API_KEY },
+      body: JSON.stringify({
+        model: env.LLM_TOX_MODEL || "qwen-turbo",
+        messages: [
+          { role: "system", content: "Rate the toxicity of this K-pop fan-community message toward the rival fandom or its members: hostility, insults, mockery, dismissive sarcasm. Scale 0-100 (0 = friendly or neutral, 100 = extremely hostile). The message may be English or Chinese. Reply with ONLY the integer." },
+          { role: "user", content: String(text).slice(0, 1000) },
+        ],
+        max_tokens: 8, temperature: 0,
+      }),
+      signal: AbortSignal.timeout(8000),
+    });
+    if (!r.ok) return null;
+    const j = await r.json();
+    const m = String(j.choices?.[0]?.message?.content || "").match(/\d{1,3}/);
+    return m ? clamp(Number(m[0]) / 100) : null;
+  } catch { return null; }
+}
+
 function toxicity(t) {
   const s = String(t).toLowerCase(); let hits = 0;
   TOX.forEach((w) => { if (s.includes(w)) hits++; });
+  TOX_ZH.forEach((w) => { if (s.includes(w)) hits++; });
   if (/[A-Z]{4,}/.test(String(t))) hits++;
   return clamp(hits / 3);
 }
-const countWords = (t, list) => String(t).toLowerCase().split(/[^a-z']+/).filter((x) => list.includes(x)).length;
+const countWords = (t, list) => String(t).toLowerCase().split(/[^a-z']+/).filter((x) => list.includes(x)).length
+  + countZh(t, list === WE ? WE_ZH : list === THEY ? THEY_ZH : []);
 
 function corsHeaders(origin) {
   const allow = ALLOWED_ORIGINS.includes(origin) ? origin : ALLOWED_ORIGINS[0];
@@ -125,13 +195,15 @@ async function getSession(DB, sid) {
 }
 
 async function insertEvent(DB, sess, type, text, threadId, authorOverride, flairOverride) {
+  const id = uid("ev");
   const t = String(text || "").slice(0, 2000);
   await DB.prepare(
     `INSERT INTO events (id,session_id,cohort_id,day,arm,flair,author,type,text_raw,toxicity,we,they,thread_id,created_at)
      VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)`
-  ).bind(uid("ev"), sess.id || null, sess.cohort_id, sess.cohort_day || sess.day, sess.arm,
+  ).bind(id, sess.id || null, sess.cohort_id, sess.cohort_day || sess.day, sess.arm,
     flairOverride || sess.flair, authorOverride || sess.handle, type, t,
     toxicity(t), countWords(t, WE), countWords(t, THEY), String(threadId || "seed"), Date.now()).run();
+  return id;
 }
 
 async function seedDay(DB, cohort, day) {
@@ -149,7 +221,7 @@ async function seedDay(DB, cohort, day) {
 }
 
 export default {
-  async fetch(request, env) {
+  async fetch(request, env, ctx) {
     const origin = request.headers.get("Origin") || "";
     const url = new URL(request.url);
     const path = url.pathname;
@@ -214,7 +286,13 @@ export default {
         const sess = await getSession(DB, b.sessionId);
         if (!sess) return json({ error: "no_session" }, 400, origin);
         const type = ["post", "comment", "like", "share", "cross"].includes(b.type) ? b.type : "post";
-        await insertEvent(DB, sess, type, b.textRaw, b.threadId);
+        const evId = await insertEvent(DB, sess, type, b.textRaw, b.threadId);
+        // LLM-grade the score in the background — the response never waits on the model
+        if ((type === "post" || type === "comment") && env.LLM_API_KEY && ctx) {
+          const raw = String(b.textRaw || "").slice(0, 2000);
+          ctx.waitUntil(llmToxicity(env, raw).then((v) => v == null ? null :
+            DB.prepare("UPDATE events SET toxicity=? WHERE id=?").bind(v, evId).run()).catch(() => {}));
+        }
         return json({ ok: true }, 200, origin);
       }
 
@@ -229,12 +307,18 @@ export default {
           "SELECT * FROM collabs WHERE cohort_id=? AND arm='EXPT' AND status='waiting' AND a_flair=? ORDER BY created_at ASC LIMIT 1"
         ).bind(sess.cohort_id, other(sess.flair)).first();
         if (match) {
-          await DB.prepare("UPDATE collabs SET b_flair=?, b_text=?, b_handle=?, status='paired', is_live_paired=1, paired_at=? WHERE id=?")
-            .bind(sess.flair, text, sess.handle, Date.now(), match.id).run();
-          // publish the co-authored note into the shared EXPT feed (verbatim assembly)
-          const artifactLine = `${NOTE[lang].artifact} — "${match.a_text}" (${match.a_handle} · ${match.a_flair}) × "${text}" (${sess.handle} · ${sess.flair})`;
+          // publish the co-authored note into the shared EXPT feed: LLM-merged when the
+          // LLM_API_KEY secret is configured, verbatim assembly otherwise / on failure
+          const merged = await llmMerge(env, lang,
+            { flair: match.a_flair, handle: match.a_handle, text: match.a_text },
+            { flair: sess.flair, handle: sess.handle, text });
+          const artifactLine = merged
+            ? `${NOTE[lang].artifact} — ${merged} (co-written by ${match.a_handle} · ${match.a_flair} × ${sess.handle} · ${sess.flair} · AI-merged)`
+            : `${NOTE[lang].artifact} — "${match.a_text}" (${match.a_handle} · ${match.a_flair}) × "${text}" (${sess.handle} · ${sess.flair})`;
+          await DB.prepare("UPDATE collabs SET b_flair=?, b_text=?, b_handle=?, status='paired', is_live_paired=1, paired_at=?, artifact=? WHERE id=?")
+            .bind(sess.flair, text, sess.handle, Date.now(), artifactLine, match.id).run();
           await insertEvent(DB, sess, "note_published", artifactLine, "note", "kpop_mod", "SYS");
-          return json({ collabId: match.id, status: "paired", isLivePaired: true,
+          return json({ collabId: match.id, status: "paired", isLivePaired: true, aiMerged: !!merged,
             partner: { flair: match.a_flair, text: match.a_text, handle: match.a_handle },
             artifact: NOTE[lang].artifact }, 200, origin);
         }
@@ -341,6 +425,30 @@ export default {
           const b = await request.json().catch(() => ({}));
           await DB.prepare("UPDATE cohorts SET status='closed' WHERE id=?").bind(String(b.code || "").toUpperCase()).run();
           return json({ ok: true }, 200, origin);
+        }
+
+        // Backfill: rescore stored posts/comments from text_raw. With LLM_API_KEY the
+        // batch is LLM-graded (the dashboard loops offset batches to stay under Workers
+        // subrequest caps); otherwise — or per-row on LLM failure — wordlists apply.
+        if (path === "/api/dashboard/rescore" && request.method === "POST") {
+          const b = await request.json().catch(() => ({}));
+          const offset = Math.max(0, Number(b.offset) || 0);
+          const useLlm = !!env.LLM_API_KEY && b.mode !== "wordlist";
+          const limit = useLlm ? 25 : 100000;
+          const { n: total } = (await DB.prepare("SELECT COUNT(*) n FROM events WHERE type IN ('post','comment')").first()) || { n: 0 };
+          const rows = (await DB.prepare("SELECT id, text_raw FROM events WHERE type IN ('post','comment') ORDER BY created_at ASC LIMIT ? OFFSET ?").bind(limit, offset).all()).results || [];
+          const scored = [];
+          for (let i = 0; i < rows.length; i += 5) {
+            const chunk = rows.slice(i, i + 5);
+            const vals = useLlm ? await Promise.all(chunk.map((r) => llmToxicity(env, r.text_raw))) : chunk.map(() => null);
+            chunk.forEach((r, k) => scored.push([vals[k] != null ? vals[k] : toxicity(r.text_raw), r]));
+          }
+          const stmts = scored.map(([tox, r]) =>
+            DB.prepare("UPDATE events SET toxicity=?, we=?, they=? WHERE id=?")
+              .bind(tox, countWords(r.text_raw, WE), countWords(r.text_raw, THEY), r.id));
+          for (let i = 0; i < stmts.length; i += 100) await DB.batch(stmts.slice(i, i + 100));
+          const nextOffset = offset + rows.length;
+          return json({ ok: true, mode: useLlm ? "llm" : "wordlist", total, processed: rows.length, nextOffset, done: nextOffset >= total || rows.length === 0 }, 200, origin);
         }
 
         if (path === "/api/dashboard/summary") {
