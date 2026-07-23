@@ -41,6 +41,7 @@
 
   <div class="toolbar">
     <button class="btn ghost sm" id="btn-refresh">↻ Refresh</button>
+    <button class="btn ghost sm" id="btn-rescore" title="Recompute toxicity & we/they for all stored posts with the current wordlists">♻ Rescore</button>
     <button class="btn ghost sm" id="btn-csv">⇩ Export CSV</button>
     <button class="btn ghost sm" id="btn-json">⇩ Export JSON</button>
   </div>
@@ -188,6 +189,12 @@ async function loadSessions(){
 /* -------- toolbar + cohort admin -------- */
 async function refresh(){ renderAll(await call("/api/dashboard/summary")); }
 $("#btn-refresh").onclick = refresh;
+$("#btn-rescore").onclick = async ()=>{
+  const b = $("#btn-rescore"); b.disabled = true; b.textContent = "♻ Rescoring…";
+  try{ const r = await call("/api/dashboard/rescore", {method:"POST"}); b.textContent = `♻ Rescored ${r.rescored}`; await refresh(); }
+  catch(e){ b.textContent = "♻ Rescore failed"; }
+  setTimeout(()=>{ b.textContent = "♻ Rescore"; b.disabled = false; }, 2500);
+};
 $("#co-create").onclick = async ()=>{
   $("#co-err").textContent="";
   try{ await call("/api/dashboard/cohort",{method:"POST",body:{code:$("#co-code").value.trim(), label:$("#co-label").value.trim(), language:$("#co-lang").value}}); $("#co-code").value=""; refresh(); }

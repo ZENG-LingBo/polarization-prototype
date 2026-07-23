@@ -124,6 +124,33 @@ async function llmMerge(env, lang, a, b) {
   } catch { return null; }
 }
 
+// Rates one message's toxicity 0-100 via the LLM; null on any failure. Used live via
+// ctx.waitUntil right after insert (the heuristic score stands until this lands) and by
+// the dashboard /rescore backfill. Same key/endpoint as llmMerge; cheaper default model.
+async function llmToxicity(env, text) {
+  if (!env.LLM_API_KEY || !text) return null;
+  const base = (env.LLM_BASE_URL || "https://dashscope-intl.aliyuncs.com/compatible-mode/v1").replace(/\/$/, "");
+  try {
+    const r = await fetch(base + "/chat/completions", {
+      method: "POST",
+      headers: { "content-type": "application/json", authorization: "Bearer " + env.LLM_API_KEY },
+      body: JSON.stringify({
+        model: env.LLM_TOX_MODEL || "qwen-turbo",
+        messages: [
+          { role: "system", content: "Rate the toxicity of this K-pop fan-community message toward the rival fandom or its members: hostility, insults, mockery, dismissive sarcasm. Scale 0-100 (0 = friendly or neutral, 100 = extremely hostile). The message may be English or Chinese. Reply with ONLY the integer." },
+          { role: "user", content: String(text).slice(0, 1000) },
+        ],
+        max_tokens: 8, temperature: 0,
+      }),
+      signal: AbortSignal.timeout(8000),
+    });
+    if (!r.ok) return null;
+    const j = await r.json();
+    const m = String(j.choices?.[0]?.message?.content || "").match(/\d{1,3}/);
+    return m ? clamp(Number(m[0]) / 100) : null;
+  } catch { return null; }
+}
+
 function toxicity(t) {
   const s = String(t).toLowerCase(); let hits = 0;
   TOX.forEach((w) => { if (s.includes(w)) hits++; });
@@ -168,13 +195,15 @@ async function getSession(DB, sid) {
 }
 
 async function insertEvent(DB, sess, type, text, threadId, authorOverride, flairOverride) {
+  const id = uid("ev");
   const t = String(text || "").slice(0, 2000);
   await DB.prepare(
     `INSERT INTO events (id,session_id,cohort_id,day,arm,flair,author,type,text_raw,toxicity,we,they,thread_id,created_at)
      VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)`
-  ).bind(uid("ev"), sess.id || null, sess.cohort_id, sess.cohort_day || sess.day, sess.arm,
+  ).bind(id, sess.id || null, sess.cohort_id, sess.cohort_day || sess.day, sess.arm,
     flairOverride || sess.flair, authorOverride || sess.handle, type, t,
     toxicity(t), countWords(t, WE), countWords(t, THEY), String(threadId || "seed"), Date.now()).run();
+  return id;
 }
 
 async function seedDay(DB, cohort, day) {
@@ -192,7 +221,7 @@ async function seedDay(DB, cohort, day) {
 }
 
 export default {
-  async fetch(request, env) {
+  async fetch(request, env, ctx) {
     const origin = request.headers.get("Origin") || "";
     const url = new URL(request.url);
     const path = url.pathname;
@@ -257,7 +286,13 @@ export default {
         const sess = await getSession(DB, b.sessionId);
         if (!sess) return json({ error: "no_session" }, 400, origin);
         const type = ["post", "comment", "like", "share", "cross"].includes(b.type) ? b.type : "post";
-        await insertEvent(DB, sess, type, b.textRaw, b.threadId);
+        const evId = await insertEvent(DB, sess, type, b.textRaw, b.threadId);
+        // LLM-grade the score in the background — the response never waits on the model
+        if ((type === "post" || type === "comment") && env.LLM_API_KEY && ctx) {
+          const raw = String(b.textRaw || "").slice(0, 2000);
+          ctx.waitUntil(llmToxicity(env, raw).then((v) => v == null ? null :
+            DB.prepare("UPDATE events SET toxicity=? WHERE id=?").bind(v, evId).run()).catch(() => {}));
+        }
         return json({ ok: true }, 200, origin);
       }
 
@@ -390,6 +425,30 @@ export default {
           const b = await request.json().catch(() => ({}));
           await DB.prepare("UPDATE cohorts SET status='closed' WHERE id=?").bind(String(b.code || "").toUpperCase()).run();
           return json({ ok: true }, 200, origin);
+        }
+
+        // Backfill: rescore stored posts/comments from text_raw. With LLM_API_KEY the
+        // batch is LLM-graded (the dashboard loops offset batches to stay under Workers
+        // subrequest caps); otherwise — or per-row on LLM failure — wordlists apply.
+        if (path === "/api/dashboard/rescore" && request.method === "POST") {
+          const b = await request.json().catch(() => ({}));
+          const offset = Math.max(0, Number(b.offset) || 0);
+          const useLlm = !!env.LLM_API_KEY && b.mode !== "wordlist";
+          const limit = useLlm ? 25 : 100000;
+          const { n: total } = (await DB.prepare("SELECT COUNT(*) n FROM events WHERE type IN ('post','comment')").first()) || { n: 0 };
+          const rows = (await DB.prepare("SELECT id, text_raw FROM events WHERE type IN ('post','comment') ORDER BY created_at ASC LIMIT ? OFFSET ?").bind(limit, offset).all()).results || [];
+          const scored = [];
+          for (let i = 0; i < rows.length; i += 5) {
+            const chunk = rows.slice(i, i + 5);
+            const vals = useLlm ? await Promise.all(chunk.map((r) => llmToxicity(env, r.text_raw))) : chunk.map(() => null);
+            chunk.forEach((r, k) => scored.push([vals[k] != null ? vals[k] : toxicity(r.text_raw), r]));
+          }
+          const stmts = scored.map(([tox, r]) =>
+            DB.prepare("UPDATE events SET toxicity=?, we=?, they=? WHERE id=?")
+              .bind(tox, countWords(r.text_raw, WE), countWords(r.text_raw, THEY), r.id));
+          for (let i = 0; i < stmts.length; i += 100) await DB.batch(stmts.slice(i, i + 100));
+          const nextOffset = offset + rows.length;
+          return json({ ok: true, mode: useLlm ? "llm" : "wordlist", total, processed: rows.length, nextOffset, done: nextOffset >= total || rows.length === 0 }, 200, origin);
         }
 
         if (path === "/api/dashboard/summary") {

@@ -73,6 +73,10 @@
   .pillbtn:hover{border-color:var(--line)}
   .pillbtn.voted{color:var(--up)}
   .cmt{margin:8px 0 0 30px;border-left:2px solid var(--line2);padding:6px 0 0 10px}
+  .cmt .cmt{margin-left:14px}
+  .cmt .cmt .cmt{margin-left:6px}
+  .cactions{margin-top:4px}
+  .cactions .pillbtn{font-size:11px;padding:2px 8px}
   .replying{font-size:12px;color:var(--note);margin-top:6px;display:none}
   /* pinned feature cards */
   .pinned{border:1px solid var(--note);border-radius:14px;background:linear-gradient(180deg,rgba(245,158,11,.10),rgba(245,158,11,.02));padding:12px 14px;margin-top:12px}
@@ -395,19 +399,30 @@ function postCard(e) {
   };
   return el;
 }
+function cmtCard(e) {
+  const c = document.createElement("div");
+  c.className = "cmt"; c.dataset.id = e.id;
+  c.innerHTML = `<div class="pmeta"><span class="uav ${e.flair}">${initials(e.author)}</span><b>${esc(e.author||"")}</b> <span class="flair ${e.flair}">${e.flair}</span></div><div class="ptext"></div><div class="cactions"><button class="pillbtn reply">↩ reply</button></div><div class="cmts"></div>`;
+  c.querySelector(".ptext").textContent = e.text_raw;
+  c.querySelector(".reply").onclick = () => {
+    replyTo = e;
+    const r = $("#replying");
+    r.style.display = "block";
+    r.textContent = T("replying_to") + " " + (e.author || "") + " " + T("cancel");
+    $("#composer-input").focus();
+  };
+  return c;
+}
 function placeEvent(e) {
   if (seenIds.has(e.id)) return;
   seenIds.add(e.id);
   lastTs = Math.max(lastTs, e.created_at);
   if (e.type === "comment" && e.thread_id && e.thread_id !== "seed") {
-    const parent = document.querySelector(`.post[data-id="${e.thread_id}"] .cmts`);
-    if (parent) {
-      const c = document.createElement("div"); c.className = "cmt";
-      c.innerHTML = `<div class="pmeta"><span class="uav ${e.flair}">${initials(e.author)}</span><b>${esc(e.author||"")}</b> <span class="flair ${e.flair}">${e.flair}</span></div><div class="ptext"></div>`;
-      c.querySelector(".ptext").textContent = e.text_raw;
-      parent.appendChild(c);
-      return;
-    }
+    // parent may be a post OR another comment (reply-to-reply); orphans (parent outside
+    // the feed window) still render comment-styled at the bottom — never as a post card
+    const host = document.querySelector(`.post[data-id="${e.thread_id}"] > .cmts, .cmt[data-id="${e.thread_id}"] > .cmts`);
+    (host || $("#feed")).appendChild(cmtCard(e));
+    return;
   }
   $("#feed").appendChild(postCard(e));
 }

@@ -30,6 +30,7 @@ PAIRING_TIMEOUT_MS = "90000"
 # secret is set; any failure falls back to verbatim assembly. OpenAI-compatible API.
 # Mainland-China DashScope accounts: set LLM_BASE_URL = "https://dashscope.aliyuncs.com/compatible-mode/v1"
 LLM_MODEL = "qwen-plus"
+LLM_TOX_MODEL = "qwen-turbo"
 LLM_BASE_URL = "https://dashscope-intl.aliyuncs.com/compatible-mode/v1"
 
 # --- Secrets (NOT stored here) ---
