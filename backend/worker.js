@@ -59,23 +59,43 @@ const POLL = {
 };
 // ---- Day seed prompts (discussion-provoking posts inserted for BOTH arms when a day
 // opens). Anonymized/paraphrased fan-war register; group-vs-group only (ethics: PLAN §12).
-// NOTE for the real run: replace Day-1 seeds with the team's finalized prompts.
+//
+// INTENSITY MUST BE MATCHED ACROSS DAYS. Earlier drafts paired two rival provocations on
+// Day 1 with a mild neutral prompt on Days 2-3 — that alone lowers toxicity on Day 2 in
+// BOTH arms, confounding the day effect with the stimulus and putting the "control stays
+// high" go/no-go check (PLAN §17) at risk for reasons unrelated to the intervention. Every
+// day therefore carries the same structure: one ARMY-flair and one BLINK-flair comparative
+// superiority claim inviting rebuttal.
+// NOTE for the real run: replace all three sets with the team's finalized prompts, keeping
+// them matched in intensity, and pre-register which set lands on which day.
 const SEEDS = {
   en: {
     1: [
       { flair: "ARMY", author: "seed_mod_a", text: "BTS is the defining group of this generation, it's genuinely not close 🏆 discuss." },
       { flair: "BLINK", author: "seed_mod_b", text: "BLACKPINK outsold and outperformed — the numbers don't lie. change my mind." },
     ],
-    2: [{ flair: "SYS", author: "kpop_mod", text: "New day, same energy — what's everyone's take today?" }],
-    3: [{ flair: "SYS", author: "kpop_mod", text: "Final day — biggest hot take of the week?" }],
+    2: [
+      { flair: "ARMY", author: "seed_mod_c", text: "Say what you want about hype — BTS filled stadiums on their own name. Marketing can't fake that 🏟️" },
+      { flair: "BLINK", author: "seed_mod_d", text: "BLACKPINK got into rooms nobody else did. Global reach isn't a fandom talking point, it's the record 🌍" },
+    ],
+    3: [
+      { flair: "ARMY", author: "seed_mod_e", text: "Final-week take: take BTS off the timeline and this genre never crosses over. simple as that." },
+      { flair: "BLINK", author: "seed_mod_f", text: "Final-week take: BLACKPINK is why the west takes K-pop seriously. everyone else is catching up." },
+    ],
   },
   zh: {
     1: [
       { flair: "ARMY", author: "seed_mod_a", text: "BTS就是这一代的代表团体，真的没有悬念 🏆 来讨论。" },
       { flair: "BLINK", author: "seed_mod_b", text: "BLACKPINK销量和舞台都更强——数据不会说谎。来反驳我。" },
     ],
-    2: [{ flair: "SYS", author: "kpop_mod", text: "新的一天，继续聊——今天大家怎么看？" }],
-    3: [{ flair: "SYS", author: "kpop_mod", text: "最后一天——本周最敢说的观点是什么？" }],
+    2: [
+      { flair: "ARMY", author: "seed_mod_c", text: "随便你们怎么说流量——BTS是靠自己的名字把体育场填满的，营销做不出这个 🏟️" },
+      { flair: "BLINK", author: "seed_mod_d", text: "BLACKPINK进的是别人进不去的场合，全球影响力不是粉丝话术，是纪录 🌍" },
+    ],
+    3: [
+      { flair: "ARMY", author: "seed_mod_e", text: "最后一周的观点：把BTS从时间线上拿掉，这个类型根本出不了圈。就这么简单。" },
+      { flair: "BLINK", author: "seed_mod_f", text: "最后一周的观点：是BLACKPINK让西方开始认真对待K-pop，其他人都还在追。" },
+    ],
   },
 };
 
@@ -151,11 +171,25 @@ async function llmToxicity(env, text) {
   } catch { return null; }
 }
 
+// Group/fandom names are written in caps by convention, so the shouting rule must ignore
+// them: "BLACKPINK" is 9 capitals and "BTS" is 3, which otherwise handed every message
+// naming BLACKPINK a free +1 hit and biased the live meter against one fandom.
+const SHOUT_EXEMPT = /\b(BTS|BLACKPINK|BP|ARMY|ARMYS|BLINK|BLINKS|KPOP|K-POP|OT7|MV|EP|LOL|OMG|TXT|NCT|IVE|AESPA|TWICE|EXO|SEVENTEEN)\b/g;
+// English terms match on WORD BOUNDARIES, not as substrings: plain `includes` scored
+// "generation" as toxic because it contains "ratio" (likewise operation/rational/…).
+// Chinese still needs substring matching — CJK has no word boundaries.
+const TOX_WORDS = new Set(TOX.filter((w) => /^[a-z']+$/.test(w)));
+const TOX_PHRASES = TOX.filter((w) => /[ -]/.test(w));
+const TOX_SYMBOLS = TOX.filter((w) => !/^[a-z' -]+$/.test(w));
 function toxicity(t) {
-  const s = String(t).toLowerCase(); let hits = 0;
-  TOX.forEach((w) => { if (s.includes(w)) hits++; });
+  const raw = String(t), s = raw.toLowerCase();
+  let hits = 0;
+  const toks = new Set(s.split(/[^a-z']+/).filter(Boolean));
+  TOX_WORDS.forEach((w) => { if (toks.has(w)) hits++; });
+  TOX_PHRASES.forEach((w) => { if (s.includes(w)) hits++; });
+  TOX_SYMBOLS.forEach((w) => { if (s.includes(w)) hits++; });
   TOX_ZH.forEach((w) => { if (s.includes(w)) hits++; });
-  if (/[A-Z]{4,}/.test(String(t))) hits++;
+  if (/[A-Z]{4,}/.test(raw.replace(SHOUT_EXEMPT, ""))) hits++;
   return clamp(hits / 3);
 }
 const countWords = (t, list) => String(t).toLowerCase().split(/[^a-z']+/).filter((x) => list.includes(x)).length
@@ -250,9 +284,15 @@ export default {
           // invite link (?flair=). Never fabricate it — refuse if absent (PLAN.md §17).
           const flair = b.flair === "ARMY" || b.flair === "BLINK" ? b.flair : null;
           if (!flair) return json({ error: "no_flair" }, 400, origin);
-          // balanced arm within cohort
-          const { n } = (await DB.prepare("SELECT COUNT(*) n FROM participants WHERE cohort_id=?").bind(code).first()) || { n: 0 };
-          const arm = ARMS[n % 2];
+          // Arm: a cohort pinned to EXPT/CTRL puts its whole group in one arm, so a 4v4
+          // group is a true 4v4 feed and the group is one clean cluster (PLAN §17). Cohorts
+          // left MIXED keep the alternating assignment (back-compat with earlier pilots);
+          // an un-migrated DB has no arm column, which reads as MIXED.
+          let arm = cohort.arm === "EXPT" || cohort.arm === "CTRL" ? cohort.arm : null;
+          if (!arm) {
+            const { n } = (await DB.prepare("SELECT COUNT(*) n FROM participants WHERE cohort_id=?").bind(code).first()) || { n: 0 };
+            arm = ARMS[n % 2];
+          }
           part = { id: uid("p"), cohort_id: code, rejoin_code: rejoinCode(), handle: mkHandle(flair), arm, flair, created_at: Date.now() };
           await DB.prepare("INSERT INTO participants (id,cohort_id,rejoin_code,handle,arm,flair,created_at) VALUES (?,?,?,?,?,?,?)")
             .bind(part.id, part.cohort_id, part.rejoin_code, part.handle, part.arm, part.flair, part.created_at).run();
@@ -405,9 +445,13 @@ export default {
           const code = String(b.code || "").trim().toUpperCase();
           if (!/^[A-Z0-9]{3,12}$/.test(code)) return json({ error: "bad_code" }, 400, origin);
           const lang = b.language === "zh" ? "zh" : "en";
-          const cohort = { id: code, label: String(b.label || code).slice(0, 60), language: lang, day: 1, status: "open", created_at: Date.now() };
-          await DB.prepare("INSERT INTO cohorts (id,label,language,day,status,created_at) VALUES (?,?,?,?,?,?)")
-            .bind(cohort.id, cohort.label, cohort.language, 1, "open", cohort.created_at).run();
+          const arm = b.arm === "EXPT" || b.arm === "CTRL" ? b.arm : "MIXED";
+          // Self-migrating: adds the column to a database created before whole-group arms.
+          // Harmless no-op once it exists, so no console step is needed for the upgrade.
+          await DB.prepare("ALTER TABLE cohorts ADD COLUMN arm TEXT DEFAULT 'MIXED'").run().catch(() => {});
+          const cohort = { id: code, label: String(b.label || code).slice(0, 60), language: lang, arm, day: 1, status: "open", created_at: Date.now() };
+          await DB.prepare("INSERT INTO cohorts (id,label,language,arm,day,status,created_at) VALUES (?,?,?,?,?,?,?)")
+            .bind(cohort.id, cohort.label, cohort.language, cohort.arm, 1, "open", cohort.created_at).run();
           await seedDay(DB, cohort, 1);
           return json({ ok: true, cohort }, 200, origin);
         }
@@ -480,8 +524,20 @@ export default {
           const R1 = t("EXPT", 1) == null || t("CTRL", 1) == null ? null : (t("EXPT", 1) >= 0.55 && t("CTRL", 1) >= 0.55);
           const R2 = t("CTRL", 2) == null ? null : t("CTRL", 2) >= 0.5;
           const R3 = t("EXPT", 2) == null || t("CTRL", 2) == null ? null : (t("EXPT", 2) <= 0.35 && t("CTRL", 2) >= 0.5);
+          // Per-cohort × day toxicity. With whole-group arms each cohort IS the cluster, so
+          // this — not the pooled arm×day cell — is the level the design actually varies at.
+          const bcd = (await DB.prepare(
+            "SELECT cohort_id, day, arm, COUNT(*) msgs, SUM(toxicity) toxSum FROM events WHERE type IN ('post','comment') AND session_id IS NOT NULL GROUP BY cohort_id, day, arm"
+          ).all()).results || [];
+          const byCohortDay = {};
+          bcd.forEach((r) => {
+            const k = r.cohort_id || "?";
+            (byCohortDay[k] || (byCohortDay[k] = {}))[r.day] = {
+              arm: r.arm, msgs: r.msgs, toxRate: r.msgs ? (r.toxSum || 0) / r.msgs : null,
+            };
+          });
           const { n: sessions } = (await DB.prepare("SELECT COUNT(*) n FROM sessions").first()) || { n: 0 };
-          return json({ source: "backend", version: "v3", cohorts, byArmDay, checks: { R1, R2, R3 }, totals: { sessions } }, 200, origin);
+          return json({ source: "backend", version: "v3", cohorts, byArmDay, byCohortDay, checks: { R1, R2, R3 }, totals: { sessions } }, 200, origin);
         }
 
         if (path === "/api/dashboard/sessions") {
