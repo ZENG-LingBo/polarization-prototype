@@ -9,7 +9,7 @@ instruments the paper reports*.
 
 | Layer | What it is | Used for | Documented in |
 | --- | --- | --- | --- |
-| **Live scoring** (this file) | A wordlist heuristic plus a single-shot LLM rating, computed as the session runs | Running the study: seeing whether Day 1 got hot enough, watching the R1–R3 gates, spotting a session that needs intervention | this file |
+| **Live scoring** (this file) | A wordlist heuristic plus a single-shot LLM rating, computed as the session runs | Running the study: seeing whether Day 1 got hot enough, watching the G1–G3 gates, spotting a session that needs intervention | this file |
 | **Registered analysis** | Perspective API + Coe, Kenski & Rains (2014) incivility codebook + the validated K-pop lexicon, applied afterwards to the exported raw text | Everything reported in the paper | [`MEASURES.md`](MEASURES.md) |
 
 Live scores are **not** a published instrument and must not be reported as one. They exist
@@ -50,14 +50,22 @@ later scoring passes (§2.3, §2.4). There is no score history — see §5.1.
 network:
 
 1. Lowercase the message.
-2. Count **one hit per distinct list term that appears anywhere** in the text (substring
-   match, because Chinese has no word boundaries):
+2. Count **one hit per distinct list term present**:
    - English list `TOX` (30 terms: `clown`, `trash`, `delusional`, `flop`, `cope`,
-     `pathetic`, `shut up`, 🤡, 💀, …) — [`worker.js:82`](backend/worker.js)
+     `pathetic`, `shut up`, 🤡, 💀, …) — [`worker.js:82`](backend/worker.js). Single words
+     match on **word boundaries**; multi-word phrases and emoji match as substrings.
    - Chinese list `TOX_ZH` (29 terms: 呵呵, 也配, 就这, 糊了, 过气, 拉胯, 黑子, 脑残, 垃圾,
-     闭嘴, 笑死, 不能看, 打不过, 下头, …) — [`worker.js:88`](backend/worker.js)
-3. Add one hit if the message contains a run of **4+ capital letters** (shouting).
+     闭嘴, 笑死, 不能看, 打不过, 下头, …) — [`worker.js:88`](backend/worker.js). Substring
+     matched, which CJK requires.
+3. Add one hit if the message contains a run of **4+ capital letters** (shouting), after
+   removing group and fandom names — they are capitalised by convention, and counting them
+   gave every message naming **BLACKPINK** (9 capitals) a free hit while **BTS** (3) never
+   triggered it, biasing the meter against one fandom.
 4. `score = min(hits / 3, 1.0)`
+
+Both refinements in steps 2–3 were added after the originals misfired: plain substring
+matching scored *"gene**ratio**n"* as toxic via the term `ratio` (likewise *operation*,
+*rational*), which alone made two intensity-matched seed prompts differ by 33 points.
 
 So the heuristic can only ever return **0, 33, 67 or 100**. Worked examples:
 
@@ -67,10 +75,13 @@ So the heuristic can only ever return **0, 33, 67 or 100**. Worked examples:
 | 你们根本不能看，垃圾 | 不能看, 垃圾 | **67** |
 | 呵呵就这？也配叫代表 | 呵呵, 就这, 也配 | **100** |
 | this take is TRASH lol | `trash` + caps run | **67** |
+| BLACKPINK outsold and outperformed | none (name exempt from the caps rule) | **0** |
+| a rational operation in this generation | none (`ratio` needs a word boundary) | **0** |
 
 Known blind spots: no negation handling ("this is *not* trash" scores as a hit), no sarcasm,
 no coverage of terms outside the two lists, and hits are counted once per *term* rather than
-per occurrence.
+per occurrence. The Chinese list keeps substring matching, so it retains the class of false
+positive that was just removed from English.
 
 ### 2.2 Scorer B — LLM rating (0–100)
 
@@ -194,16 +205,16 @@ Two properties to keep in mind:
   (average within participant, then across participants) — the exported CSV supports this,
   and the two can differ substantially when posting is unbalanced.
 
-### 3.4 Requirement checks (R1–R3)
+### 3.4 Operational gates (G1–G3)
 
 Computed from `toxRate` at [`worker.js:480`](backend/worker.js); `null` (grey) until the
 relevant cells have data:
 
 | Check | Passes when |
 | --- | --- |
-| **R1** — baseline high on Day 1 | `EXPT day1 ≥ 0.55` **and** `CTRL day1 ≥ 0.55` |
-| **R2** — control stays high after its inert feature | `CTRL day2 ≥ 0.50` |
-| **R3** — drop only after the community note | `EXPT day2 ≤ 0.35` **and** `CTRL day2 ≥ 0.50` |
+| **G1** — baseline high on Day 1 | `EXPT day1 ≥ 0.55` **and** `CTRL day1 ≥ 0.55` |
+| **G2** — control stays high after its inert feature | `CTRL day2 ≥ 0.50` |
+| **G3** — drop only after the community note | `EXPT day2 ≤ 0.35` **and** `CTRL day2 ≥ 0.50` |
 
 These are **operational go/no-go gates for the protocol** (e.g. don't advance a cohort whose
 Day 1 never got heated), not hypothesis tests.
