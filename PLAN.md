@@ -124,12 +124,26 @@ The LLM is **infrastructure, never an interlocutor, and never an author**:
   (filtering out pro-one-subgroup framing);
 - **routes pairing** (matches a waiting contribution to a complementary one from the other
   fandom);
-- **assembles** the two sides' contributions into the artifact by **verbatim
-  concatenation/ordering/layout only — it does not rewrite, paraphrase, summarize, or
-  "balance" user text.** (The earlier "merge/balance 50/50" wording is dropped: any rewriting
-  would make the LLM a generative co-author, re-introducing the agent Ray rejected and
-  confounding the toxicity DV. Balancing is limited to *which* verbatim items appear and in
-  what order, not their content.)
+- **assembles** the two sides' contributions into the published artifact. **v3.1 decision:
+  the LLM may synthesize the two halves into a single note** (it rewrites/merges rather than
+  concatenating verbatim). This reverses the earlier verbatim-only rule, deliberately:
+  - The synthesis is **part of the manipulation**, not neutral infrastructure — smoothing two
+    rival contributions into one jointly-authored line is one of the mechanisms by which the
+    feature is expected to lower hostility.
+  - **The toxicity DV is not contaminated.** Published notes are stored as
+    `type='note_published'` and every toxicity aggregate filters `type IN ('post','comment')`,
+    so model-authored text is never scored. The DV remains free-form thread posts/comments
+    only (§10).
+  - **Cost to the claim, stated up front:** the intervention is now the bundle *structural
+    cross-fandom pairing + LLM synthesis*. The study cannot attribute the effect to either
+    component alone; a component-isolating arm is future work.
+  - **Disclosure obligations follow** (§4.3 transparency, §11 ethics): onboarding and debrief
+    must state that the published note is automatically composed from both contributions, and
+    the exit interview asks whether the published note still felt like the participant's own
+    (a dual-identity / distinctiveness-threat check — if synthesis erases a fan's voice it can
+    work against the CIIM mechanism it is meant to serve).
+  - Prompt-injection guard: contributions are user text passed to a model, so the merge prompt
+    is fixed and its output is published as a note, never executed or used to steer routing.
 - optional **minimal slur-flagging** before co-publish, applied **identically across arms**
   and logged so the toxicity DV is scored on pre-moderation text (§10).
 
@@ -400,16 +414,19 @@ Ray's latest round revises Study 1's execution. Demo: [`demo.html`](demo.html).
 - **Design: 2 arms only** (power/N reality; the 3-arm C1 is dropped). **Experiment** = the
   community-note collab feature; **Control** = a comparable but **inert, non-collaborative**
   feature (a cross-group collab on non-K-pop content would itself depolarize). Between-subjects,
-  demographics matched across arms (incl. age and English proficiency); ≥30/arm pending power
-  analysis; language cells run **entirely** in one language (English or Chinese, no mixing;
-  surveys may be translated; paper reports both).
+  demographics matched across arms (incl. age and English proficiency);
+  language cells run **entirely** in one language (English or Chinese, no mixing;
+  surveys may be translated; paper reports both). **Group size and realized N: §17.1.**
 - **Sequence (within-group over ~3 days, ~1 h/day, ≈¥30/day):** Day 1 baseline (heated
   prompts; **repeat Day 1 until toxicity/polarization is measurably HIGH**) → survey; Day 2
   feature (note vs inert) → survey; Day 3 feature removed → survey + exit interview.
-  **Hard requirements:** toxicity high pre-intervention; control stays high after its feature;
-  toxicity drops **only** after the community note. If baseline momentum fades, shorten the
-  control phase; small situational encouragement is fine, but **no scripted "spice"** reported
-  in the paper.
+  **Operational go/no-go gates** (G1–G3 in the dashboard — they decide whether a day is ready
+  to advance, and are **not** evidence for the hypothesis; §17.1): toxicity high
+  pre-intervention; control stays high after its feature; toxicity drops only after the
+  community note. Seed prompts are **intensity-matched across all three days** so a day
+  effect is not a stimulus effect. If baseline momentum fades, any adjustment is made by a
+  **pre-registered rule and reported** — anything done to the run appears in the paper,
+  including situational encouragement and any repeated Day 1.
 - **Blinding:** the app / recruiting / surveys **never state the study's purpose** — participants
   are only told **what to do**. All research language lives outside the participant UI (in the
   demo: the researcher-only panel).
@@ -425,3 +442,53 @@ Ray's latest round revises Study 1's execution. Demo: [`demo.html`](demo.html).
 - **Follow-up:** reconcile §5–§8 and OUTLINE/MEASURES fully to v3 (three-arm text, pairing
   logistics, and the day-level timing table need rewriting); write the comprehensive plan into
   the team Overleaf.
+
+## 17.1 Protocol v3.1 — realized design (4v4 groups) and what it can claim
+
+**Group = 4v4.** Each forum group is **4 ARMY + 4 BLINK = 8 participants**, replacing the
+earlier "30+30 at once". A group runs **entirely in one arm**, so its feed is a true 4v4 and
+the group is one clean cluster. (Implementation: a cohort is created with a fixed arm; the
+join code determines the arm. Cohorts left `MIXED` keep the old alternating assignment, which
+would split 8 people into two 2v2 feeds and must not be used for the real run.)
+
+**Cells.** Language × arm, one group each:
+
+| | EXPT (community note) | CTRL (inert poll) |
+|---|---|---|
+| **English** | 1 group (4v4) | 1 group (4v4) |
+| **Chinese** | 1 group (4v4) | 1 group (4v4) |
+
+**Arithmetic to confirm before recruiting.** Four groups × 8 = **32 participants**. The
+working figure of "16 people" covers **one language cell** (2 groups), or implies **2v2**
+groups rather than 4v4 if it is the total. Lock this before Day 1 — it does not change the
+software (each group is just a join code), but it changes the recruiting target.
+
+**What this design can and cannot support.** With one group per cell, the arm effect is
+observed in **n = 1 cluster per arm per language**. Everyone inside a group is talking to the
+same seven people, so their messages are not independent observations: the effective sample
+for a between-arm test is the **number of groups**, not the number of participants or
+messages. Therefore:
+
+- **Do not report a significance test on the arm × day interaction.** With 2 clusters per arm
+  (one per language) it is not estimable, and any p-value computed over messages is
+  pseudo-replication — the single most likely reason for a methods desk-reject.
+- **Pre-register this as a feasibility pilot + qualitative study**, which is what it is and
+  what it is good at: RQ2 (how what participants post changes after the intervention) via
+  interaction-level qualitative coding, plus the exit interviews, plus a demonstration that
+  the platform, pairing, blinding and instrumentation work end-to-end.
+- **Report toxicity descriptively and per group** — the dashboard's *By group* table gives
+  each cohort's Day 1/2/3 trajectory with message counts. Show all four trajectories; never
+  pool them into a single EXPT-vs-CTRL number that implies replication you don't have.
+- **Use it to power the real study.** The pilot's between-group variance and ICC are exactly
+  the inputs a proper cluster-randomized design needs. A confirmatory version wants roughly
+  **8–12 groups per arm**; state that as the follow-up.
+- **Language is a design strength here** — the same manipulation in two languages is a
+  meaningful robustness demonstration, and is best reported as **two parallel case
+  replications** (EN and ZH), not as a covariate.
+
+**Estimand, if any quantitative claim is made.** The comparison is the **arm × day
+difference-in-differences** (EXPT Day1→Day2 change *relative to* the CTRL group's change over
+the same days), never a within-arm drop. A Day-1 baseline that was repeated until it was high
+is selected on the outcome and regresses toward the mean on its own, so a within-arm decline
+is expected even with no working intervention; only the CTRL group's parallel trend controls
+for it. Report how many times Day 1 was repeated.
