@@ -4,6 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>DefuseLab — Researcher Dashboard</title>
+<link rel="icon" href="data:," />
 <link rel="stylesheet" href="assets/ui.css?v=4" />
 <style>
   .checks{display:flex;gap:10px;flex-wrap:wrap;margin-top:8px}
@@ -13,6 +14,13 @@
   .cohortrow{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:8px}
   .cohortrow input,.cohortrow select{background:var(--panel2,#131c1f);color:inherit;border:1px solid var(--line);border-radius:8px;padding:7px 10px;font:inherit;font-size:12.5px}
   .daybtn{padding:5px 10px;font-size:12px}
+  .msgfilters{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:10px 0 4px}
+  .msgfilters select,.msgfilters input{background:var(--panel2,#131c1f);color:inherit;border:1px solid var(--line);border-radius:8px;padding:6px 9px;font:inherit;font-size:12.5px}
+  .msgfilters input{min-width:190px}
+  .msgwrap{overflow-x:auto;max-height:540px;overflow-y:auto;border:1px solid var(--line);border-radius:10px;margin-top:6px}
+  .msgwrap thead th{position:sticky;top:0;background:var(--panel,#101617);z-index:2}
+  .toxpill{display:inline-block;min-width:34px;text-align:center;border-radius:999px;padding:2px 8px;font-weight:800;font-size:12px;border:1px solid currentColor}
+  #msg-table td.msgtext{white-space:normal;max-width:560px;overflow-wrap:anywhere}
 </style>
 </head>
 <body>
@@ -41,8 +49,9 @@
 
   <div class="toolbar">
     <button class="btn ghost sm" id="btn-refresh">↻ Refresh</button>
-    <button class="btn ghost sm" id="btn-rescore" title="Recompute toxicity & we/they for all stored posts with the current wordlists">♻ Rescore</button>
-    <button class="btn ghost sm" id="btn-csv">⇩ Export CSV</button>
+    <button class="btn ghost sm" id="btn-rescore" title="Re-grade every stored message (LLM-graded when LLM_API_KEY is set, wordlists otherwise)">♻ Rescore</button>
+    <button class="btn ghost sm" id="btn-csv">⇩ Sessions CSV</button>
+    <button class="btn ghost sm" id="btn-msgcsv">⇩ Messages CSV</button>
     <button class="btn ghost sm" id="btn-json">⇩ Export JSON</button>
   </div>
 
@@ -78,6 +87,22 @@
   <div class="card" style="margin-top:14px">
     <h3>By arm × day — messages, toxicity, we/they, dose</h3>
     <div style="overflow-x:auto"><table class="sesstable" id="mech-table"></table></div>
+  </div>
+
+  <!-- per-message toxicity -->
+  <div class="card" style="margin-top:14px">
+    <h3>Messages — toxicity per message</h3>
+    <div class="cite">Every stored post &amp; reply with its own 0–100 score · seeds are marked · use ⇩ Messages CSV for the full text export</div>
+    <div class="msgfilters">
+      <select id="mf-cohort"><option value="">all cohorts</option></select>
+      <select id="mf-arm"><option value="">both arms</option><option value="EXPT">EXPT</option><option value="CTRL">CTRL</option></select>
+      <select id="mf-day"><option value="">all days</option><option value="1">Day 1</option><option value="2">Day 2</option><option value="3">Day 3</option></select>
+      <select id="mf-src"><option value="part">participants only</option><option value="all">include seed prompts</option></select>
+      <select id="mf-sort"><option value="tox">most toxic first</option><option value="new">newest first</option><option value="old">oldest first</option></select>
+      <input id="mf-q" placeholder="search text or handle…" />
+      <span class="muted tiny" id="mf-count"></span>
+    </div>
+    <div class="msgwrap"><table class="sesstable" id="msg-table"></table></div>
   </div>
 
   <!-- sessions -->
@@ -184,16 +209,69 @@ async function loadSessions(){
       return `<tr><td class="tiny">${(s.id||"").slice(0,12)}…</td><td>${s.cohort_id||""}</td><td>${s.day||""}</td><td><b>${s.arm}</b></td><td>${s.flair||""}</td><td class="tiny">${part.handle||""}</td><td>${evs.length}</td><td>${tox}</td></tr>`;
     }).join("") || `<tr><td colspan="8" class="muted">No sessions yet.</td></tr>`;
   window.__export = d;
+  populateMsgFilters(d);
+  renderMessages();
 }
+
+/* -------- per-message toxicity -------- */
+const esc = (s)=>String(s==null?"":s).replace(/[&<>"]/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const msgRows = ()=> ((window.__export||{}).events||[]).filter(e=>e.type==="post"||e.type==="comment");
+const stamp = (ms)=>{ const t=new Date(ms||0); const p=(n)=>String(n).padStart(2,"0"); return `${t.getMonth()+1}/${t.getDate()} ${p(t.getHours())}:${p(t.getMinutes())}`; };
+function populateMsgFilters(d){
+  const sel=$("#mf-cohort"), keep=sel.value;
+  const cohorts=[...new Set(msgRows().map(e=>e.cohort_id).filter(Boolean))].sort();
+  sel.innerHTML = `<option value="">all cohorts</option>`+cohorts.map(c=>`<option value="${esc(c)}"${c===keep?" selected":""}>${esc(c)}</option>`).join("");
+}
+function filteredMsgs(){
+  const co=$("#mf-cohort").value, arm=$("#mf-arm").value, day=$("#mf-day").value;
+  const q=$("#mf-q").value.trim().toLowerCase(), sort=$("#mf-sort").value;
+  const src=$("#mf-src").value;
+  let rows = msgRows().filter(e=>
+    (src==="all" || e.session_id) &&
+    (!co || e.cohort_id===co) && (!arm || e.arm===arm) && (!day || String(e.day)===day) &&
+    (!q || String(e.text_raw||"").toLowerCase().includes(q) || String(e.author||"").toLowerCase().includes(q)));
+  rows.sort(sort==="tox" ? (a,b)=>(b.toxicity||0)-(a.toxicity||0)
+       : sort==="new" ? (a,b)=>b.created_at-a.created_at : (a,b)=>a.created_at-b.created_at);
+  return rows;
+}
+function renderMessages(){
+  const rows = filteredMsgs();
+  const mean = rows.length ? Math.round(100*rows.reduce((a,e)=>a+(e.toxicity||0),0)/rows.length) : null;
+  $("#mf-count").textContent = rows.length
+    ? `${rows.length} messages · mean ${mean}${$("#mf-src").value==="part"?" (participant messages — same basis as the chart above)":" (incl. seed prompts, which the chart above excludes)"}`
+    : "no messages match";
+  $("#msg-table").innerHTML =
+    `<thead><tr><th>Tox</th><th>When</th><th>Cohort</th><th>Day</th><th>Arm</th><th>Fandom</th><th>Handle</th><th>Message</th><th>we/they</th></tr></thead><tbody>` +
+    (rows.map(e=>{
+      const v=e.toxicity||0, seed=!e.session_id;
+      return `<tr><td><span class="toxpill" style="color:${band(v)}">${Math.round(v*100)}</span></td>` +
+        `<td class="tiny">${stamp(e.created_at)}</td><td>${esc(e.cohort_id||"")}</td><td>${e.day||""}</td>` +
+        `<td><b>${esc(e.arm||"")}</b></td><td>${esc(e.flair||"")}</td>` +
+        `<td class="tiny">${esc(e.author||"")}${seed?' <span class="muted">·seed</span>':""}</td>` +
+        `<td class="msgtext">${esc(e.text_raw||"")}</td><td class="tiny">${e.we||0}/${e.they||0}</td></tr>`;
+    }).join("") || `<tr><td colspan="9" class="muted">No messages yet.</td></tr>`) + `</tbody>`;
+}
+["#mf-cohort","#mf-arm","#mf-day","#mf-sort","#mf-src"].forEach(s=>$(s).onchange=renderMessages);
+$("#mf-q").oninput = renderMessages;
 
 /* -------- toolbar + cohort admin -------- */
 async function refresh(){ renderAll(await call("/api/dashboard/summary")); }
 $("#btn-refresh").onclick = refresh;
 $("#btn-rescore").onclick = async ()=>{
   const b = $("#btn-rescore"); b.disabled = true; b.textContent = "♻ Rescoring…";
-  try{ const r = await call("/api/dashboard/rescore", {method:"POST"}); b.textContent = `♻ Rescored ${r.rescored}`; await refresh(); }
+  try{
+    let offset=0, total=0, mode="";
+    for(;;){
+      const r = await call("/api/dashboard/rescore", {method:"POST", body:{offset}});
+      mode=r.mode; total=r.total; offset=r.nextOffset;
+      b.textContent = `♻ ${Math.min(offset,total)}/${total} (${mode})`;
+      if(r.done || !r.processed) break;
+    }
+    b.textContent = `♻ Rescored ${total} (${mode})`;
+    await refresh();
+  }
   catch(e){ b.textContent = "♻ Rescore failed"; }
-  setTimeout(()=>{ b.textContent = "♻ Rescore"; b.disabled = false; }, 2500);
+  setTimeout(()=>{ b.textContent = "♻ Rescore"; b.disabled = false; }, 4000);
 };
 $("#co-create").onclick = async ()=>{
   $("#co-err").textContent="";
@@ -208,6 +286,14 @@ $("#btn-csv").onclick = ()=>{
     const tox=evs.length?(evs.reduce((a,e)=>a+(e.toxicity||0),0)/evs.length).toFixed(3):"";
     csv+=`${s.id},${s.cohort_id||""},${s.day||""},${s.arm},${s.flair||""},${evs.length},${tox}\n`; });
   download("defuselab-sessions.csv", csv, "text/csv");
+};
+$("#btn-msgcsv").onclick = ()=>{
+  const q = (s)=>`"${String(s==null?"":s).replace(/"/g,'""').replace(/\r?\n/g," ")}"`;
+  let csv="event_id,cohort,day,arm,fandom,handle,type,is_seed,toxicity_0_100,we,they,thread_id,created_at_iso,text_raw\n";
+  filteredMsgs().forEach(e=>{ csv += [e.id,e.cohort_id,e.day,e.arm,e.flair,e.author,e.type,e.session_id?0:1,
+    Math.round((e.toxicity||0)*100),e.we||0,e.they||0,e.thread_id,new Date(e.created_at||0).toISOString()].map(q).join(",")
+    + "," + q(e.text_raw) + "\n"; });
+  download("defuselab-messages.csv", csv, "text/csv");
 };
 function download(name, text, type){
   const a=document.createElement("a"); a.href=URL.createObjectURL(new Blob([text],{type})); a.download=name; a.click(); URL.revokeObjectURL(a.href);
