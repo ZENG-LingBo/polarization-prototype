@@ -12,6 +12,8 @@ CREATE TABLE IF NOT EXISTS cohorts (
   id          TEXT PRIMARY KEY,   -- join code, e.g. PILOT1 (uppercased)
   label       TEXT,
   language    TEXT DEFAULT 'en',  -- en | zh  (each cell runs entirely in one language)
+  arm         TEXT DEFAULT 'MIXED',-- EXPT | CTRL: whole group runs in one arm (4v4 feed,
+                                  -- one clean cluster). MIXED alternates within the cohort.
   day         INTEGER DEFAULT 1,  -- 1 | 2 | 3 (advanced by the researcher)
   status      TEXT DEFAULT 'open',-- open | closed
   created_at  INTEGER
