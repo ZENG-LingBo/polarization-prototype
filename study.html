@@ -32,6 +32,26 @@
   /* disclosure */
   .disclose{background:rgba(245,158,11,.07);border-bottom:1px solid rgba(245,158,11,.35);
     padding:6px 14px;font-size:12px;color:#fcd34d}
+  /* survey */
+  .sv{max-width:640px;margin:0 auto}
+  .svprog{color:var(--mut);font-size:12px;margin-bottom:12px}
+  .svblock{margin-bottom:22px}
+  .svblock>h3{margin:0 0 4px;font-size:15px}
+  .svstem{color:var(--mut);font-size:13px;margin-bottom:12px}
+  .svitem{margin:16px 0;padding-bottom:4px}
+  .svq{font-size:14px;font-weight:600;margin-bottom:8px;line-height:1.45}
+  .svq .req{color:#fca5a5}
+  .svscale{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+  .svopt{min-width:42px;background:var(--card2);border:1.5px solid var(--line);border-radius:10px;
+    color:var(--ink2);padding:9px 12px;font-weight:700;font-size:13px}
+  .svopt.on{border-color:var(--accent);color:var(--ink);background:rgba(0,121,211,.14)}
+  .svanchor{color:var(--mut);font-size:11.5px}
+  .svslider{width:100%;margin:6px 0 2px}
+  .svval{font-weight:800;font-size:14px;min-width:34px;display:inline-block;text-align:right}
+  .svtext{width:100%;min-height:78px;background:var(--card2);border:1.5px solid var(--line);
+    border-radius:10px;color:inherit;padding:10px;font:inherit;font-size:13.5px;resize:vertical}
+  .svnav{display:flex;gap:10px;justify-content:flex-end;margin-top:20px}
+  .svitem.missing .svq{color:#fca5a5}
   /* screens */
   .screen{display:none}.screen.on{display:block}
   .panel{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:20px;margin-top:16px}
@@ -147,6 +167,30 @@
   </section>
 
   <!-- ============ DONE ============ -->
+  <!-- survey (blocking: the task block must not start before Survey 1 is submitted) -->
+  <section class="screen" id="s-survey">
+    <div class="panel sv">
+      <h2 id="sv-title"></h2>
+      <div class="sub" id="sv-intro"></div>
+      <div class="svprog" id="sv-prog"></div>
+      <div id="sv-body"></div>
+      <div class="err" id="sv-err"></div>
+      <div class="svnav">
+        <button class="btn ghost" id="sv-back" hidden></button>
+        <button class="btn" id="sv-next"></button>
+      </div>
+    </div>
+  </section>
+
+  <!-- waiting between phases (Survey 1 submitted, task block not yet open) -->
+  <section class="screen" id="s-wait">
+    <div class="panel" style="text-align:center">
+      <h2 id="t-wait-h"></h2>
+      <div class="sub" id="t-wait-sub"></div>
+      <div style="margin-top:16px"><span class="spin"></span></div>
+    </div>
+  </section>
+
   <section class="screen" id="s-done">
     <div class="panel" style="text-align:center">
       <h2 id="t-done-h"></h2>
@@ -162,6 +206,7 @@
 <footer id="t-footer"></footer>
 
 <script src="assets/config.js?v=4"></script>
+<script src="assets/surveys.js?v=1"></script>
 <script>
 /* ================================================================== i18n */
 const STR = {
@@ -182,6 +227,9 @@ const STR = {
     done_h:"That's it for today 🎉", done_sub:"Thanks for taking part. Your personal code (needed to rejoin on the next day):",
     rejoin_keep:"Screenshot or write it down — you'll enter it tomorrow.",
     survey:"📋 Open today's short survey", debrief_h:"About this community.",
+    sv_next:"Next", sv_submit:"Submit", sv_prog:"Page {a} of {b}",
+    sv_required:"Please answer the highlighted question(s) to continue.",
+    wait_h:"Thanks — sit tight ⏳", wait_sub:"The community will continue in a moment. Please keep this page open.",
     debrief_b:"This platform is part of a research study on how online communities talk to each other. Some daily activities are automated (they never write your posts). If any content upset you, please contact the study team.",
     err_cohort:"Enter the session code from the study team.", err_nocohort:"That session code wasn't found.",
     err_closed:"This session is closed.", err_rejoin:"That personal code wasn't found for this session.",
@@ -206,6 +254,9 @@ const STR = {
     done_h:"今天到此为止 🎉", done_sub:"感谢参与。你的个人代码（下次进入时需要）：",
     rejoin_keep:"请截图或记下来——明天进入时输入。",
     survey:"📋 填写今日简短问卷", debrief_h:"关于本社区。",
+    sv_next:"下一页", sv_submit:"提交", sv_prog:"第 {a} 页，共 {b} 页",
+    sv_required:"请回答标出的问题后继续。",
+    wait_h:"感谢填写 — 请稍候 ⏳", wait_sub:"社区活动稍后继续，请保持此页面打开。",
     debrief_b:"该平台属于一项关于网络社区交流方式的研究。部分每日活动由系统自动生成（它们不会代写你的发言）。如有内容令你不适，请联系研究团队。",
     err_cohort:"请输入研究团队提供的场次代码。", err_nocohort:"未找到该场次代码。",
     err_closed:"该场次已关闭。", err_rejoin:"未找到该个人代码。",
@@ -269,7 +320,26 @@ const OFFLINE = {
   },
   feed(sess, since) {
     const s = lload();
-    return { posts: s.events.filter((e) => e.arm === sess.arm && e.day === sess.day && e.created_at > since && ["post","comment","note_published"].includes(e.type)).slice(-200) };
+    const posts = s.events.filter((e) => e.arm === sess.arm && e.day === sess.day && e.created_at > since && ["post","comment","note_published"].includes(e.type)).slice(-200);
+    // Offline preview drives the phase from ?phase= so the survey flow can be walked
+    // through without a backend; omit it and the old day-based behaviour stands.
+    const phase = qs.get("phase");
+    if (!phase) return { posts };
+    const done = (s.surveys || []).filter((r) => r.session_id === sess.sessionId).map((r) => r.instrument);
+    const want = phase === "survey1" ? (sess.day >= 2 ? "survey2" : "survey1")
+      : phase === "survey2" ? "survey2" : phase === "microcheck" ? "microcheck" : null;
+    const paired = sess.arm === "EXPT" && (s.collabs || []).some((c) => c.is_live_paired &&
+      (c.session_id === sess.sessionId || c.b_session_id === sess.sessionId));
+    return { posts, phase,
+      survey: want && !done.includes(want) ? { instrument: want, showM5: want === "microcheck" && paired } : null,
+      note: phase === "task" && sess.arm === "EXPT" ? NOTE_LOCAL.en : null,
+      poll: phase === "task" && sess.arm === "CTRL" ? POLL_LOCAL.en : null };
+  },
+  submitSurvey(sess, instrument, answers) {
+    const s = lload();
+    (s.surveys = s.surveys || []).push({ id: uid("sr"), session_id: sess.sessionId, instrument,
+      phase: "day" + sess.day, payload_json: JSON.stringify(answers), created_at: Date.now() });
+    lsave(s);
   },
   event(sess, type, text, threadId) {
     const s = lload();
@@ -280,13 +350,13 @@ const OFFLINE = {
     const s = lload();
     const match = s.collabs.find((c) => c.status === "waiting" && c.a_flair !== sess.flair);
     if (match) {
-      match.status = "paired"; match.b_flair = sess.flair; match.b_text = text; match.b_handle = sess.handle; match.is_live_paired = 1;
+      match.status = "paired"; match.b_flair = sess.flair; match.b_text = text; match.b_handle = sess.handle; match.is_live_paired = 1; match.b_session_id = sess.sessionId;
       s.events.push({ id: uid("ev"), session_id: sess.sessionId, arm: "EXPT", day: sess.day, flair: "SYS", author: "kpop_mod", type: "note_published",
         text_raw: `${NOTE_LOCAL.en.artifact} — "${match.a_text}" (${match.a_handle} · ${match.a_flair}) × "${text}" (${sess.handle} · ${sess.flair})`, thread_id: "note", created_at: Date.now() });
       lsave(s);
       return { collabId: match.id, status: "paired", isLivePaired: true, partner: { flair: match.a_flair, text: match.a_text, handle: match.a_handle }, artifact: NOTE_LOCAL.en.artifact };
     }
-    const col = { id: uid("col"), a_flair: sess.flair, a_text: text, a_handle: sess.handle, status: "waiting", created_at: Date.now() };
+    const col = { id: uid("col"), session_id: sess.sessionId, a_flair: sess.flair, a_text: text, a_handle: sess.handle, status: "waiting", created_at: Date.now() };
     s.collabs.push(col); lsave(s);
     return { collabId: col.id, status: "waiting" };
   },
@@ -320,6 +390,7 @@ function renderStrings() {
   $("#post-btn").textContent = T("post"); $("#composer-input").placeholder = T("composer_ph");
   $("#t-done-h").textContent = T("done_h"); $("#t-done-sub").textContent = T("done_sub");
   $("#t-rejoin-keep").textContent = T("rejoin_keep"); $("#survey-btn").textContent = T("survey");
+  $("#t-wait-h").textContent = T("wait_h"); $("#t-wait-sub").textContent = T("wait_sub");
   $("#t-debrief-h").textContent = T("debrief_h"); $("#t-debrief-b").textContent = T("debrief_b");
   $("#t-footer").textContent = T("footer");
   $("#langbtn").textContent = LANG === "en" ? "中文" : "EN";
@@ -432,8 +503,139 @@ async function pollFeed() {
       ? await call(`/api/feed?sessionId=${encodeURIComponent(SESS.sessionId)}&since=${lastTs}`)
       : OFFLINE.feed(SESS, lastTs);
     (data.posts || []).forEach(placeEvent);
+    applyPhase(data);
   } catch {}
 }
+
+/* ---- phase: the researcher steps the cohort through the session -------------
+   free -> survey1 -> task -> microcheck -> done   (day 1)
+   free -> survey2 -> done                          (day 2)
+   Survey 1 gates the task block, so while a survey is due nothing else is reachable. */
+let PHASE = null, SURVEY_OPEN = false;
+function applyPhase(data) {
+  if (!data || data.phase === undefined || data.phase === null) return; // no phase set: legacy day-based flow
+  const due = data.survey;
+  if (due && !SURVEY_OPEN) { openSurvey(due.instrument, due.showM5); return; }
+  if (SURVEY_OPEN) return;                       // never yank a survey out from under them
+  PHASE = data.phase;
+  if (PHASE === "done") { finishSession(); return; }
+  // Only free discussion and the task block are interactive. A survey phase whose
+  // instrument is already submitted parks the participant until the researcher moves on,
+  // which is what keeps the task block shut until Survey 1 is in.
+  const interactive = PHASE === "free" || PHASE === "task";
+  screen(interactive ? "session" : "wait");
+  if (interactive && (data.note || data.poll) && !$("#pinned-mount").children.length) {
+    SESS.note = data.note || null; SESS.poll = data.poll || null;   // feature arrives with the phase, not the day
+    mountPinned();
+  }
+}
+
+/* ================================================================== surveys */
+const SV = { instrument: null, pages: [], page: 0, answers: {}, showM5: false };
+function rival() {
+  const lab = (window.SURVEYS && window.SURVEYS.RIVAL_LABEL[SESS.flair]) || { en: "the other group", zh: "对方群体" };
+  return lab[LANG] || lab.en;
+}
+const svText = (o) => o ? String((o[LANG] != null ? o[LANG] : o.en) || "").replace(/\{RIVAL\}/g, rival()) : "";
+
+function openSurvey(instrument, showM5) {
+  const spec = window.SURVEYS && window.SURVEYS[instrument];
+  if (!spec) return;
+  SURVEY_OPEN = true;
+  SV.instrument = instrument; SV.answers = {}; SV.page = 0; SV.showM5 = !!showM5;
+  // M5 is shown only to a participant the platform actually paired (dual-identity check).
+  SV.pages = spec.pages.map((pg) => Object.assign({}, pg, {
+    items: pg.items.filter((it) => it.routed !== "m5" || SV.showM5),
+  })).filter((pg) => pg.items.length);
+  $("#sv-title").textContent = svText(spec.title);
+  $("#sv-intro").textContent = svText(spec.intro);
+  clearInterval(pollTimer);
+  screen("survey");
+  renderSurveyPage();
+}
+function renderSurveyPage() {
+  const pg = SV.pages[SV.page];
+  $("#sv-err").textContent = "";
+  $("#sv-prog").textContent = T("sv_prog").replace("{a}", SV.page + 1).replace("{b}", SV.pages.length);
+  const wrap = document.createElement("div"); wrap.className = "svblock";
+  if (pg.title) { const h = document.createElement("h3"); h.textContent = svText(pg.title); wrap.appendChild(h); }
+  if (pg.stem) { const d = document.createElement("div"); d.className = "svstem"; d.textContent = svText(pg.stem); wrap.appendChild(d); }
+  pg.items.forEach((it) => wrap.appendChild(renderItem(it, pg)));
+  const body = $("#sv-body"); body.innerHTML = ""; body.appendChild(wrap);
+  $("#sv-back").hidden = SV.page === 0;
+  $("#sv-next").textContent = SV.page === SV.pages.length - 1 ? T("sv_submit") : T("sv_next");
+  window.scrollTo(0, 0);
+}
+function renderItem(it, pg) {
+  const box = document.createElement("div"); box.className = "svitem"; box.dataset.id = it.id;
+  const q = document.createElement("div"); q.className = "svq";
+  q.textContent = svText(it.stem);
+  if (it.required) { const r = document.createElement("span"); r.className = "req"; r.textContent = " *"; q.appendChild(r); }
+  box.appendChild(q);
+  const anchors = (it.anchors || pg.anchors);
+  const a = anchors ? (anchors[LANG] || anchors.en) : null;
+
+  if (it.type === "slider0100") {
+    const row = document.createElement("div");
+    row.innerHTML = `<input type="range" class="svslider" min="0" max="100" step="1" value="50">
+      <div class="svscale"><span class="svanchor">0</span>
+      <span style="flex:1"></span><span class="svval">—</span><span style="flex:1"></span>
+      <span class="svanchor">100</span></div>`;
+    const inp = row.querySelector("input"), out = row.querySelector(".svval");
+    inp.oninput = () => { SV.answers[it.id] = Number(inp.value); out.textContent = inp.value; box.classList.remove("missing"); };
+    box.appendChild(row);
+  } else if (it.type === "text") {
+    const t = document.createElement("textarea"); t.className = "svtext";
+    t.oninput = () => { SV.answers[it.id] = t.value.trim(); box.classList.remove("missing"); };
+    box.appendChild(t);
+  } else if (it.type === "yesno") {
+    const opts = (it.options && (it.options[LANG] || it.options.en)) || ["Yes", "No"];
+    box.appendChild(scaleRow(opts.map((o, i) => [o, i === 0 ? 1 : 0]), it, box));
+  } else {
+    const n = it.type === "semdiff7" ? 7 : 5;
+    box.appendChild(scaleRow(Array.from({ length: n }, (_, i) => [String(i + 1), i + 1]), it, box, a));
+  }
+  return box;
+}
+function scaleRow(pairs, it, box, anchors) {
+  const row = document.createElement("div"); row.className = "svscale";
+  if (anchors) { const lo = document.createElement("span"); lo.className = "svanchor"; lo.textContent = anchors[0]; row.appendChild(lo); }
+  pairs.forEach(([label, val]) => {
+    const b = document.createElement("button"); b.className = "svopt"; b.type = "button"; b.textContent = label;
+    b.onclick = () => {
+      SV.answers[it.id] = val;
+      [...row.querySelectorAll(".svopt")].forEach((x) => x.classList.toggle("on", x === b));
+      box.classList.remove("missing");
+    };
+    row.appendChild(b);
+  });
+  if (anchors) { const hi = document.createElement("span"); hi.className = "svanchor"; hi.textContent = anchors[1]; row.appendChild(hi); }
+  return row;
+}
+$("#sv-back").onclick = () => { if (SV.page > 0) { SV.page--; renderSurveyPage(); } };
+$("#sv-next").onclick = async () => {
+  const pg = SV.pages[SV.page];
+  const missing = pg.items.filter((it) => it.required &&
+    (SV.answers[it.id] === undefined || SV.answers[it.id] === ""));
+  if (missing.length) {
+    $("#sv-err").textContent = T("sv_required");
+    missing.forEach((it) => { const el = $("#sv-body").querySelector(`[data-id="${it.id}"]`); if (el) el.classList.add("missing"); });
+    $("#sv-body").querySelector(".missing").scrollIntoView({ block: "center", behavior: "smooth" });
+    return;
+  }
+  if (SV.page < SV.pages.length - 1) { SV.page++; renderSurveyPage(); return; }
+  $("#sv-next").disabled = true;
+  try {
+    if (hasBackend) await call("/api/survey/submit", { method: "POST", body: { sessionId: SESS.sessionId, instrument: SV.instrument, answers: SV.answers } });
+    else OFFLINE.submitSurvey(SESS, SV.instrument, SV.answers);
+  } catch {}
+  $("#sv-next").disabled = false;
+  SURVEY_OPEN = false;
+  // Survey 2 ends the participant's day; Survey 1 hands back to the waiting room.
+  if (SV.instrument === "survey2") { finishSession(); return; }
+  screen("wait");
+  startFeed();
+};
 function startFeed() { pollFeed(); pollTimer = setInterval(pollFeed, 4000); }
 
 async function apiEvent(type, text, threadId) {
@@ -523,7 +725,8 @@ function mountPoll(m) {
 }
 
 /* ================================================================== finish */
-$("#finish-btn").onclick = async () => {
+$("#finish-btn").onclick = () => finishSession();
+async function finishSession() {
   clearInterval(pollTimer);
   try { if (hasBackend) await call("/api/session/end", { method: "POST", body: { sessionId: SESS.sessionId } }); } catch {}
   $("#rejoin-code").textContent = SESS.rejoinCode || "—";
@@ -534,7 +737,7 @@ $("#finish-btn").onclick = async () => {
     } catch {}
   }
   screen("done");
-};
+}
 
 /* ================================================================== boot */
 renderStrings();

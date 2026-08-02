@@ -52,6 +52,7 @@
     <button class="btn ghost sm" id="btn-rescore" title="Re-grade every stored message (LLM-graded when LLM_API_KEY is set, wordlists otherwise)">♻ Rescore</button>
     <button class="btn ghost sm" id="btn-csv">⇩ Sessions CSV</button>
     <button class="btn ghost sm" id="btn-msgcsv">⇩ Messages CSV</button>
+    <button class="btn ghost sm" id="btn-svcsv" title="One row per participant x instrument, one column per item id">⇩ Surveys CSV</button>
     <button class="btn ghost sm" id="btn-json">⇩ Export JSON</button>
   </div>
 
@@ -172,12 +173,16 @@ function renderAll(sum){
   // cohorts
   const ct = $("#cohort-table");
   const cs = sum.cohorts||[];
-  ct.innerHTML = `<tr><th>Code</th><th>Label</th><th>Lang</th><th>Arm</th><th>Day</th><th>Status</th><th>Advance</th></tr>` +
+  const PHASES = ["free","survey1","task","microcheck","survey2","done"];
+  ct.innerHTML = `<tr><th>Code</th><th>Label</th><th>Lang</th><th>Arm</th><th>Day</th><th>Phase</th><th>Status</th><th>Advance</th></tr>` +
     (cs.length? cs.map(c=>`<tr><td><b>${c.id}</b></td><td>${c.label||""}</td><td>${c.language}</td>
-      <td>${c.arm && c.arm!=="MIXED" ? `<span class="pill ${c.arm==="EXPT"?"live":""}" style="font-size:10px">${c.arm}</span>` : `<span class="muted tiny">mixed</span>`}</td><td>Day ${c.day}</td><td>${c.status}</td>
+      <td>${c.arm && c.arm!=="MIXED" ? `<span class="pill ${c.arm==="EXPT"?"live":""}" style="font-size:10px">${c.arm}</span>` : `<span class="muted tiny">mixed</span>`}</td><td>Day ${c.day}</td>
+      <td><b>${c.phase||"free"}</b></td><td>${c.status}</td>
       <td>${[1,2,3].map(d=>`<button class="btn ghost sm daybtn" data-code="${c.id}" data-day="${d}" ${c.day===d?"disabled":""}>Day ${d}</button>`).join(" ")}
-      <button class="btn ghost sm daybtn" data-close="${c.id}" style="color:#fca5a5">close</button></td></tr>`).join("")
-    : `<tr><td colspan="7" class="muted">No cohorts yet — create one above, share the code with participants.</td></tr>`);
+      <button class="btn ghost sm daybtn" data-close="${c.id}" style="color:#fca5a5">close</button>
+      <div style="margin-top:6px">${PHASES.map(p=>`<button class="btn ghost sm daybtn" data-phcode="${c.id}" data-phase="${p}" ${(c.phase||"free")===p?"disabled":""}>${p}</button>`).join(" ")}</div></td></tr>`).join("")
+    : `<tr><td colspan="8" class="muted">No cohorts yet — create one above, share the code with participants.</td></tr>`);
+  ct.querySelectorAll("[data-phase]").forEach(b=> b.onclick = async ()=>{ await call("/api/dashboard/cohort/phase",{method:"POST",body:{code:b.dataset.phcode, phase:b.dataset.phase}}); refresh(); });
   ct.querySelectorAll("[data-day]").forEach(b=> b.onclick = async ()=>{ await call("/api/dashboard/cohort/day",{method:"POST",body:{code:b.dataset.code, day:+b.dataset.day}}); refresh(); });
   ct.querySelectorAll("[data-close]").forEach(b=> b.onclick = async ()=>{ if(confirm("Close cohort "+b.dataset.close+"?")){ await call("/api/dashboard/cohort/close",{method:"POST",body:{code:b.dataset.close}}); refresh(); } });
 
@@ -321,6 +326,24 @@ $("#btn-msgcsv").onclick = ()=>{
     Math.round((e.toxicity||0)*100),e.we||0,e.they||0,e.thread_id,new Date(e.created_at||0).toISOString()].map(q).join(",")
     + "," + q(e.text_raw) + "\n"; });
   download("defuselab-messages.csv", csv, "text/csv");
+};
+/* Surveys CSV: one row per participant x instrument, one column per item id. 7.1 and 7.2
+   (back_shared_community / back_own_fandom) stay separate columns — the protocol is explicit
+   that they jointly operationalise dual identity and must never be averaged. */
+$("#btn-svcsv").onclick = ()=>{
+  const d = window.__export||{}; const rows = d.surveys||[];
+  if(!rows.length){ alert("No survey responses yet."); return; }
+  const sessById = Object.fromEntries((d.sessions||[]).map(s=>[s.id,s]));
+  const partById = Object.fromEntries((d.participants||[]).map(p=>[p.id,p]));
+  const parsed = rows.map(r=>{ let a={}; try{ a=JSON.parse(r.payload_json||"{}"); }catch{} 
+    const s=sessById[r.session_id]||{}, p=partById[s.participant_id]||{};
+    return {r,a,s,p}; });
+  const ids=[...new Set(parsed.flatMap(x=>Object.keys(x.a)))].sort();
+  const q=(v)=>`"${String(v==null?"":v).replace(/"/g,'""').replace(/\r?\n/g," ")}"`;
+  let csv=["participant_id","handle","cohort","day","arm","fandom","instrument","submitted_at_iso",...ids].join(",")+"\n";
+  parsed.forEach(({r,a,s,p})=>{ csv += [s.participant_id,p.handle,s.cohort_id,s.day,s.arm,s.flair,r.instrument,
+    new Date(r.created_at||0).toISOString(),...ids.map(k=>a[k])].map(q).join(",")+"\n"; });
+  download("defuselab-surveys.csv", csv, "text/csv");
 };
 function download(name, text, type){
   const a=document.createElement("a"); a.href=URL.createObjectURL(new Blob([text],{type})); a.download=name; a.click(); URL.revokeObjectURL(a.href);

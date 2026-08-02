@@ -15,6 +15,9 @@ CREATE TABLE IF NOT EXISTS cohorts (
   arm         TEXT DEFAULT 'MIXED',-- EXPT | CTRL: whole group runs in one arm (4v4 feed,
                                   -- one clean cluster). MIXED alternates within the cohort.
   day         INTEGER DEFAULT 1,  -- 1 | 2 | 3 (advanced by the researcher)
+  phase       TEXT DEFAULT 'free',-- free | survey1 | task | microcheck | survey2 | done.
+                                  -- Gates the session: the task block opens only once
+                                  -- Survey 1 is in (Surveys_v3 two-day protocol).
   status      TEXT DEFAULT 'open',-- open | closed
   created_at  INTEGER
 );

@@ -16,7 +16,9 @@
 //   POST /api/session/end          {sessionId}
 //   -- researcher (Bearer RESEARCHER_TOKEN) --
 //   POST /api/dashboard/cohort       {code,label,language}      -> create cohort
+//   POST /api/survey/submit        {sessionId,instrument,answers} -> store one instrument
 //   POST /api/dashboard/cohort/day   {code,day}                 -> advance day (re-seeds prompts)
+//   POST /api/dashboard/cohort/phase {code,phase}               -> free|survey1|task|microcheck|survey2|done
 //   POST /api/dashboard/cohort/close {code}
 //   GET  /api/dashboard/summary                                 -> arm×day aggregates + R1-R3
 //   GET  /api/dashboard/sessions                                -> raw export
@@ -220,12 +222,46 @@ function safeEqual(a, b) {
   return diff === 0;
 }
 
+// The task block is open when the cohort phase says so. Cohorts with no phase set keep the
+// original day-2 behaviour, so pre-phase databases and the older pilots still work.
+const taskOpen = (sess) => sess.cohort_phase ? sess.cohort_phase === "task" : sess.cohort_day === 2;
+
 async function getSession(DB, sid) {
   if (!sid) return null;
-  return await DB.prepare(
-    `SELECT s.*, c.language, c.day AS cohort_day, c.status AS cohort_status, p.handle, p.rejoin_code
-     FROM sessions s JOIN cohorts c ON s.cohort_id=c.id JOIN participants p ON s.participant_id=p.id
-     WHERE s.id=?`).bind(sid).first();
+  // cohort_phase is selected defensively: a database created before the phase column
+  // returns undefined, which the callers read as "no phase set" (day-based fallback).
+  const cols = `s.*, c.language, c.day AS cohort_day, c.status AS cohort_status, p.handle, p.rejoin_code`;
+  const q = (extra) => DB.prepare(
+    `SELECT ${cols}${extra} FROM sessions s JOIN cohorts c ON s.cohort_id=c.id
+     JOIN participants p ON s.participant_id=p.id WHERE s.id=?`).bind(sid).first();
+  return await q(", c.phase AS cohort_phase").catch(() => q(""));
+}
+
+// Which instruments this session has already completed.
+async function surveysDone(DB, sid) {
+  const rows = (await DB.prepare("SELECT instrument FROM survey_responses WHERE session_id=?")
+    .bind(sid).all().catch(() => ({ results: [] }))).results || [];
+  return rows.map((r) => r.instrument);
+}
+
+// The instrument due right now, or null. Day 1 carries Survey 1 (before the task block) and
+// the micro-check (straight after it); Day 2 carries Survey 2. A day beyond that has none.
+async function surveyDue(DB, sess, phase, done) {
+  const want = phase === "survey1" ? (sess.cohort_day >= 2 ? "survey2" : "survey1")
+    : phase === "survey2" ? "survey2"
+    : phase === "microcheck" ? "microcheck" : null;
+  if (!want || done.includes(want)) return null;
+  if (want !== "microcheck") return { instrument: want };
+  // M5 is the dual-identity check and only makes sense to someone who was really paired:
+  // intervention arm, live cross-fandom pair. Both halves of a pair must qualify — the
+  // collabs row carries only the INITIATOR's session_id, so the responder is identified by
+  // the note_published event, which is written for real pairs and never for filler.
+  if (sess.arm !== "EXPT") return { instrument: want, showM5: false };
+  const asInitiator = await DB.prepare(
+    "SELECT id FROM collabs WHERE session_id=? AND is_live_paired=1").bind(sess.id).first();
+  const asResponder = asInitiator ? null : await DB.prepare(
+    "SELECT id FROM events WHERE session_id=? AND type='note_published' LIMIT 1").bind(sess.id).first();
+  return { instrument: want, showM5: !!(asInitiator || asResponder) };
 }
 
 async function insertEvent(DB, sess, type, text, threadId, authorOverride, flairOverride) {
@@ -304,8 +340,11 @@ export default {
         return json({
           sessionId: sid, participantId: part.id, rejoinCode: part.rejoin_code, handle: part.handle,
           arm: part.arm, flair: part.flair, day: cohort.day, language: lang, cohortLabel: cohort.label || code,
-          note: part.arm === "EXPT" && cohort.day === 2 ? NOTE[lang] : null,
-          poll: part.arm === "CTRL" && cohort.day === 2 ? POLL[lang] : null,
+          phase: cohort.phase || null,
+          // The feature is delivered by /api/feed once the phase reaches "task"; these stay
+          // for cohorts with no phase set (pre-phase databases keep the day-2 behaviour).
+          note: !cohort.phase && part.arm === "EXPT" && cohort.day === 2 ? NOTE[lang] : null,
+          poll: !cohort.phase && part.arm === "CTRL" && cohort.day === 2 ? POLL[lang] : null,
         }, 200, origin);
       }
 
@@ -318,7 +357,38 @@ export default {
            WHERE cohort_id=? AND arm=? AND day=? AND created_at>? AND type IN ('post','comment','note_published')
            ORDER BY created_at ASC LIMIT 200`
         ).bind(sess.cohort_id, sess.arm, sess.cohort_day, since).all()).results || [];
-        return json({ day: sess.cohort_day, posts: rows }, 200, origin);
+        // Phase drives the session: the task block opens only after Survey 1 is submitted
+        // (Surveys_v3 §"Timing"), so the pinned feature is gated on phase, not on the day.
+        // Cohorts with no phase set fall back to the old day-2 mounting.
+        const lang = sess.language === "zh" ? "zh" : "en";
+        const phase = sess.cohort_phase || null;
+        const open = taskOpen(sess);
+        const done = await surveysDone(DB, sess.id);
+        return json({
+          day: sess.cohort_day, posts: rows, phase,
+          survey: phase ? await surveyDue(DB, sess, phase, done) : null,
+          note: open && sess.arm === "EXPT" ? NOTE[lang] : null,
+          poll: open && sess.arm === "CTRL" ? POLL[lang] : null,
+        }, 200, origin);
+      }
+
+      // Records one completed instrument. Re-submitting the same instrument for the same
+      // session is ignored rather than duplicated (a reload must not create a second row).
+      if (path === "/api/survey/submit" && request.method === "POST") {
+        const b = await request.json().catch(() => ({}));
+        const sess = await getSession(DB, b.sessionId);
+        if (!sess) return json({ error: "no_session" }, 400, origin);
+        const instrument = ["survey1", "microcheck", "survey2"].includes(b.instrument) ? b.instrument : null;
+        if (!instrument) return json({ error: "bad_instrument" }, 400, origin);
+        const dup = await DB.prepare("SELECT id FROM survey_responses WHERE session_id=? AND instrument=?")
+          .bind(sess.id, instrument).first();
+        if (dup) return json({ ok: true, duplicate: true }, 200, origin);
+        await DB.prepare(
+          "INSERT INTO survey_responses (id,session_id,phase,instrument,payload_json,created_at) VALUES (?,?,?,?,?,?)"
+        ).bind(uid("sr"), sess.id, "day" + sess.cohort_day, instrument,
+          JSON.stringify(b.answers || {}), Date.now()).run();
+        await insertEvent(DB, sess, "survey_submitted", instrument, "survey");
+        return json({ ok: true }, 200, origin);
       }
 
       if (path === "/api/event" && request.method === "POST") {
@@ -340,7 +410,7 @@ export default {
         const b = await request.json().catch(() => ({}));
         const sess = await getSession(DB, b.sessionId);
         if (!sess) return json({ error: "no_session" }, 400, origin);
-        if (sess.arm !== "EXPT" || sess.cohort_day !== 2) return json({ error: "not_available" }, 403, origin);
+        if (sess.arm !== "EXPT" || !taskOpen(sess)) return json({ error: "not_available" }, 403, origin);
         const lang = sess.language === "zh" ? "zh" : "en";
         const text = String(b.text || "").slice(0, 500);
         const match = await DB.prepare(
@@ -394,7 +464,7 @@ export default {
         const b = await request.json().catch(() => ({}));
         const sess = await getSession(DB, b.sessionId);
         if (!sess) return json({ error: "no_session" }, 400, origin);
-        if (sess.arm !== "CTRL" || sess.cohort_day !== 2) return json({ error: "not_available" }, 403, origin);
+        if (sess.arm !== "CTRL" || !taskOpen(sess)) return json({ error: "not_available" }, 403, origin);
         await DB.prepare("INSERT INTO poll_votes (id,session_id,cohort_id,day,option_idx,created_at) VALUES (?,?,?,?,?,?)")
           .bind(uid("pv"), sess.id, sess.cohort_id, sess.cohort_day, Number(b.option) || 0, Date.now()).run();
         await insertEvent(DB, sess, "cross", "poll_vote:" + b.option, "poll"); // engagement log only (type not in feed)
@@ -446,9 +516,10 @@ export default {
           if (!/^[A-Z0-9]{3,12}$/.test(code)) return json({ error: "bad_code" }, 400, origin);
           const lang = b.language === "zh" ? "zh" : "en";
           const arm = b.arm === "EXPT" || b.arm === "CTRL" ? b.arm : "MIXED";
-          // Self-migrating: adds the column to a database created before whole-group arms.
-          // Harmless no-op once it exists, so no console step is needed for the upgrade.
+          // Self-migrating: adds columns to a database created before whole-group arms and
+          // before the phase stepper. Harmless no-ops once they exist, so no console step.
           await DB.prepare("ALTER TABLE cohorts ADD COLUMN arm TEXT DEFAULT 'MIXED'").run().catch(() => {});
+          await DB.prepare("ALTER TABLE cohorts ADD COLUMN phase TEXT DEFAULT 'free'").run().catch(() => {});
           const cohort = { id: code, label: String(b.label || code).slice(0, 60), language: lang, arm, day: 1, status: "open", created_at: Date.now() };
           await DB.prepare("INSERT INTO cohorts (id,label,language,arm,day,status,created_at) VALUES (?,?,?,?,?,?,?)")
             .bind(cohort.id, cohort.label, cohort.language, cohort.arm, 1, "open", cohort.created_at).run();
@@ -464,6 +535,19 @@ export default {
           await DB.prepare("UPDATE cohorts SET day=? WHERE id=?").bind(day, code).run();
           if (day !== cohort.day) await seedDay(DB, { ...cohort, day }, day);
           return json({ ok: true, code, day }, 200, origin);
+        }
+        // Phase stepper. Day 1 runs free -> survey1 -> task -> microcheck -> done; Day 2
+        // runs free -> survey2 -> done. The paper's automatic session-toxicity trigger will
+        // eventually drive the same transition; this is the seam it plugs into.
+        if (path === "/api/dashboard/cohort/phase" && request.method === "POST") {
+          const b = await request.json().catch(() => ({}));
+          const code = String(b.code || "").trim().toUpperCase();
+          const phase = ["free", "survey1", "task", "microcheck", "survey2", "done"].includes(b.phase) ? b.phase : null;
+          if (!phase) return json({ error: "bad_phase" }, 400, origin);
+          await DB.prepare("ALTER TABLE cohorts ADD COLUMN phase TEXT DEFAULT 'free'").run().catch(() => {});
+          const r = await DB.prepare("UPDATE cohorts SET phase=? WHERE id=?").bind(phase, code).run();
+          if (!r.meta || r.meta.changes === 0) return json({ error: "no_cohort" }, 404, origin);
+          return json({ ok: true, code, phase }, 200, origin);
         }
         if (path === "/api/dashboard/cohort/close" && request.method === "POST") {
           const b = await request.json().catch(() => ({}));
@@ -545,7 +629,9 @@ export default {
           const events = (await DB.prepare("SELECT id,session_id,cohort_id,day,arm,flair,author,type,text_raw,toxicity,we,they,thread_id,created_at FROM events ORDER BY created_at DESC LIMIT 5000").all()).results || [];
           const collabs = (await DB.prepare("SELECT * FROM collabs ORDER BY created_at DESC LIMIT 1000").all()).results || [];
           const participants = (await DB.prepare("SELECT id,cohort_id,handle,arm,flair,created_at FROM participants LIMIT 2000").all()).results || [];
-          return json({ source: "backend", version: "v3", sessions, events, collabs, participants }, 200, origin);
+          const surveys = (await DB.prepare("SELECT * FROM survey_responses ORDER BY created_at DESC LIMIT 5000")
+            .all().catch(() => ({ results: [] }))).results || [];
+          return json({ source: "backend", version: "v3", sessions, events, collabs, participants, surveys }, 200, origin);
         }
       }
 
