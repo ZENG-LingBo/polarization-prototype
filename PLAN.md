@@ -144,6 +144,12 @@ The LLM is **infrastructure, never an interlocutor, and never an author**:
     work against the CIIM mechanism it is meant to serve).
   - Prompt-injection guard: contributions are user text passed to a model, so the merge prompt
     is fixed and its output is published as a note, never executed or used to steer routing.
+  - **Configuration, not accident (v3.1):** merging is set by `NOTE_MERGE_MODE`, not by whether
+    an API key happens to be present. When the model is unavailable the mechanical assembly is
+    published so no session stalls, and `collabs.ai_merged` records which of the two each note
+    got — a fallback note is a *different manipulation* and is excluded per-protocol.
+  - Paper reconciliation: the draft still describes verbatim publication in four places; the
+    replacement text is in [`PAPER_EDITS.md`](PAPER_EDITS.md).
 - optional **minimal slur-flagging** before co-publish, applied **identically across arms**
   and logged so the toxicity DV is scored on pre-moderation text (§10).
 
@@ -169,7 +175,7 @@ settled fact.
 | Superordinate-framed prompt | salient superordinate cue via **indirect** category activation (SCT) |
 | Publication gate requires both fandoms | **interdependence / common goals** (Sherif) |
 | Artifact "succeeds" only if both contribute | **common fate** (shared outcome) |
-| Both flairs kept; verbatim, non-generative assembly | **dual-identity preservation** (anti distinctiveness threat; Crisp et al. 2006) |
+| Both flairs kept on the published note (the LLM composes the wording, never the badges) | **dual-identity preservation** (anti distinctiveness threat; Crisp et al. 2006) |
 | Co-share + likes/replies on the joint object | public **reinforcement** of the recategorized boundary |
 
 ## 5. Conditions (three arms)
@@ -417,16 +423,21 @@ Ray's latest round revises Study 1's execution. Demo: [`demo.html`](demo.html).
   demographics matched across arms (incl. age and English proficiency);
   language cells run **entirely** in one language (English or Chinese, no mixing;
   surveys may be translated; paper reports both). **Group size and realized N: §17.1.**
-- **Sequence (within-group over ~3 days, ~1 h/day, ≈¥30/day):** Day 1 baseline (heated
-  prompts; **repeat Day 1 until toxicity/polarization is measurably HIGH**) → survey; Day 2
-  feature (note vs inert) → survey; Day 3 feature removed → survey + exit interview.
-  **Operational go/no-go gates** (G1–G3 in the dashboard — they decide whether a day is ready
-  to advance, and are **not** evidence for the hypothesis; §17.1): toxicity high
-  pre-intervention; control stays high after its feature; toxicity drops only after the
-  community note. Seed prompts are **intensity-matched across all three days** so a day
-  effect is not a stimulus effect. If baseline momentum fades, any adjustment is made by a
-  **pre-registered rule and reported** — anything done to the run appears in the paper,
-  including situational encouragement and any repeated Day 1.
+- **Sequence — TWO days (v3.1), ~1 h/day, ≈¥30/day.** The manipulation happens *inside*
+  Day 1; Day 2 tests whether it persists:
+  - **Day 1:** free discussion on heated seed prompts → **Survey 1** → the assigned feature
+    appears (community note vs inert) → **micro-check**. Both arms are triggered at the same
+    point, so novelty and regression toward the mean are shared across conditions.
+  - **Day 2:** same group, same protocol, **no feature** → **Survey 2** + exit interview.
+  - **Estimand:** the **condition × phase** contrast — pre-task vs post-task within Day 1 —
+    never a within-arm before/after drop. Day 2 is the persistence read-out. Events are
+    stamped with the phase they were written in so this is computable.
+  - **Operational go/no-go gates** (G1–G3 in the dashboard — they decide whether a session is
+    ready to advance and are **not** evidence): G1 both arms hot pre-task; G2 control stays
+    hot post-task; G3 EXPT drops post-task while control does not.
+  - Seed prompts are **intensity-matched across both days** so a day effect is not a stimulus
+    effect. Any adjustment follows a **pre-registered rule and is reported** — anything done
+    to the run appears in the paper, including situational encouragement.
 - **Blinding:** the app / recruiting / surveys **never state the study's purpose** — participants
   are only told **what to do**. All research language lives outside the participant UI (in the
   demo: the researcher-only panel).
@@ -477,7 +488,8 @@ messages. Therefore:
   interaction-level qualitative coding, plus the exit interviews, plus a demonstration that
   the platform, pairing, blinding and instrumentation work end-to-end.
 - **Report toxicity descriptively and per group** — the dashboard's *By group* table gives
-  each cohort's Day 1/2/3 trajectory with message counts. Show all four trajectories; never
+  each cohort's Day 1/Day 2 trajectory with message counts, and the *Day 1* panel gives its
+  pre-task/post-task split. Show all four trajectories; never
   pool them into a single EXPT-vs-CTRL number that implies replication you don't have.
 - **Use it to power the real study.** The pilot's between-group variance and ICC are exactly
   the inputs a proper cluster-randomized design needs. A confirmatory version wants roughly
@@ -486,9 +498,10 @@ messages. Therefore:
   meaningful robustness demonstration, and is best reported as **two parallel case
   replications** (EN and ZH), not as a covariate.
 
-**Estimand, if any quantitative claim is made.** The comparison is the **arm × day
-difference-in-differences** (EXPT Day1→Day2 change *relative to* the CTRL group's change over
-the same days), never a within-arm drop. A Day-1 baseline that was repeated until it was high
-is selected on the outcome and regresses toward the mean on its own, so a within-arm decline
-is expected even with no working intervention; only the CTRL group's parallel trend controls
-for it. Report how many times Day 1 was repeated.
+**Estimand (v3.1).** The comparison is the **condition × phase difference-in-differences**:
+the EXPT group's pre-task → post-task change *within Day 1*, relative to the CTRL group's
+change across the same two phases. Never a within-arm drop. Both arms are triggered at the
+same point, so novelty, fatigue and regression toward the mean apply to both and cancel in the
+contrast — which is precisely why the trigger must fire identically in the two arms. Day 2
+carries the persistence question (does the difference survive removal of the feature?) and is
+reported separately, not as the primary contrast.

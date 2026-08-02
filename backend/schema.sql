@@ -1,10 +1,10 @@
--- DefuseLab Study 1 — D1 schema (protocol v3: 2 arms × 3 days, cohort group sessions).
+-- DefuseLab Study 1 — D1 schema (protocol v3.1: 2 arms × 2 days, cohort group sessions).
 -- Apply from the Cloudflare dashboard (D1 -> your database -> Console -> paste + run)
 -- or: npx wrangler d1 execute defuselab-study --file=backend/schema.sql
 --
--- v3 model: a COHORT is one recruited group (e.g. "PILOT1"), run over Day 1/2/3.
+-- v3.1 model: a COHORT is one recruited group (e.g. "PILOT1"), run over Day 1 and Day 2.
 -- Participants join a cohort with its join code, get a REJOIN CODE on Day 1, and use it
--- on Days 2–3 so the same person is linked across days. Arms are EXPT | CTRL; each
+-- on Day 2 so the same person is linked across days. Arms are EXPT | CTRL; each
 -- cohort×arm is its own shared live feed (participants in the same cohort+arm see each
 -- other's posts).
 
@@ -14,7 +14,7 @@ CREATE TABLE IF NOT EXISTS cohorts (
   language    TEXT DEFAULT 'en',  -- en | zh  (each cell runs entirely in one language)
   arm         TEXT DEFAULT 'MIXED',-- EXPT | CTRL: whole group runs in one arm (4v4 feed,
                                   -- one clean cluster). MIXED alternates within the cohort.
-  day         INTEGER DEFAULT 1,  -- 1 | 2 | 3 (advanced by the researcher)
+  day         INTEGER DEFAULT 1,  -- 1 | 2 (two-day protocol; advanced by the researcher)
   phase       TEXT DEFAULT 'free',-- free | survey1 | task | microcheck | survey2 | done.
                                   -- Gates the session: the task block opens only once
                                   -- Survey 1 is in (Surveys_v3 two-day protocol).
@@ -63,7 +63,10 @@ CREATE TABLE IF NOT EXISTS events (
   we          INTEGER,
   they        INTEGER,
   thread_id   TEXT,               -- parent event id for comments; 'seed' for top-level
-  created_at  INTEGER
+  created_at  INTEGER,
+  phase       TEXT                -- cohort phase when written. The feature fires inside
+                                  -- Day 1, so pre-task ('free') vs post-task ('task',
+                                  -- 'microcheck') is the treatment contrast, not day 1 vs 2.
 );
 CREATE INDEX IF NOT EXISTS idx_events_session ON events(session_id);
 CREATE INDEX IF NOT EXISTS idx_events_feed ON events(cohort_id, arm, created_at);
@@ -85,6 +88,8 @@ CREATE TABLE IF NOT EXISTS collabs (
   status         TEXT,            -- waiting | paired | filler
   is_live_paired INTEGER DEFAULT 0,
   filler         INTEGER DEFAULT 0,
+  ai_merged      INTEGER DEFAULT 0, -- 1 = note synthesised by the LLM (the manipulation);
+                                    -- 0 = verbatim fallback, excluded per-protocol
   artifact       TEXT,
   created_at     INTEGER,
   paired_at      INTEGER

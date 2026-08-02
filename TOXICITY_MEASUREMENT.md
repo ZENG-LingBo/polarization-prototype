@@ -27,7 +27,8 @@ Every post and reply becomes one row in the `events` table
 | --- | --- |
 | `id` | event id (also the parent handle for replies) |
 | `session_id` | which session wrote it — **`NULL` for seeded prompt posts** |
-| `cohort_id`, `day`, `arm` | group session, study day (1–3), condition (`EXPT` / `CTRL`) |
+| `cohort_id`, `day`, `arm` | group session, study day (1–2), condition (`EXPT` / `CTRL`) |
+| `phase` | cohort phase when written — `free` (pre-task) / `task` / `microcheck` (post-task) |
 | `flair` | author's fandom (`ARMY` / `BLINK`, or `SYS` for system/seed posts) |
 | `author` | anonymous handle (e.g. `army_eppy`) |
 | `type` | `post` \| `comment` (only these two are scored) |
@@ -212,9 +213,14 @@ relevant cells have data:
 
 | Check | Passes when |
 | --- | --- |
-| **G1** — baseline high on Day 1 | `EXPT day1 ≥ 0.55` **and** `CTRL day1 ≥ 0.55` |
-| **G2** — control stays high after its inert feature | `CTRL day2 ≥ 0.50` |
-| **G3** — drop only after the community note | `EXPT day2 ≤ 0.35` **and** `CTRL day2 ≥ 0.50` |
+| **G1** — baseline high **before** the task, Day 1 | `EXPT pre ≥ 0.55` **and** `CTRL pre ≥ 0.55` |
+| **G2** — control stays high after its inert feature | `CTRL post ≥ 0.50` |
+| **G3** — drop only after the community note | `EXPT post ≤ 0.35` **and** `CTRL post ≥ 0.50` |
+
+`pre` / `post` are the Day-1 phases either side of the task block, taken from the `phase`
+column stamped on each event at write time (`free` → pre; `task` / `microcheck` → post). The
+feature fires **inside Day 1** in the two-day protocol, so this — not Day 1 vs Day 2 — is
+where the treatment contrast lives; Day 2 measures persistence.
 
 These are **operational go/no-go gates for the protocol** (e.g. don't advance a cohort whose
 Day 1 never got heated), not hypothesis tests.
