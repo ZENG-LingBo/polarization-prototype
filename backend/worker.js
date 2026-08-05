@@ -576,17 +576,26 @@ export default {
           const { n: total } = (await DB.prepare("SELECT COUNT(*) n FROM events WHERE type IN ('post','comment')").first()) || { n: 0 };
           const rows = (await DB.prepare("SELECT id, text_raw FROM events WHERE type IN ('post','comment') ORDER BY created_at ASC LIMIT ? OFFSET ?").bind(limit, offset).all()).results || [];
           const scored = [];
+          let llmScored = 0;   // rows the model actually returned a value for
           for (let i = 0; i < rows.length; i += 5) {
             const chunk = rows.slice(i, i + 5);
             const vals = useLlm ? await Promise.all(chunk.map((r) => llmToxicity(env, r.text_raw))) : chunk.map(() => null);
-            chunk.forEach((r, k) => scored.push([vals[k] != null ? vals[k] : toxicity(r.text_raw), r]));
+            chunk.forEach((r, k) => {
+              if (vals[k] != null) llmScored++;
+              scored.push([vals[k] != null ? vals[k] : toxicity(r.text_raw), r]);
+            });
           }
           const stmts = scored.map(([tox, r]) =>
             DB.prepare("UPDATE events SET toxicity=?, we=?, they=? WHERE id=?")
               .bind(tox, countWords(r.text_raw, WE), countWords(r.text_raw, THEY), r.id));
           for (let i = 0; i < stmts.length; i += 100) await DB.batch(stmts.slice(i, i + 100));
           const nextOffset = offset + rows.length;
-          return json({ ok: true, mode: useLlm ? "llm" : "wordlist", total, processed: rows.length, nextOffset, done: nextOffset >= total || rows.length === 0 }, 200, origin);
+          // mode says which scorer was ATTEMPTED (the key exists); llmScored says how many
+          // rows it actually returned a value for. A silent model failure looks like
+          // mode:"llm" with llmScored:0 and every score falling back to the wordlist, which
+          // is otherwise indistinguishable from "the model rated everything 0".
+          return json({ ok: true, mode: useLlm ? "llm" : "wordlist", llmScored, total,
+            processed: rows.length, nextOffset, done: nextOffset >= total || rows.length === 0 }, 200, origin);
         }
 
         if (path === "/api/dashboard/summary") {
