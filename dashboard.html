@@ -374,7 +374,13 @@ $("#btn-svcsv").onclick = ()=>{
   download("defuselab-surveys.csv", csv, "text/csv");
 };
 function download(name, text, type){
-  const a=document.createElement("a"); a.href=URL.createObjectURL(new Blob([text],{type})); a.download=name; a.click(); URL.revokeObjectURL(a.href);
+  // CSVs get a UTF-8 byte-order mark. Without it Excel on Windows reads the file in the
+  // system codepage and Chinese posts arrive as mojibake -- the stored text is fine, but
+  // the export looks corrupted, which is where the analysis actually starts.
+  const csv = String(type).indexOf("csv") >= 0;
+  const parts = csv ? ["\uFEFF", text] : [text];
+  const blob = new Blob(parts, { type: type + (csv ? ";charset=utf-8" : "") });
+  const a=document.createElement("a"); a.href=URL.createObjectURL(blob); a.download=name; a.click(); URL.revokeObjectURL(a.href);
 }
 </script>
 </body>
