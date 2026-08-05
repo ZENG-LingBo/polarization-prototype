@@ -314,14 +314,20 @@ $("#btn-refresh").onclick = refresh;
 $("#btn-rescore").onclick = async ()=>{
   const b = $("#btn-rescore"); b.disabled = true; b.textContent = "♻ Rescoring…";
   try{
-    let offset=0, total=0, mode="";
+    let offset=0, total=0, mode="", llmOk=0;
     for(;;){
       const r = await call("/api/dashboard/rescore", {method:"POST", body:{offset}});
-      mode=r.mode; total=r.total; offset=r.nextOffset;
+      mode=r.mode; total=r.total; offset=r.nextOffset; llmOk+=(r.llmScored||0);
       b.textContent = `♻ ${Math.min(offset,total)}/${total} (${mode})`;
       if(r.done || !r.processed) break;
     }
-    b.textContent = `♻ Rescored ${total} (${mode})`;
+    // Report how many rows the MODEL actually scored, not just which scorer was attempted:
+    // mode "llm" with 0 graded means the model is unreachable and every score is wordlist.
+    b.textContent = mode==="llm"
+      ? `♻ ${total} rescored · model graded ${llmOk}/${total}`
+      : `♻ ${total} rescored (wordlist — no LLM key)`;
+    if(mode==="llm" && llmOk===0 && total>0)
+      alert("The model graded 0 of "+total+" messages.\n\nEvery score you see is the keyword fallback, not the LLM. Check LLM_API_KEY and LLM_BASE_URL on the Worker — an international key will not authenticate against the mainland endpoint, or vice versa.");
     await refresh();
   }
   catch(e){ b.textContent = "♻ Rescore failed"; }

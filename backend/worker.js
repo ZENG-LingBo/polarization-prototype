@@ -112,12 +112,17 @@ const clamp = (v, a = 0, b = 1) => Math.max(a, Math.min(b, v));
 // ---- LLM note merge. OpenAI-compatible endpoint (Qwen/DashScope by default). The key
 // lives ONLY in the LLM_API_KEY secret — never in code or [vars]. Any failure (no key,
 // timeout, bad response) returns null and the caller falls back to mechanical assembly.
+// A secret pasted or piped into `wrangler secret put` can pick up a trailing newline or
+// stray whitespace, which makes the Authorization header invalid while the same key works
+// fine when tested by hand. Trim at the point of use so that class of failure cannot recur.
+const apiKey = (env) => String(env.LLM_API_KEY || "").trim();
+
 async function llmMerge(env, lang, a, b) {
   // The merge IS the manipulation (PLAN §4.3), so it is configuration rather than a side
   // effect of whether a secret happens to be set. NOTE_MERGE_MODE=verbatim runs the
   // mechanical assembly instead; either way collabs.ai_merged records what was published.
   if ((env.NOTE_MERGE_MODE || "llm") === "verbatim") return null;
-  if (!env.LLM_API_KEY) return null;
+  if (!apiKey(env)) return null;
   const base = (env.LLM_BASE_URL || "https://dashscope-intl.aliyuncs.com/compatible-mode/v1").replace(/\/$/, "");
   const sys = lang === "zh"
     ? "你是K-pop粉丝社区的共创笔记助手。把来自两个不同粉丝团成员的两条贡献合并成一条温暖、简短的社区笔记（不超过60字）。保留双方原意，不新增事实或名字，只输出合并后的笔记正文。"
@@ -125,7 +130,7 @@ async function llmMerge(env, lang, a, b) {
   try {
     const r = await fetch(base + "/chat/completions", {
       method: "POST",
-      headers: { "content-type": "application/json", authorization: "Bearer " + env.LLM_API_KEY },
+      headers: { "content-type": "application/json", authorization: "Bearer " + apiKey(env) },
       body: JSON.stringify({
         model: env.LLM_MODEL || "qwen-plus",
         messages: [
@@ -147,12 +152,12 @@ async function llmMerge(env, lang, a, b) {
 // ctx.waitUntil right after insert (the heuristic score stands until this lands) and by
 // the dashboard /rescore backfill. Same key/endpoint as llmMerge; cheaper default model.
 async function llmToxicity(env, text) {
-  if (!env.LLM_API_KEY || !text) return null;
+  if (!apiKey(env) || !text) return null;
   const base = (env.LLM_BASE_URL || "https://dashscope-intl.aliyuncs.com/compatible-mode/v1").replace(/\/$/, "");
   try {
     const r = await fetch(base + "/chat/completions", {
       method: "POST",
-      headers: { "content-type": "application/json", authorization: "Bearer " + env.LLM_API_KEY },
+      headers: { "content-type": "application/json", authorization: "Bearer " + apiKey(env) },
       body: JSON.stringify({
         model: env.LLM_TOX_MODEL || "qwen-turbo",
         messages: [
@@ -180,6 +185,29 @@ const SHOUT_EXEMPT = /\b(BTS|BLACKPINK|BP|ARMY|ARMYS|BLINK|BLINKS|KPOP|K-POP|OT7
 const TOX_WORDS = new Set(TOX.filter((w) => /^[a-z']+$/.test(w)));
 const TOX_PHRASES = TOX.filter((w) => /[ -]/.test(w));
 const TOX_SYMBOLS = TOX.filter((w) => !/^[a-z' -]+$/.test(w));
+// Diagnostic probe, researcher-gated. llmToxicity deliberately swallows every failure so
+// that scoring can never block posting - which also means a misconfigured key looks exactly
+// like a model that rated everything 0. This makes one call and reports what actually
+// happened: HTTP status, the provider's error body, or the thrown message.
+async function llmProbe(env) {
+  const key = apiKey(env);
+  const shape = { keyLen: key.length, keyHead: key.slice(0, 6), base: env.LLM_BASE_URL || "(default)", model: env.LLM_TOX_MODEL || "qwen-turbo" };
+  if (!key) return { ...shape, ok: false, why: "no_key" };
+  const base = (env.LLM_BASE_URL || "https://dashscope-intl.aliyuncs.com/compatible-mode/v1").replace(/\/$/, "");
+  try {
+    const r = await fetch(base + "/chat/completions", {
+      method: "POST",
+      headers: { "content-type": "application/json", authorization: "Bearer " + key },
+      body: JSON.stringify({ model: shape.model, messages: [{ role: "user", content: "Reply with only: 42" }], max_tokens: 8 }),
+      signal: AbortSignal.timeout(8000),
+    });
+    const body = await r.text();
+    return { ...shape, ok: r.ok, status: r.status, body: body.slice(0, 300) };
+  } catch (e) {
+    return { ...shape, ok: false, why: String((e && e.name) || "") + ": " + String((e && e.message) || e) };
+  }
+}
+
 function toxicity(t) {
   const raw = String(t), s = raw.toLowerCase();
   let hits = 0;
@@ -402,7 +430,7 @@ export default {
         const type = ["post", "comment", "like", "share", "cross"].includes(b.type) ? b.type : "post";
         const evId = await insertEvent(DB, sess, type, b.textRaw, b.threadId);
         // LLM-grade the score in the background — the response never waits on the model
-        if ((type === "post" || type === "comment") && env.LLM_API_KEY && ctx) {
+        if ((type === "post" || type === "comment") && apiKey(env) && ctx) {
           const raw = String(b.textRaw || "").slice(0, 2000);
           ctx.waitUntil(llmToxicity(env, raw).then((v) => v == null ? null :
             DB.prepare("UPDATE events SET toxicity=? WHERE id=?").bind(v, evId).run()).catch(() => {}));
@@ -571,22 +599,33 @@ export default {
         if (path === "/api/dashboard/rescore" && request.method === "POST") {
           const b = await request.json().catch(() => ({}));
           const offset = Math.max(0, Number(b.offset) || 0);
-          const useLlm = !!env.LLM_API_KEY && b.mode !== "wordlist";
+          const useLlm = !!apiKey(env) && b.mode !== "wordlist";
           const limit = useLlm ? 25 : 100000;
           const { n: total } = (await DB.prepare("SELECT COUNT(*) n FROM events WHERE type IN ('post','comment')").first()) || { n: 0 };
           const rows = (await DB.prepare("SELECT id, text_raw FROM events WHERE type IN ('post','comment') ORDER BY created_at ASC LIMIT ? OFFSET ?").bind(limit, offset).all()).results || [];
           const scored = [];
+          let llmScored = 0;   // rows the model actually returned a value for
           for (let i = 0; i < rows.length; i += 5) {
             const chunk = rows.slice(i, i + 5);
             const vals = useLlm ? await Promise.all(chunk.map((r) => llmToxicity(env, r.text_raw))) : chunk.map(() => null);
-            chunk.forEach((r, k) => scored.push([vals[k] != null ? vals[k] : toxicity(r.text_raw), r]));
+            chunk.forEach((r, k) => {
+              if (vals[k] != null) llmScored++;
+              scored.push([vals[k] != null ? vals[k] : toxicity(r.text_raw), r]);
+            });
           }
           const stmts = scored.map(([tox, r]) =>
             DB.prepare("UPDATE events SET toxicity=?, we=?, they=? WHERE id=?")
               .bind(tox, countWords(r.text_raw, WE), countWords(r.text_raw, THEY), r.id));
           for (let i = 0; i < stmts.length; i += 100) await DB.batch(stmts.slice(i, i + 100));
           const nextOffset = offset + rows.length;
-          return json({ ok: true, mode: useLlm ? "llm" : "wordlist", total, processed: rows.length, nextOffset, done: nextOffset >= total || rows.length === 0 }, 200, origin);
+          // mode says which scorer was ATTEMPTED (the key exists); llmScored says how many
+          // rows it actually returned a value for. A silent model failure looks like
+          // mode:"llm" with llmScored:0 and every score falling back to the wordlist, which
+          // is otherwise indistinguishable from "the model rated everything 0".
+          // If the model graded nothing, say why rather than leaving a corpus of zeros.
+          const probe = useLlm && llmScored === 0 && rows.length ? await llmProbe(env) : undefined;
+          return json({ ok: true, mode: useLlm ? "llm" : "wordlist", llmScored, probe, total,
+            processed: rows.length, nextOffset, done: nextOffset >= total || rows.length === 0 }, 200, origin);
         }
 
         if (path === "/api/dashboard/summary") {
