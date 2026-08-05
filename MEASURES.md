@@ -93,6 +93,31 @@ reported effects are on *survey* AP, not behavioral toxicity, so they inform pow
 | **Cross-fandom engagement** | cross-flair likes/shares/replies, co-shares | behavioral log | observation coding (Coe et al. 2014 lineage) | — (group-level extension) | reply-to-rival, concede-point, genuine-question, Collab co-share |
 | **Reactance** (backfire guardrail) | trait + state | survey | Hong & Faedda 1996; Dillard & Shen 2005 | — (guardrail) | detects feature-induced distinctiveness threat |
 
+### What the embedded surveys actually administer
+
+The two-day protocol's participant-facing instruments are implemented in
+[`assets/surveys.js`](assets/surveys.js) and itemised in [`SURVEYS.md`](SURVEYS.md). They are
+narrower than the table above, and the difference has to be visible rather than assumed:
+
+| Construct | Where it lives | Status |
+|---|---|---|
+| Feeling thermometer (own · rival · K-pop overall) | Survey 1 & 2, Block 1 | ✔ implemented |
+| Out-group perception (moral / intelligent, 1–7) | Block 2 | ✔ implemented |
+| Perceived legitimacy (3 items) | Block 3 | ✔ implemented — **not** in the table above |
+| Perceived similarity (4 items) | Block 4 | ✔ implemented — **not** in the table above |
+| Contact behavioural intentions (4 items) | Block 5 | ✔ implemented (the "willingness to interact" row) |
+| Session experience (heated · attacked) | Block 6 | ✔ implemented — manipulation context |
+| Perspective-taking (IRI-PT, 3 items) + trait reactance (4 items) | Survey 1 Block 7, once | ✔ implemented as covariates/moderators |
+| Manipulation check: shared ownership (M3), expectation matching (M4) | micro-check, Day 1 | ✔ implemented, identical wording in both arms |
+| Dual identity (superordinate 7.1 × subgroup 7.2) | Survey 2 Block 7 | ✔ implemented — **report separately, never averaged** |
+| Suspicion probe (8.1 before 8.2) + interview consent | Survey 2 Block 8 | ✔ implemented |
+| **Fandom identification (FISI)** | *not in either survey* | ⚠️ the paper's §3.5 claims it and §3.4 places it in the **recruitment pre-survey**, which is outside these instruments. Without it there is no high-identifier moderation and no test that the intervention leaves subgroup identity intact — confirm it is in the recruitment form. |
+| **IOS (self–out-group overlap)** | *not in either survey* | ⚠️ listed as a core measure above but not administered. Either add it or drop it from the measures table. |
+| Social distance · out-group trait battery · behavioural allocation | *not administered* | Perceived similarity and legitimacy stand in; the Iyengar battery rows above are aspirational, not implemented. |
+
+Live toxicity scoring is unchanged and documented in
+[`TOXICITY_MEASUREMENT.md`](TOXICITY_MEASUREMENT.md); the survey layer does not touch the DV.
+
 "✔" = GuesSync used this exact measure; "Iyengar battery" = the standard validated AP set
 GuesSync's measures are drawn from; "—" = beyond GuesSync's scope, grounded in §4.
 

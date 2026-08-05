@@ -59,7 +59,9 @@ anchored to a model paper — **GuesSync!** (Rajadesingan et al., CSCW 2023): to
 identity → CIIM (Gaertner & Dovidio 2000); AP/IOS → Iyengar & Westwood 2015 / Aron et al. 1992;
 identification → Postmes et al. 2013 + Leach et al. 2008; reactance → Hong & Faedda 1996 / Dillard &
 Shen 2005. Construct-by-construct grounding: [`MEASURES.md`](MEASURES.md); demo-meter mapping:
-[`METRICS.md`](METRICS.md).
+[`METRICS.md`](METRICS.md). What the live platform actually computes per message and per user
+(wordlist + LLM scorers, aggregation formulas, limitations):
+[`TOXICITY_MEASUREMENT.md`](TOXICITY_MEASUREMENT.md).
 
 ## Status & ethics
 This build is for **instrument-building / internal testing**. The app records behavioral data, so a

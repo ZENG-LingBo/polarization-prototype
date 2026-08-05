@@ -19,10 +19,8 @@ database_id = "ceaa30fe-680f-463a-af0f-b9d32baac0b3"
 [vars]
 SURVEY_URL_D1 = ""
 SURVEY_URL_D2 = ""
-SURVEY_URL_D3 = ""
 SURVEY_URL_D1_ZH = ""
 SURVEY_URL_D2_ZH = ""
-SURVEY_URL_D3_ZH = ""
 # How long a Community Note waits for a live rival-fandom partner before offering a
 # clearly DISCLOSED system sample (ms). Group sessions run long waits on purpose.
 PAIRING_TIMEOUT_MS = "90000"
@@ -31,6 +29,10 @@ PAIRING_TIMEOUT_MS = "90000"
 # Mainland-China DashScope accounts: set LLM_BASE_URL = "https://dashscope.aliyuncs.com/compatible-mode/v1"
 LLM_MODEL = "qwen-plus"
 LLM_TOX_MODEL = "qwen-turbo"
+# Community Note assembly. "llm" = the two entries are synthesised into one note (the
+# manipulation, PLAN §4.3); "verbatim" = mechanical assembly. Every note records which it
+# got in collabs.ai_merged, so a fallback can be excluded per-protocol.
+NOTE_MERGE_MODE = "llm"
 LLM_BASE_URL = "https://dashscope-intl.aliyuncs.com/compatible-mode/v1"
 
 # --- Secrets (NOT stored here) ---

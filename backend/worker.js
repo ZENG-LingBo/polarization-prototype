@@ -1,30 +1,33 @@
 // DefuseLab — Study 1 backend, protocol v3 (Cloudflare Worker + D1).
 //
-// 2 arms (EXPT = Community Note · CTRL = inert poll) × 3 days, run as COHORT group
+// 2 arms (EXPT = Community Note · CTRL = inert poll) × 2 days, run as COHORT group
 // sessions. Each cohort×arm is a shared live feed (same-cohort/same-arm participants see
 // each other's posts via polling). Participants get a REJOIN CODE on Day 1 that links
-// them across Days 2–3.
+// them to Day 2. Day 1 carries the manipulation (free discussion -> Survey 1 -> task block
+// -> micro-check); Day 2 is free discussion + Survey 2 and tests whether the change persists.
 //
 //   POST /api/session/start        {cohort, flair?, rejoin?}    -> join/rejoin a cohort
 //   GET  /api/feed?sessionId&since                              -> shared feed (cohort+arm)
 //   POST /api/event                {sessionId,type,textRaw,threadId} -> log + publish
-//   POST /api/collab/contribute    {sessionId,text}             -> Community Note (EXPT day 2)
+//   POST /api/collab/contribute    {sessionId,text}             -> Community Note (EXPT, task phase)
 //   GET  /api/collab/status?id                                  -> pairing gate poll
-//   POST /api/poll/vote            {sessionId,option}           -> inert poll (CTRL day 2)
+//   POST /api/poll/vote            {sessionId,option}           -> inert poll (CTRL, task phase)
 //   GET  /api/poll/results?sessionId                            -> poll counts
 //   GET  /api/survey-link?sessionId                             -> end-of-day survey URL
 //   POST /api/session/end          {sessionId}
 //   -- researcher (Bearer RESEARCHER_TOKEN) --
 //   POST /api/dashboard/cohort       {code,label,language}      -> create cohort
+//   POST /api/survey/submit        {sessionId,instrument,answers} -> store one instrument
 //   POST /api/dashboard/cohort/day   {code,day}                 -> advance day (re-seeds prompts)
+//   POST /api/dashboard/cohort/phase {code,phase}               -> free|survey1|task|microcheck|survey2|done
 //   POST /api/dashboard/cohort/close {code}
-//   GET  /api/dashboard/summary                                 -> arm×day aggregates + R1-R3
+//   GET  /api/dashboard/summary                                 -> arm×day + arm×phase aggregates + G1-G3
 //   GET  /api/dashboard/sessions                                -> raw export
 //
 // Blinding: participant endpoints never mention arms/purpose; analytics are token-gated.
 // Toxicity is the demo keyword heuristic; text_raw (pre-moderation) is stored so the real
 // study rescores with Perspective API + the validated K-pop lexicon (MEASURES.md).
-// Vars/secrets: DB (D1 binding), RESEARCHER_TOKEN (secret), SURVEY_URL_D1..D3 (+_ZH) vars,
+// Vars/secrets: DB (D1 binding), RESEARCHER_TOKEN (secret), SURVEY_URL_D1..D2 (+_ZH) vars,
 // LLM_API_KEY (secret, optional — enables LLM note merge), LLM_MODEL + LLM_BASE_URL vars.
 //
 // Deploy (no terminal): see backend/README.md.
@@ -37,7 +40,7 @@ const ALLOWED_ORIGINS = [
 const ARMS = ["EXPT", "CTRL"];
 const other = (f) => (f === "ARMY" ? "BLINK" : "ARMY");
 
-// ---- Community Note config (EXPT day 2). Pre-screened template; when the optional
+// ---- Community Note config (EXPT, task phase). Pre-screened template; when the optional
 // LLM_API_KEY secret is set, paired halves are merged by the LLM (see llmMerge below),
 // otherwise (or on any LLM failure) the verbatim mechanical assembly is published.
 const NOTE = {
@@ -52,30 +55,42 @@ const NOTE = {
     fillerText: "加一首《As If It's Your Last》——是那种能量吸引了我",
   },
 };
-// ---- Inert daily poll (CTRL day 2). Solo, no pairing, no shared output.
+// ---- Inert daily poll (CTRL, task phase). Solo, no pairing, no shared output.
 const POLL = {
   en: { prompt: "Daily vibe check — how are we feeling today?", options: ["😤 hyped", "😐 meh", "🫠 tired", "🎧 locked in"] },
   zh: { prompt: "今日心情打卡 — 你今天感觉如何？", options: ["😤 兴奋", "😐 一般", "🫠 很累", "🎧 沉浸中"] },
 };
 // ---- Day seed prompts (discussion-provoking posts inserted for BOTH arms when a day
 // opens). Anonymized/paraphrased fan-war register; group-vs-group only (ethics: PLAN §12).
-// NOTE for the real run: replace Day-1 seeds with the team's finalized prompts.
+//
+// INTENSITY MUST BE MATCHED ACROSS DAYS. Earlier drafts paired two rival provocations on
+// Day 1 with a mild neutral prompt on Days 2-3 — that alone lowers toxicity on Day 2 in
+// BOTH arms, confounding the day effect with the stimulus and putting the "control stays
+// high" go/no-go check (PLAN §17) at risk for reasons unrelated to the intervention. Every
+// day therefore carries the same structure: one ARMY-flair and one BLINK-flair comparative
+// superiority claim inviting rebuttal.
+// NOTE for the real run: replace all three sets with the team's finalized prompts, keeping
+// them matched in intensity, and pre-register which set lands on which day.
 const SEEDS = {
   en: {
     1: [
       { flair: "ARMY", author: "seed_mod_a", text: "BTS is the defining group of this generation, it's genuinely not close 🏆 discuss." },
       { flair: "BLINK", author: "seed_mod_b", text: "BLACKPINK outsold and outperformed — the numbers don't lie. change my mind." },
     ],
-    2: [{ flair: "SYS", author: "kpop_mod", text: "New day, same energy — what's everyone's take today?" }],
-    3: [{ flair: "SYS", author: "kpop_mod", text: "Final day — biggest hot take of the week?" }],
+    2: [
+      { flair: "ARMY", author: "seed_mod_c", text: "Say what you want about hype — BTS filled stadiums on their own name. Marketing can't fake that 🏟️" },
+      { flair: "BLINK", author: "seed_mod_d", text: "BLACKPINK got into rooms nobody else did. Global reach isn't a fandom talking point, it's the record 🌍" },
+    ],
   },
   zh: {
     1: [
       { flair: "ARMY", author: "seed_mod_a", text: "BTS就是这一代的代表团体，真的没有悬念 🏆 来讨论。" },
       { flair: "BLINK", author: "seed_mod_b", text: "BLACKPINK销量和舞台都更强——数据不会说谎。来反驳我。" },
     ],
-    2: [{ flair: "SYS", author: "kpop_mod", text: "新的一天，继续聊——今天大家怎么看？" }],
-    3: [{ flair: "SYS", author: "kpop_mod", text: "最后一天——本周最敢说的观点是什么？" }],
+    2: [
+      { flair: "ARMY", author: "seed_mod_c", text: "随便你们怎么说流量——BTS是靠自己的名字把体育场填满的，营销做不出这个 🏟️" },
+      { flair: "BLINK", author: "seed_mod_d", text: "BLACKPINK进的是别人进不去的场合，全球影响力不是粉丝话术，是纪录 🌍" },
+    ],
   },
 };
 
@@ -98,6 +113,10 @@ const clamp = (v, a = 0, b = 1) => Math.max(a, Math.min(b, v));
 // lives ONLY in the LLM_API_KEY secret — never in code or [vars]. Any failure (no key,
 // timeout, bad response) returns null and the caller falls back to mechanical assembly.
 async function llmMerge(env, lang, a, b) {
+  // The merge IS the manipulation (PLAN §4.3), so it is configuration rather than a side
+  // effect of whether a secret happens to be set. NOTE_MERGE_MODE=verbatim runs the
+  // mechanical assembly instead; either way collabs.ai_merged records what was published.
+  if ((env.NOTE_MERGE_MODE || "llm") === "verbatim") return null;
   if (!env.LLM_API_KEY) return null;
   const base = (env.LLM_BASE_URL || "https://dashscope-intl.aliyuncs.com/compatible-mode/v1").replace(/\/$/, "");
   const sys = lang === "zh"
@@ -151,11 +170,25 @@ async function llmToxicity(env, text) {
   } catch { return null; }
 }
 
+// Group/fandom names are written in caps by convention, so the shouting rule must ignore
+// them: "BLACKPINK" is 9 capitals and "BTS" is 3, which otherwise handed every message
+// naming BLACKPINK a free +1 hit and biased the live meter against one fandom.
+const SHOUT_EXEMPT = /\b(BTS|BLACKPINK|BP|ARMY|ARMYS|BLINK|BLINKS|KPOP|K-POP|OT7|MV|EP|LOL|OMG|TXT|NCT|IVE|AESPA|TWICE|EXO|SEVENTEEN)\b/g;
+// English terms match on WORD BOUNDARIES, not as substrings: plain `includes` scored
+// "generation" as toxic because it contains "ratio" (likewise operation/rational/…).
+// Chinese still needs substring matching — CJK has no word boundaries.
+const TOX_WORDS = new Set(TOX.filter((w) => /^[a-z']+$/.test(w)));
+const TOX_PHRASES = TOX.filter((w) => /[ -]/.test(w));
+const TOX_SYMBOLS = TOX.filter((w) => !/^[a-z' -]+$/.test(w));
 function toxicity(t) {
-  const s = String(t).toLowerCase(); let hits = 0;
-  TOX.forEach((w) => { if (s.includes(w)) hits++; });
+  const raw = String(t), s = raw.toLowerCase();
+  let hits = 0;
+  const toks = new Set(s.split(/[^a-z']+/).filter(Boolean));
+  TOX_WORDS.forEach((w) => { if (toks.has(w)) hits++; });
+  TOX_PHRASES.forEach((w) => { if (s.includes(w)) hits++; });
+  TOX_SYMBOLS.forEach((w) => { if (s.includes(w)) hits++; });
   TOX_ZH.forEach((w) => { if (s.includes(w)) hits++; });
-  if (/[A-Z]{4,}/.test(String(t))) hits++;
+  if (/[A-Z]{4,}/.test(raw.replace(SHOUT_EXEMPT, ""))) hits++;
   return clamp(hits / 3);
 }
 const countWords = (t, list) => String(t).toLowerCase().split(/[^a-z']+/).filter((x) => list.includes(x)).length
@@ -186,23 +219,66 @@ function safeEqual(a, b) {
   return diff === 0;
 }
 
+// The task block is open when the cohort phase says so. Cohorts with no phase set keep the
+// original day-2 behaviour, so pre-phase databases and the older pilots still work.
+const taskOpen = (sess) => sess.cohort_phase ? sess.cohort_phase === "task" : sess.cohort_day === 2;
+
 async function getSession(DB, sid) {
   if (!sid) return null;
-  return await DB.prepare(
-    `SELECT s.*, c.language, c.day AS cohort_day, c.status AS cohort_status, p.handle, p.rejoin_code
-     FROM sessions s JOIN cohorts c ON s.cohort_id=c.id JOIN participants p ON s.participant_id=p.id
-     WHERE s.id=?`).bind(sid).first();
+  // cohort_phase is selected defensively: a database created before the phase column
+  // returns undefined, which the callers read as "no phase set" (day-based fallback).
+  const cols = `s.*, c.language, c.day AS cohort_day, c.status AS cohort_status, p.handle, p.rejoin_code`;
+  const q = (extra) => DB.prepare(
+    `SELECT ${cols}${extra} FROM sessions s JOIN cohorts c ON s.cohort_id=c.id
+     JOIN participants p ON s.participant_id=p.id WHERE s.id=?`).bind(sid).first();
+  return await q(", c.phase AS cohort_phase").catch(() => q(""));
+}
+
+// Which instruments this session has already completed.
+async function surveysDone(DB, sid) {
+  const rows = (await DB.prepare("SELECT instrument FROM survey_responses WHERE session_id=?")
+    .bind(sid).all().catch(() => ({ results: [] }))).results || [];
+  return rows.map((r) => r.instrument);
+}
+
+// The instrument due right now, or null. Day 1 carries Survey 1 (before the task block) and
+// the micro-check (straight after it); Day 2 carries Survey 2. A day beyond that has none.
+async function surveyDue(DB, sess, phase, done) {
+  const want = phase === "survey1" ? (sess.cohort_day >= 2 ? "survey2" : "survey1")
+    : phase === "survey2" ? "survey2"
+    : phase === "microcheck" ? "microcheck" : null;
+  if (!want || done.includes(want)) return null;
+  if (want !== "microcheck") return { instrument: want };
+  // M5 is the dual-identity check and only makes sense to someone who was really paired:
+  // intervention arm, live cross-fandom pair. Both halves of a pair must qualify — the
+  // collabs row carries only the INITIATOR's session_id, so the responder is identified by
+  // the note_published event, which is written for real pairs and never for filler.
+  if (sess.arm !== "EXPT") return { instrument: want, showM5: false };
+  const asInitiator = await DB.prepare(
+    "SELECT id FROM collabs WHERE session_id=? AND is_live_paired=1").bind(sess.id).first();
+  const asResponder = asInitiator ? null : await DB.prepare(
+    "SELECT id FROM events WHERE session_id=? AND type='note_published' LIMIT 1").bind(sess.id).first();
+  return { instrument: want, showM5: !!(asInitiator || asResponder) };
 }
 
 async function insertEvent(DB, sess, type, text, threadId, authorOverride, flairOverride) {
   const id = uid("ev");
   const t = String(text || "").slice(0, 2000);
-  await DB.prepare(
-    `INSERT INTO events (id,session_id,cohort_id,day,arm,flair,author,type,text_raw,toxicity,we,they,thread_id,created_at)
-     VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)`
-  ).bind(id, sess.id || null, sess.cohort_id, sess.cohort_day || sess.day, sess.arm,
+  // The phase is stamped AT WRITE TIME. In the two-day design the feature fires inside Day 1,
+  // so the treatment contrast is pre- vs post-task within that day (paper §3.6); a post's day
+  // alone cannot express it. Older rows have phase NULL and are treated as pre-task.
+  const args = [id, sess.id || null, sess.cohort_id, sess.cohort_day || sess.day, sess.arm,
     flairOverride || sess.flair, authorOverride || sess.handle, type, t,
-    toxicity(t), countWords(t, WE), countWords(t, THEY), String(threadId || "seed"), Date.now()).run();
+    toxicity(t), countWords(t, WE), countWords(t, THEY), String(threadId || "seed"), Date.now()];
+  const withPhase = DB.prepare(
+    `INSERT INTO events (id,session_id,cohort_id,day,arm,flair,author,type,text_raw,toxicity,we,they,thread_id,created_at,phase)
+     VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`).bind(...args, sess.cohort_phase || "free");
+  await withPhase.run().catch(async () => {
+    await DB.prepare("ALTER TABLE events ADD COLUMN phase TEXT").run().catch(() => {});
+    await withPhase.run().catch(() => DB.prepare(
+      `INSERT INTO events (id,session_id,cohort_id,day,arm,flair,author,type,text_raw,toxicity,we,they,thread_id,created_at)
+       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)`).bind(...args).run());
+  });
   return id;
 }
 
@@ -211,11 +287,9 @@ async function seedDay(DB, cohort, day) {
   const seeds = (SEEDS[lang] || SEEDS.en)[day] || [];
   for (const arm of ARMS) {
     for (const s of seeds) {
-      await DB.prepare(
-        `INSERT INTO events (id,session_id,cohort_id,day,arm,flair,author,type,text_raw,toxicity,we,they,thread_id,created_at)
-         VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)`
-      ).bind(uid("ev"), null, cohort.id, day, arm, s.flair, s.author, "post", s.text,
-        toxicity(s.text), countWords(s.text, WE), countWords(s.text, THEY), "seed", Date.now()).run();
+      await insertEvent(DB, { id: null, cohort_id: cohort.id, cohort_day: day, arm,
+        flair: s.flair, handle: s.author, cohort_phase: "free" },
+        "post", s.text, "seed", s.author, s.flair);
     }
   }
 }
@@ -250,9 +324,15 @@ export default {
           // invite link (?flair=). Never fabricate it — refuse if absent (PLAN.md §17).
           const flair = b.flair === "ARMY" || b.flair === "BLINK" ? b.flair : null;
           if (!flair) return json({ error: "no_flair" }, 400, origin);
-          // balanced arm within cohort
-          const { n } = (await DB.prepare("SELECT COUNT(*) n FROM participants WHERE cohort_id=?").bind(code).first()) || { n: 0 };
-          const arm = ARMS[n % 2];
+          // Arm: a cohort pinned to EXPT/CTRL puts its whole group in one arm, so a 4v4
+          // group is a true 4v4 feed and the group is one clean cluster (PLAN §17). Cohorts
+          // left MIXED keep the alternating assignment (back-compat with earlier pilots);
+          // an un-migrated DB has no arm column, which reads as MIXED.
+          let arm = cohort.arm === "EXPT" || cohort.arm === "CTRL" ? cohort.arm : null;
+          if (!arm) {
+            const { n } = (await DB.prepare("SELECT COUNT(*) n FROM participants WHERE cohort_id=?").bind(code).first()) || { n: 0 };
+            arm = ARMS[n % 2];
+          }
           part = { id: uid("p"), cohort_id: code, rejoin_code: rejoinCode(), handle: mkHandle(flair), arm, flair, created_at: Date.now() };
           await DB.prepare("INSERT INTO participants (id,cohort_id,rejoin_code,handle,arm,flair,created_at) VALUES (?,?,?,?,?,?,?)")
             .bind(part.id, part.cohort_id, part.rejoin_code, part.handle, part.arm, part.flair, part.created_at).run();
@@ -264,8 +344,11 @@ export default {
         return json({
           sessionId: sid, participantId: part.id, rejoinCode: part.rejoin_code, handle: part.handle,
           arm: part.arm, flair: part.flair, day: cohort.day, language: lang, cohortLabel: cohort.label || code,
-          note: part.arm === "EXPT" && cohort.day === 2 ? NOTE[lang] : null,
-          poll: part.arm === "CTRL" && cohort.day === 2 ? POLL[lang] : null,
+          phase: cohort.phase || null,
+          // The feature is delivered by /api/feed once the phase reaches "task"; these stay
+          // for cohorts with no phase set (pre-phase databases keep the day-2 behaviour).
+          note: !cohort.phase && part.arm === "EXPT" && cohort.day === 2 ? NOTE[lang] : null,
+          poll: !cohort.phase && part.arm === "CTRL" && cohort.day === 2 ? POLL[lang] : null,
         }, 200, origin);
       }
 
@@ -278,7 +361,38 @@ export default {
            WHERE cohort_id=? AND arm=? AND day=? AND created_at>? AND type IN ('post','comment','note_published')
            ORDER BY created_at ASC LIMIT 200`
         ).bind(sess.cohort_id, sess.arm, sess.cohort_day, since).all()).results || [];
-        return json({ day: sess.cohort_day, posts: rows }, 200, origin);
+        // Phase drives the session: the task block opens only after Survey 1 is submitted
+        // (Surveys_v3 §"Timing"), so the pinned feature is gated on phase, not on the day.
+        // Cohorts with no phase set fall back to the old day-2 mounting.
+        const lang = sess.language === "zh" ? "zh" : "en";
+        const phase = sess.cohort_phase || null;
+        const open = taskOpen(sess);
+        const done = await surveysDone(DB, sess.id);
+        return json({
+          day: sess.cohort_day, posts: rows, phase,
+          survey: phase ? await surveyDue(DB, sess, phase, done) : null,
+          note: open && sess.arm === "EXPT" ? NOTE[lang] : null,
+          poll: open && sess.arm === "CTRL" ? POLL[lang] : null,
+        }, 200, origin);
+      }
+
+      // Records one completed instrument. Re-submitting the same instrument for the same
+      // session is ignored rather than duplicated (a reload must not create a second row).
+      if (path === "/api/survey/submit" && request.method === "POST") {
+        const b = await request.json().catch(() => ({}));
+        const sess = await getSession(DB, b.sessionId);
+        if (!sess) return json({ error: "no_session" }, 400, origin);
+        const instrument = ["survey1", "microcheck", "survey2"].includes(b.instrument) ? b.instrument : null;
+        if (!instrument) return json({ error: "bad_instrument" }, 400, origin);
+        const dup = await DB.prepare("SELECT id FROM survey_responses WHERE session_id=? AND instrument=?")
+          .bind(sess.id, instrument).first();
+        if (dup) return json({ ok: true, duplicate: true }, 200, origin);
+        await DB.prepare(
+          "INSERT INTO survey_responses (id,session_id,phase,instrument,payload_json,created_at) VALUES (?,?,?,?,?,?)"
+        ).bind(uid("sr"), sess.id, "day" + sess.cohort_day, instrument,
+          JSON.stringify(b.answers || {}), Date.now()).run();
+        await insertEvent(DB, sess, "survey_submitted", instrument, "survey");
+        return json({ ok: true }, 200, origin);
       }
 
       if (path === "/api/event" && request.method === "POST") {
@@ -300,7 +414,7 @@ export default {
         const b = await request.json().catch(() => ({}));
         const sess = await getSession(DB, b.sessionId);
         if (!sess) return json({ error: "no_session" }, 400, origin);
-        if (sess.arm !== "EXPT" || sess.cohort_day !== 2) return json({ error: "not_available" }, 403, origin);
+        if (sess.arm !== "EXPT" || !taskOpen(sess)) return json({ error: "not_available" }, 403, origin);
         const lang = sess.language === "zh" ? "zh" : "en";
         const text = String(b.text || "").slice(0, 500);
         const match = await DB.prepare(
@@ -315,8 +429,14 @@ export default {
           const artifactLine = merged
             ? `${NOTE[lang].artifact} — ${merged} (co-written by ${match.a_handle} · ${match.a_flair} × ${sess.handle} · ${sess.flair} · AI-merged)`
             : `${NOTE[lang].artifact} — "${match.a_text}" (${match.a_handle} · ${match.a_flair}) × "${text}" (${sess.handle} · ${sess.flair})`;
-          await DB.prepare("UPDATE collabs SET b_flair=?, b_text=?, b_handle=?, status='paired', is_live_paired=1, paired_at=?, artifact=? WHERE id=?")
-            .bind(sess.flair, text, sess.handle, Date.now(), artifactLine, match.id).run();
+          // ai_merged distinguishes a synthesised note from the verbatim fallback that runs
+          // when the model is unavailable. The fallback is a DIFFERENT manipulation, so it is
+          // recorded rather than silent -- same treatment as is_live_paired / filler.
+          await DB.prepare("ALTER TABLE collabs ADD COLUMN ai_merged INTEGER DEFAULT 0").run().catch(() => {});
+          await DB.prepare("UPDATE collabs SET b_flair=?, b_text=?, b_handle=?, status='paired', is_live_paired=1, paired_at=?, artifact=?, ai_merged=? WHERE id=?")
+            .bind(sess.flair, text, sess.handle, Date.now(), artifactLine, merged ? 1 : 0, match.id).run()
+            .catch(() => DB.prepare("UPDATE collabs SET b_flair=?, b_text=?, b_handle=?, status='paired', is_live_paired=1, paired_at=?, artifact=? WHERE id=?")
+              .bind(sess.flair, text, sess.handle, Date.now(), artifactLine, match.id).run());
           await insertEvent(DB, sess, "note_published", artifactLine, "note", "kpop_mod", "SYS");
           return json({ collabId: match.id, status: "paired", isLivePaired: true, aiMerged: !!merged,
             partner: { flair: match.a_flair, text: match.a_text, handle: match.a_handle },
@@ -354,7 +474,7 @@ export default {
         const b = await request.json().catch(() => ({}));
         const sess = await getSession(DB, b.sessionId);
         if (!sess) return json({ error: "no_session" }, 400, origin);
-        if (sess.arm !== "CTRL" || sess.cohort_day !== 2) return json({ error: "not_available" }, 403, origin);
+        if (sess.arm !== "CTRL" || !taskOpen(sess)) return json({ error: "not_available" }, 403, origin);
         await DB.prepare("INSERT INTO poll_votes (id,session_id,cohort_id,day,option_idx,created_at) VALUES (?,?,?,?,?,?)")
           .bind(uid("pv"), sess.id, sess.cohort_id, sess.cohort_day, Number(b.option) || 0, Date.now()).run();
         await insertEvent(DB, sess, "cross", "poll_vote:" + b.option, "poll"); // engagement log only (type not in feed)
@@ -405,21 +525,39 @@ export default {
           const code = String(b.code || "").trim().toUpperCase();
           if (!/^[A-Z0-9]{3,12}$/.test(code)) return json({ error: "bad_code" }, 400, origin);
           const lang = b.language === "zh" ? "zh" : "en";
-          const cohort = { id: code, label: String(b.label || code).slice(0, 60), language: lang, day: 1, status: "open", created_at: Date.now() };
-          await DB.prepare("INSERT INTO cohorts (id,label,language,day,status,created_at) VALUES (?,?,?,?,?,?)")
-            .bind(cohort.id, cohort.label, cohort.language, 1, "open", cohort.created_at).run();
+          const arm = b.arm === "EXPT" || b.arm === "CTRL" ? b.arm : "MIXED";
+          // Self-migrating: adds columns to a database created before whole-group arms and
+          // before the phase stepper. Harmless no-ops once they exist, so no console step.
+          await DB.prepare("ALTER TABLE cohorts ADD COLUMN arm TEXT DEFAULT 'MIXED'").run().catch(() => {});
+          await DB.prepare("ALTER TABLE cohorts ADD COLUMN phase TEXT DEFAULT 'free'").run().catch(() => {});
+          const cohort = { id: code, label: String(b.label || code).slice(0, 60), language: lang, arm, day: 1, status: "open", created_at: Date.now() };
+          await DB.prepare("INSERT INTO cohorts (id,label,language,arm,day,status,created_at) VALUES (?,?,?,?,?,?,?)")
+            .bind(cohort.id, cohort.label, cohort.language, cohort.arm, 1, "open", cohort.created_at).run();
           await seedDay(DB, cohort, 1);
           return json({ ok: true, cohort }, 200, origin);
         }
         if (path === "/api/dashboard/cohort/day" && request.method === "POST") {
           const b = await request.json().catch(() => ({}));
           const code = String(b.code || "").trim().toUpperCase();
-          const day = Math.min(3, Math.max(1, Number(b.day) || 1));
+          const day = Math.min(2, Math.max(1, Number(b.day) || 1));  // two-day protocol
           const cohort = await DB.prepare("SELECT * FROM cohorts WHERE id=?").bind(code).first();
           if (!cohort) return json({ error: "no_cohort" }, 404, origin);
           await DB.prepare("UPDATE cohorts SET day=? WHERE id=?").bind(day, code).run();
           if (day !== cohort.day) await seedDay(DB, { ...cohort, day }, day);
           return json({ ok: true, code, day }, 200, origin);
+        }
+        // Phase stepper. Day 1 runs free -> survey1 -> task -> microcheck -> done; Day 2
+        // runs free -> survey2 -> done. The paper's automatic session-toxicity trigger will
+        // eventually drive the same transition; this is the seam it plugs into.
+        if (path === "/api/dashboard/cohort/phase" && request.method === "POST") {
+          const b = await request.json().catch(() => ({}));
+          const code = String(b.code || "").trim().toUpperCase();
+          const phase = ["free", "survey1", "task", "microcheck", "survey2", "done"].includes(b.phase) ? b.phase : null;
+          if (!phase) return json({ error: "bad_phase" }, 400, origin);
+          await DB.prepare("ALTER TABLE cohorts ADD COLUMN phase TEXT DEFAULT 'free'").run().catch(() => {});
+          const r = await DB.prepare("UPDATE cohorts SET phase=? WHERE id=?").bind(phase, code).run();
+          if (!r.meta || r.meta.changes === 0) return json({ error: "no_cohort" }, 404, origin);
+          return json({ ok: true, code, phase }, 200, origin);
         }
         if (path === "/api/dashboard/cohort/close" && request.method === "POST") {
           const b = await request.json().catch(() => ({}));
@@ -454,7 +592,7 @@ export default {
         if (path === "/api/dashboard/summary") {
           const cohorts = (await DB.prepare("SELECT * FROM cohorts ORDER BY created_at DESC").all()).results || [];
           const cell = () => ({ sessions: 0, msgs: 0, toxSum: 0, we: 0, they: 0, cross: 0, livePaired: 0, filler: 0, pollVotes: 0 });
-          const byArmDay = { EXPT: { 1: cell(), 2: cell(), 3: cell() }, CTRL: { 1: cell(), 2: cell(), 3: cell() } };
+          const byArmDay = { EXPT: { 1: cell(), 2: cell() }, CTRL: { 1: cell(), 2: cell() } };
           const get = (a, d) => (byArmDay[a] && byArmDay[a][d]) || null;
 
           const sc = (await DB.prepare("SELECT arm, day, COUNT(*) n FROM sessions GROUP BY arm, day").all()).results || [];
@@ -470,26 +608,63 @@ export default {
           const pv = (await DB.prepare("SELECT day, COUNT(*) n FROM poll_votes GROUP BY day").all()).results || [];
           pv.forEach((r) => { const c = get("CTRL", r.day); if (c) c.pollVotes = r.n; });
 
-          for (const a of ARMS) for (const d of [1, 2, 3]) {
+          for (const a of ARMS) for (const d of [1, 2]) {
             const c = byArmDay[a][d];
             c.toxRate = c.msgs ? c.toxSum / c.msgs : null;
             const tot = c.we + c.they; c.weShare = tot ? c.we / tot : null;
           }
-          // R1–R3 requirement checks (same thresholds as the demo: high ≥.55 · stay ≥.50 · drop ≤.35)
-          const t = (a, d) => byArmDay[a][d].toxRate;
-          const R1 = t("EXPT", 1) == null || t("CTRL", 1) == null ? null : (t("EXPT", 1) >= 0.55 && t("CTRL", 1) >= 0.55);
-          const R2 = t("CTRL", 2) == null ? null : t("CTRL", 2) >= 0.5;
-          const R3 = t("EXPT", 2) == null || t("CTRL", 2) == null ? null : (t("EXPT", 2) <= 0.35 && t("CTRL", 2) >= 0.5);
+          // Day-1 arm × phase: the feature fires INSIDE Day 1, so the treatment contrast is
+          // pre-task vs post-task (paper §3.6), not Day 1 vs Day 2. Rows written before the
+          // phase column existed have phase NULL and count as pre-task.
+          const byArmPhase = { EXPT: { pre: cell(), post: cell() }, CTRL: { pre: cell(), post: cell() } };
+          const pc = (await DB.prepare(
+            `SELECT arm, CASE WHEN phase IN ('task','microcheck') THEN 'post' ELSE 'pre' END slot,
+                    COUNT(*) msgs, SUM(toxicity) toxSum, SUM(we) we, SUM(they) they
+             FROM events WHERE type IN ('post','comment') AND session_id IS NOT NULL AND day=1
+             GROUP BY arm, slot`).all().catch(() => ({ results: [] }))).results || [];
+          pc.forEach((r) => { const c = byArmPhase[r.arm] && byArmPhase[r.arm][r.slot];
+            if (c) { c.msgs = r.msgs; c.toxSum = r.toxSum || 0; c.we = r.we || 0; c.they = r.they || 0; } });
+          for (const a of ARMS) for (const k of ["pre", "post"]) {
+            const c = byArmPhase[a][k];
+            c.toxRate = c.msgs ? c.toxSum / c.msgs : null;
+            const tot = c.we + c.they; c.weShare = tot ? c.we / tot : null;
+          }
+
+          // Operational go/no-go gates, re-keyed to the two-day design. They decide whether a
+          // session is ready to advance; they are NOT evidence for the hypothesis. G3 is the
+          // condition-by-phase contrast in gate form (thresholds: high ≥.55 · stay ≥.50 · drop ≤.35).
+          const ph = (a, k) => byArmPhase[a][k].toxRate;
+          const R1 = ph("EXPT", "pre") == null || ph("CTRL", "pre") == null ? null
+            : (ph("EXPT", "pre") >= 0.55 && ph("CTRL", "pre") >= 0.55);
+          const R2 = ph("CTRL", "post") == null ? null : ph("CTRL", "post") >= 0.5;
+          const R3 = ph("EXPT", "post") == null || ph("CTRL", "post") == null ? null
+            : (ph("EXPT", "post") <= 0.35 && ph("CTRL", "post") >= 0.5);
+          // Per-cohort × day toxicity. With whole-group arms each cohort IS the cluster, so
+          // this — not the pooled arm×day cell — is the level the design actually varies at.
+          const bcd = (await DB.prepare(
+            "SELECT cohort_id, day, arm, COUNT(*) msgs, SUM(toxicity) toxSum FROM events WHERE type IN ('post','comment') AND session_id IS NOT NULL GROUP BY cohort_id, day, arm"
+          ).all()).results || [];
+          const byCohortDay = {};
+          bcd.forEach((r) => {
+            const k = r.cohort_id || "?";
+            (byCohortDay[k] || (byCohortDay[k] = {}))[r.day] = {
+              arm: r.arm, msgs: r.msgs, toxRate: r.msgs ? (r.toxSum || 0) / r.msgs : null,
+            };
+          });
           const { n: sessions } = (await DB.prepare("SELECT COUNT(*) n FROM sessions").first()) || { n: 0 };
-          return json({ source: "backend", version: "v3", cohorts, byArmDay, checks: { R1, R2, R3 }, totals: { sessions } }, 200, origin);
+          return json({ source: "backend", version: "v3.1", cohorts, byArmDay, byArmPhase, byCohortDay, checks: { R1, R2, R3 }, totals: { sessions } }, 200, origin);
         }
 
         if (path === "/api/dashboard/sessions") {
           const sessions = (await DB.prepare("SELECT * FROM sessions ORDER BY started_at DESC LIMIT 1000").all()).results || [];
-          const events = (await DB.prepare("SELECT id,session_id,cohort_id,day,arm,flair,author,type,text_raw,toxicity,we,they,thread_id,created_at FROM events ORDER BY created_at DESC LIMIT 5000").all()).results || [];
+          const evCols = "id,session_id,cohort_id,day,arm,flair,author,type,text_raw,toxicity,we,they,thread_id,created_at";
+          const events = ((await DB.prepare(`SELECT ${evCols},phase FROM events ORDER BY created_at DESC LIMIT 5000`).all()
+            .catch(() => DB.prepare(`SELECT ${evCols} FROM events ORDER BY created_at DESC LIMIT 5000`).all())).results) || [];
           const collabs = (await DB.prepare("SELECT * FROM collabs ORDER BY created_at DESC LIMIT 1000").all()).results || [];
           const participants = (await DB.prepare("SELECT id,cohort_id,handle,arm,flair,created_at FROM participants LIMIT 2000").all()).results || [];
-          return json({ source: "backend", version: "v3", sessions, events, collabs, participants }, 200, origin);
+          const surveys = (await DB.prepare("SELECT * FROM survey_responses ORDER BY created_at DESC LIMIT 5000")
+            .all().catch(() => ({ results: [] }))).results || [];
+          return json({ source: "backend", version: "v3", sessions, events, collabs, participants, surveys }, 200, origin);
         }
       }
 

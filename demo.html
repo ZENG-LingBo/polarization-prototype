@@ -243,7 +243,6 @@
       <div class="daychips">
         <button class="daychip on" data-day="1">Day 1</button>
         <button class="daychip" data-day="2">Day 2</button>
-        <button class="daychip" data-day="3">Day 3</button>
       </div>
     </div>
 
@@ -282,7 +281,7 @@
         </div>
 
         <div>
-          <div class="exlabel">3-DAY PROTOCOL · 1 h/day · SURVEY AFTER EACH DAY</div>
+          <div class="exlabel">2-DAY PROTOCOL · 1 h/day · FEATURE FIRES INSIDE DAY 1</div>
           <div class="runrow">
             <button class="runbtn" id="run">▶ Run 3-day protocol</button>
             <button class="ghostbtn" id="reset">↺ Reset</button>
@@ -307,7 +306,7 @@
         </div>
 
         <div class="viz-root">
-          <div class="exlabel">END-OF-DAY TOXICITY · BY ARM</div>
+          <div class="exlabel">TOXICITY BY ARM · BEFORE / AFTER / NEXT DAY</div>
           <div class="viz-legend">
             <span><span class="sw" style="background:var(--series-1)"></span>Experiment</span>
             <span><span class="sw" style="background:var(--series-2)"></span>Control</span>
@@ -318,7 +317,7 @@
         <label class="toggle"><input type="checkbox" id="revealLLM"> Show LLM plumbing on the note (template · router · verbatim assembly)</label>
 
         <div>
-          <div class="exlabel">WHY IT DEPOLARIZES — SAME TWO USERS, DAY 1 → DAY 2</div>
+          <div class="exlabel">WHY IT DEPOLARIZES — SAME TWO USERS, BEFORE → AFTER</div>
           <div class="exbub"><b style="color:#c9b5ff">u/borahae_kim (ARMY), Day 1:</b><br>"ratio + your bias is an industry plant. the whole group is marketing 💀"</div>
           <div class="exbub"><b style="color:#ffb1cd">u/rosie_posie (BLINK), Day 1:</b><br>"obsessed AND pressed 🤡 most toxic fandom alive, blocked"</div>
           <div class="exarrow">▼ after co-authoring Community Note #14 ▼</div>
@@ -421,7 +420,10 @@ const DAY3 = {
 
 /* ================= state ================= */
 let arm="EXPT", day=1, busy=false, texts=[], crossEng=0;
-const dayTox={EXPT:{1:null,2:null,3:null},CTRL:{1:null,2:null,3:null}};
+// Two-day protocol: the feature fires INSIDE Day 1, so the contrast is pre-task vs
+// post-task; Day 2 (no feature) is the persistence read-out.
+const SLOTS=[["pre","Day 1 · before"],["post","Day 1 · after"],["d2","Day 2 · removed"]];
+const dayTox={EXPT:{pre:null,post:null,d2:null},CTRL:{pre:null,post:null,d2:null}};
 const feed=$("#feed");
 
 /* ================= metrics ================= */
@@ -441,10 +443,10 @@ function renderMeters(){
 /* requirements */
 function renderReqs(){
   const e=dayTox.EXPT,c=dayTox.CTRL;
-  const r1v=[e[1],c[1]].filter(x=>x!=null);
+  const r1v=[e.pre,c.pre].filter(x=>x!=null);
   set("#req1", r1v.length? (r1v.every(x=>x>=.55)?1:-1):0);
-  set("#req2", c[2]!=null? (c[2]>=.5?1:-1):0);
-  const r3=(e[2]!=null&&c[2]!=null)? ((e[2]<=.35&&c[2]>=.5)?1:-1) : 0;
+  set("#req2", c.post!=null? (c.post>=.5?1:-1):0);
+  const r3=(e.post!=null&&c.post!=null)? ((e.post<=.35&&c.post>=.5)?1:-1) : 0;
   set("#req3", r3);
   function set(sel,v){const el=$(sel);el.classList.toggle("ok",v===1);el.classList.toggle("bad",v===-1);
     el.querySelector(".rt").textContent=v===1?"✓":v===-1?"✗":"•";}
@@ -460,16 +462,16 @@ function renderChart(){
     s+=`<line x1="${padL}" y1="${y}" x2="${W-8}" y2="${y}" stroke="var(--line2)" stroke-width="1"/>`;
     s+=`<text x="${padL-5}" y="${y+3}" font-size="8" fill="var(--mut)" text-anchor="end">${v}</text>`;});
   const arms=[["EXPT","var(--series-1)","Experiment"],["CTRL","var(--series-2)","Control"]];
-  for(let d=1;d<=3;d++){
-    const cx=padL+plotW*(d-.5)/3;
-    s+=`<text x="${cx}" y="${H-8}" font-size="9" fill="var(--mut)" text-anchor="middle">Day ${d}</text>`;
+  SLOTS.forEach(([slot,label],si)=>{
+    const cx=padL+plotW*(si+.5)/SLOTS.length;
+    s+=`<text x="${cx}" y="${H-8}" font-size="7.5" fill="var(--mut)" text-anchor="middle">${label}</text>`;
     arms.forEach(([k,col,name],i)=>{
-      const v=dayTox[k][d]; if(v==null) return;
+      const v=dayTox[k][slot]; if(v==null) return;
       const h=Math.max(3,plotH*v), x=cx-(bw+gap/2)+i*(bw+gap), y=padT+plotH-h;
-      s+=`<path class="bar" data-tip="${name} · Day ${d}|toxicity ${Math.round(v*100)}" d="M${x},${y+4} q0,-4 4,-4 h${bw-8} q4,0 4,4 v${h-4} h${-bw} z" fill="${col}"/>`;
+      s+=`<path class="bar" data-tip="${name} · ${label}|toxicity ${Math.round(v*100)}" d="M${x},${y+4} q0,-4 4,-4 h${bw-8} q4,0 4,4 v${h-4} h${-bw} z" fill="${col}"/>`;
       s+=`<text x="${x+bw/2}" y="${y-3}" font-size="8.5" font-weight="700" fill="var(--ink2)" text-anchor="middle">${Math.round(v*100)}</text>`;
     });
-  }
+  });
   svg.innerHTML=s;
   svg.querySelectorAll(".bar").forEach(b=>{
     b.addEventListener("mousemove",e=>{const [t1,t2]=b.dataset.tip.split("|");
@@ -622,34 +624,36 @@ function status(t){ $("#rstatus").textContent=t; }
 async function playDay(d){
   day=d; setDayChip(d); clearFeed();
   if(d===1){
-    status("Day 1 — within-group baseline: heated threads, no feature.");
+    // Pre-task: free discussion until hostility is established.
+    status("Day 1 — free discussion: heated threads, no feature yet.");
     for(const p of DAY1){ const el=addPostCard(p); await addComments(el,p.comments); await sleep(T(300)); }
-    dayTox[arm][1]=currentTox(); logEv("baseline session ended · 📋 short survey delivered");
-  }
-  if(d===2){
+    dayTox[arm].pre=currentTox(); logEv("toxicity threshold reached · 📋 Survey 1 delivered");
+    renderChart(); renderReqs(); await sleep(T(700));
+    // Post-task: the assigned feature appears in the SAME session. Both arms are
+    // triggered at the same point, so novelty is shared and the contrast is clean.
     if(arm==="EXPT"){
-      status("Day 2 — the community note appears in-feed (participants are only told what to do).");
+      status("Day 1 — the community note appears in-feed (participants are only told what to do).");
       const el=await addNotePost(); await runNoteFlow(el,null);
-      dayTox.EXPT[2]=currentTox(); logEv("community note co-published across flairs · 📋 survey delivered");
+      dayTox.EXPT.post=currentTox(); logEv("community note co-published across flairs · 📋 micro-check delivered");
     } else {
-      status("Day 2 — control: an inert solo poll appears; threads keep going.");
+      status("Day 1 — control: an inert solo poll appears; threads keep going.");
       await addPollPost();
-      dayTox.CTRL[2]=currentTox(); logEv("inert feature shown (no pairing) · 📋 survey delivered");
+      dayTox.CTRL.post=currentTox(); logEv("inert feature shown (no pairing) · 📋 micro-check delivered");
     }
   }
-  if(d===3){
-    status(arm==="EXPT" ? "Day 3 — feature removed; tone carries over." : "Day 3 — feature removed; hostility unchanged.");
+  if(d===2){
+    status(arm==="EXPT" ? "Day 2 — feature removed; tone carries over." : "Day 2 — feature removed; hostility unchanged.");
     for(const p of DAY3[arm]){ const el=addPostCard(p); await addComments(el,p.comments,{cross:arm==="EXPT"}); }
-    dayTox[arm][3]=currentTox(); logEv("final session · 📋 survey + exit interview");
+    dayTox[arm].d2=currentTox(); logEv("final session · 📋 Survey 2 + exit interview");
   }
   renderChart(); renderReqs();
 }
 async function runProtocol(){
   if(busy) return; busy=true; $("#run").disabled=true;
   document.querySelectorAll(".daychip").forEach(c=>c.disabled=true);
-  for(let d=1;d<=3;d++){ await playDay(d); await sleep(T(900)); }
+  for(let d=1;d<=2;d++){ await playDay(d); await sleep(T(900)); }
   status(arm==="EXPT"
-    ? "Done — toxicity fell after the community note (Day 2) and held on Day 3. Now run the Control arm."
+    ? "Done — toxicity fell after the community note within Day 1, and held on Day 2. Now run the Control arm."
     : "Done — the inert feature changed nothing; toxicity stayed high. Compare bars with the Experiment arm.");
   document.querySelectorAll(".daychip").forEach(c=>c.disabled=false);
   $("#run").disabled=false; busy=false;
@@ -663,7 +667,7 @@ document.querySelectorAll(".armbtn").forEach(b=>b.onclick=()=>{ if(busy) return;
 });
 document.querySelectorAll(".daychip").forEach(c=>c.onclick=()=>{ if(!busy) playDay(+c.dataset.day); });
 $("#run").onclick=runProtocol;
-$("#reset").onclick=()=>{ if(busy) return; ["EXPT","CTRL"].forEach(k=>[1,2,3].forEach(d=>dayTox[k][d]=null));
+$("#reset").onclick=()=>{ if(busy) return; ["EXPT","CTRL"].forEach(k=>["pre","post","d2"].forEach(x=>dayTox[k][x]=null));
   $("#evlog").innerHTML="<div>ready — no events yet</div>"; playDay(1); };
 $("#rhead").onclick=()=>{ const b=$("#rbody"); b.style.display=b.style.display==="none"?"flex":"none"; };
 $("#revealLLM").onchange=e=>document.body.classList.toggle("research",e.target.checked);
