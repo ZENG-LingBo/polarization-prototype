@@ -185,6 +185,29 @@ const SHOUT_EXEMPT = /\b(BTS|BLACKPINK|BP|ARMY|ARMYS|BLINK|BLINKS|KPOP|K-POP|OT7
 const TOX_WORDS = new Set(TOX.filter((w) => /^[a-z']+$/.test(w)));
 const TOX_PHRASES = TOX.filter((w) => /[ -]/.test(w));
 const TOX_SYMBOLS = TOX.filter((w) => !/^[a-z' -]+$/.test(w));
+// Diagnostic probe, researcher-gated. llmToxicity deliberately swallows every failure so
+// that scoring can never block posting - which also means a misconfigured key looks exactly
+// like a model that rated everything 0. This makes one call and reports what actually
+// happened: HTTP status, the provider's error body, or the thrown message.
+async function llmProbe(env) {
+  const key = apiKey(env);
+  const shape = { keyLen: key.length, keyHead: key.slice(0, 6), base: env.LLM_BASE_URL || "(default)", model: env.LLM_TOX_MODEL || "qwen-turbo" };
+  if (!key) return { ...shape, ok: false, why: "no_key" };
+  const base = (env.LLM_BASE_URL || "https://dashscope-intl.aliyuncs.com/compatible-mode/v1").replace(/\/$/, "");
+  try {
+    const r = await fetch(base + "/chat/completions", {
+      method: "POST",
+      headers: { "content-type": "application/json", authorization: "Bearer " + key },
+      body: JSON.stringify({ model: shape.model, messages: [{ role: "user", content: "Reply with only: 42" }], max_tokens: 8 }),
+      signal: AbortSignal.timeout(8000),
+    });
+    const body = await r.text();
+    return { ...shape, ok: r.ok, status: r.status, body: body.slice(0, 300) };
+  } catch (e) {
+    return { ...shape, ok: false, why: String((e && e.name) || "") + ": " + String((e && e.message) || e) };
+  }
+}
+
 function toxicity(t) {
   const raw = String(t), s = raw.toLowerCase();
   let hits = 0;
@@ -599,7 +622,9 @@ export default {
           // rows it actually returned a value for. A silent model failure looks like
           // mode:"llm" with llmScored:0 and every score falling back to the wordlist, which
           // is otherwise indistinguishable from "the model rated everything 0".
-          return json({ ok: true, mode: useLlm ? "llm" : "wordlist", llmScored, total,
+          // If the model graded nothing, say why rather than leaving a corpus of zeros.
+          const probe = useLlm && llmScored === 0 && rows.length ? await llmProbe(env) : undefined;
+          return json({ ok: true, mode: useLlm ? "llm" : "wordlist", llmScored, probe, total,
             processed: rows.length, nextOffset, done: nextOffset >= total || rows.length === 0 }, 200, origin);
         }
 
