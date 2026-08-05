@@ -349,8 +349,11 @@ $("#btn-csv").onclick = ()=>{
 };
 $("#btn-msgcsv").onclick = ()=>{
   const q = (s)=>`"${String(s==null?"":s).replace(/"/g,'""').replace(/\r?\n/g," ")}"`;
-  let csv="event_id,cohort,day,arm,fandom,handle,type,is_seed,toxicity_0_100,we,they,thread_id,created_at_iso,text_raw\n";
-  filteredMsgs().forEach(e=>{ csv += [e.id,e.cohort_id,e.day,e.arm,e.flair,e.author,e.type,e.session_id?0:1,
+  // phase is the treatment contrast in the two-day design (pre-task vs post-task within
+  // Day 1), so it has to travel with the messages or the analysis cannot be done from
+  // this file. Rows written before the column existed export as "" and count as pre-task.
+  let csv="event_id,cohort,day,phase,arm,fandom,handle,type,is_seed,toxicity_0_100,we,they,thread_id,created_at_iso,text_raw\n";
+  filteredMsgs().forEach(e=>{ csv += [e.id,e.cohort_id,e.day,e.phase||"",e.arm,e.flair,e.author,e.type,e.session_id?0:1,
     Math.round((e.toxicity||0)*100),e.we||0,e.they||0,e.thread_id,new Date(e.created_at||0).toISOString()].map(q).join(",")
     + "," + q(e.text_raw) + "\n"; });
   download("defuselab-messages.csv", csv, "text/csv");
@@ -374,7 +377,13 @@ $("#btn-svcsv").onclick = ()=>{
   download("defuselab-surveys.csv", csv, "text/csv");
 };
 function download(name, text, type){
-  const a=document.createElement("a"); a.href=URL.createObjectURL(new Blob([text],{type})); a.download=name; a.click(); URL.revokeObjectURL(a.href);
+  // CSVs get a UTF-8 byte-order mark. Without it Excel on Windows reads the file in the
+  // system codepage and Chinese posts arrive as mojibake -- the stored text is fine, but
+  // the export looks corrupted, which is where the analysis actually starts.
+  const csv = String(type).indexOf("csv") >= 0;
+  const parts = csv ? ["\uFEFF", text] : [text];
+  const blob = new Blob(parts, { type: type + (csv ? ";charset=utf-8" : "") });
+  const a=document.createElement("a"); a.href=URL.createObjectURL(blob); a.download=name; a.click(); URL.revokeObjectURL(a.href);
 }
 </script>
 </body>
