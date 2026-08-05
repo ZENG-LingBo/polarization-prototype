@@ -112,12 +112,17 @@ const clamp = (v, a = 0, b = 1) => Math.max(a, Math.min(b, v));
 // ---- LLM note merge. OpenAI-compatible endpoint (Qwen/DashScope by default). The key
 // lives ONLY in the LLM_API_KEY secret — never in code or [vars]. Any failure (no key,
 // timeout, bad response) returns null and the caller falls back to mechanical assembly.
+// A secret pasted or piped into `wrangler secret put` can pick up a trailing newline or
+// stray whitespace, which makes the Authorization header invalid while the same key works
+// fine when tested by hand. Trim at the point of use so that class of failure cannot recur.
+const apiKey = (env) => String(env.LLM_API_KEY || "").trim();
+
 async function llmMerge(env, lang, a, b) {
   // The merge IS the manipulation (PLAN §4.3), so it is configuration rather than a side
   // effect of whether a secret happens to be set. NOTE_MERGE_MODE=verbatim runs the
   // mechanical assembly instead; either way collabs.ai_merged records what was published.
   if ((env.NOTE_MERGE_MODE || "llm") === "verbatim") return null;
-  if (!env.LLM_API_KEY) return null;
+  if (!apiKey(env)) return null;
   const base = (env.LLM_BASE_URL || "https://dashscope-intl.aliyuncs.com/compatible-mode/v1").replace(/\/$/, "");
   const sys = lang === "zh"
     ? "你是K-pop粉丝社区的共创笔记助手。把来自两个不同粉丝团成员的两条贡献合并成一条温暖、简短的社区笔记（不超过60字）。保留双方原意，不新增事实或名字，只输出合并后的笔记正文。"
@@ -125,7 +130,7 @@ async function llmMerge(env, lang, a, b) {
   try {
     const r = await fetch(base + "/chat/completions", {
       method: "POST",
-      headers: { "content-type": "application/json", authorization: "Bearer " + env.LLM_API_KEY },
+      headers: { "content-type": "application/json", authorization: "Bearer " + apiKey(env) },
       body: JSON.stringify({
         model: env.LLM_MODEL || "qwen-plus",
         messages: [
@@ -147,12 +152,12 @@ async function llmMerge(env, lang, a, b) {
 // ctx.waitUntil right after insert (the heuristic score stands until this lands) and by
 // the dashboard /rescore backfill. Same key/endpoint as llmMerge; cheaper default model.
 async function llmToxicity(env, text) {
-  if (!env.LLM_API_KEY || !text) return null;
+  if (!apiKey(env) || !text) return null;
   const base = (env.LLM_BASE_URL || "https://dashscope-intl.aliyuncs.com/compatible-mode/v1").replace(/\/$/, "");
   try {
     const r = await fetch(base + "/chat/completions", {
       method: "POST",
-      headers: { "content-type": "application/json", authorization: "Bearer " + env.LLM_API_KEY },
+      headers: { "content-type": "application/json", authorization: "Bearer " + apiKey(env) },
       body: JSON.stringify({
         model: env.LLM_TOX_MODEL || "qwen-turbo",
         messages: [
@@ -402,7 +407,7 @@ export default {
         const type = ["post", "comment", "like", "share", "cross"].includes(b.type) ? b.type : "post";
         const evId = await insertEvent(DB, sess, type, b.textRaw, b.threadId);
         // LLM-grade the score in the background — the response never waits on the model
-        if ((type === "post" || type === "comment") && env.LLM_API_KEY && ctx) {
+        if ((type === "post" || type === "comment") && apiKey(env) && ctx) {
           const raw = String(b.textRaw || "").slice(0, 2000);
           ctx.waitUntil(llmToxicity(env, raw).then((v) => v == null ? null :
             DB.prepare("UPDATE events SET toxicity=? WHERE id=?").bind(v, evId).run()).catch(() => {}));
@@ -571,7 +576,7 @@ export default {
         if (path === "/api/dashboard/rescore" && request.method === "POST") {
           const b = await request.json().catch(() => ({}));
           const offset = Math.max(0, Number(b.offset) || 0);
-          const useLlm = !!env.LLM_API_KEY && b.mode !== "wordlist";
+          const useLlm = !!apiKey(env) && b.mode !== "wordlist";
           const limit = useLlm ? 25 : 100000;
           const { n: total } = (await DB.prepare("SELECT COUNT(*) n FROM events WHERE type IN ('post','comment')").first()) || { n: 0 };
           const rows = (await DB.prepare("SELECT id, text_raw FROM events WHERE type IN ('post','comment') ORDER BY created_at ASC LIMIT ? OFFSET ?").bind(limit, offset).all()).results || [];
