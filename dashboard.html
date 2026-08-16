@@ -1,10 +1,11 @@
 <!DOCTYPE html>
-<!-- Transitional stub: dashboard moved to public/dashboard.html. -->
+<!-- Transitional stub: dashboard moved to public/dashboard.html. JS redirect preserves
+     any query string (e.g. ?backend= override for local dev). -->
 <html lang="en">
 <head>
 <meta charset="UTF-8" />
-<meta http-equiv="refresh" content="0; url=public/dashboard.html" />
 <title>DefuseLab — Researcher Dashboard</title>
+<script>location.replace("public/dashboard.html" + location.search);</script>
 </head>
 <body><p><a href="public/dashboard.html">Continue →</a></p></body>
 </html>
