@@ -19,7 +19,7 @@
 //   POST /api/dashboard/cohort       {code,label,language}      -> create cohort
 //   POST /api/survey/submit        {sessionId,instrument,answers} -> store one instrument
 //   POST /api/dashboard/cohort/day   {code,day}                 -> advance day (re-seeds prompts)
-//   POST /api/dashboard/cohort/phase {code,phase}               -> free|survey1|task|microcheck|survey2|done
+//   POST /api/dashboard/cohort/phase {code,phase}               -> free|task|survey1|survey2|done (sweeps stragglers on leaving task)
 //   POST /api/dashboard/cohort/close {code}
 //   GET  /api/dashboard/summary                                 -> arm×day + arm×phase aggregates + G1-G3
 //   GET  /api/dashboard/sessions                                -> raw export
@@ -222,8 +222,12 @@ function toxicity(t) {
 const countWords = (t, list) => String(t).toLowerCase().split(/[^a-z']+/).filter((x) => list.includes(x)).length
   + countZh(t, list === WE ? WE_ZH : list === THEY ? THEY_ZH : []);
 
+// Filled from env.ALLOWED_ORIGINS_EXTRA at the top of fetch() — the custom participant
+// domain lives in wrangler.toml, not in code, so moving domains is a config edit.
+let EXTRA_ORIGINS = [];
 function corsHeaders(origin) {
-  const allow = ALLOWED_ORIGINS.includes(origin) ? origin : ALLOWED_ORIGINS[0];
+  const all = ALLOWED_ORIGINS.concat(EXTRA_ORIGINS);
+  const allow = all.includes(origin) ? origin : all[0];
   return {
     "Access-Control-Allow-Origin": allow,
     "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
@@ -269,24 +273,14 @@ async function surveysDone(DB, sid) {
   return rows.map((r) => r.instrument);
 }
 
-// The instrument due right now, or null. Day 1 carries Survey 1 (before the task block) and
-// the micro-check (straight after it); Day 2 carries Survey 2. A day beyond that has none.
+// The instrument due right now, or null. One survey per day, at the END of the day
+// (v3.2: the task runs first; the micro-check was dropped). The day picks the instrument
+// so a researcher clicking survey1 on Day 2 cannot re-serve Day 1's battery.
 async function surveyDue(DB, sess, phase, done) {
   const want = phase === "survey1" ? (sess.cohort_day >= 2 ? "survey2" : "survey1")
-    : phase === "survey2" ? "survey2"
-    : phase === "microcheck" ? "microcheck" : null;
+    : phase === "survey2" ? "survey2" : null;
   if (!want || done.includes(want)) return null;
-  if (want !== "microcheck") return { instrument: want };
-  // M5 is the dual-identity check and only makes sense to someone who was really paired:
-  // intervention arm, live cross-fandom pair. Both halves of a pair must qualify — the
-  // collabs row carries only the INITIATOR's session_id, so the responder is identified by
-  // the note_published event, which is written for real pairs and never for filler.
-  if (sess.arm !== "EXPT") return { instrument: want, showM5: false };
-  const asInitiator = await DB.prepare(
-    "SELECT id FROM collabs WHERE session_id=? AND is_live_paired=1").bind(sess.id).first();
-  const asResponder = asInitiator ? null : await DB.prepare(
-    "SELECT id FROM events WHERE session_id=? AND type='note_published' LIMIT 1").bind(sess.id).first();
-  return { instrument: want, showM5: !!(asInitiator || asResponder) };
+  return { instrument: want };
 }
 
 async function insertEvent(DB, sess, type, text, threadId, authorOverride, flairOverride) {
@@ -322,9 +316,75 @@ async function seedDay(DB, cohort, day) {
   }
 }
 
+// ---- Staggered pairing. Runs lazily off /api/feed polls (no cron): publishes at most
+// one cross-fandom pair per PAIR_INTERVAL_MS per cohort, oldest contributions first, so
+// notes surface one at a time through the task block instead of all at once. Concurrent
+// polls race here, so both rows are claimed with an optimistic lock before publishing;
+// a lost claim simply retries on a later poll.
+async function pairTick(env, DB, sess) {
+  const interval = Number(env.PAIR_INTERVAL_MS || 60000);
+  const last = await DB.prepare(
+    "SELECT MAX(created_at) m FROM events WHERE cohort_id=? AND day=? AND type='note_published'"
+  ).bind(sess.cohort_id, sess.cohort_day).first();
+  if (last && last.m && Date.now() - last.m < interval) return;
+  const a = await DB.prepare(
+    "SELECT * FROM collabs WHERE cohort_id=? AND day=? AND status='waiting' ORDER BY created_at ASC LIMIT 1"
+  ).bind(sess.cohort_id, sess.cohort_day).first();
+  if (!a) return;
+  const bRow = await DB.prepare(
+    "SELECT * FROM collabs WHERE cohort_id=? AND day=? AND status='waiting' AND a_flair=? ORDER BY created_at ASC LIMIT 1"
+  ).bind(sess.cohort_id, sess.cohort_day, other(a.a_flair)).first();
+  if (!bRow) return;
+  const clarify = async (id) => (await DB.prepare(
+    "UPDATE collabs SET status='pairing' WHERE id=? AND status='waiting'").bind(id).run()).meta.changes === 1;
+  if (!(await clarify(a.id))) return;
+  if (!(await clarify(bRow.id))) {
+    await DB.prepare("UPDATE collabs SET status='waiting' WHERE id=?").bind(a.id).run();
+    return;
+  }
+  const cohort = await DB.prepare("SELECT language, phase FROM cohorts WHERE id=?").bind(sess.cohort_id).first();
+  const lang = cohort && cohort.language === "zh" ? "zh" : "en";
+  const merged = await llmMerge(env, lang,
+    { flair: a.a_flair, handle: a.a_handle, text: a.a_text },
+    { flair: bRow.a_flair, handle: bRow.a_handle, text: bRow.a_text });
+  const artifactLine = merged
+    ? `${NOTE[lang].artifact} — ${merged} (co-written by ${a.a_handle} · ${a.a_flair} × ${bRow.a_handle} · ${bRow.a_flair} · AI-merged)`
+    : `${NOTE[lang].artifact} — "${a.a_text}" (${a.a_handle} · ${a.a_flair}) × "${bRow.a_text}" (${bRow.a_handle} · ${bRow.a_flair})`;
+  await DB.prepare("ALTER TABLE collabs ADD COLUMN ai_merged INTEGER DEFAULT 0").run().catch(() => {});
+  await DB.prepare("ALTER TABLE collabs ADD COLUMN b_session_id TEXT").run().catch(() => {});
+  // Initiator row carries is_live_paired=1 so the dose counts each pair ONCE; the
+  // completer keeps their own row (paired, is_live_paired=0) so collab/status and
+  // taskDone resolve for both, and b_session_id links the two sessions for analysis.
+  const fill = (rowId, my, partner, live) => DB.prepare(
+    "UPDATE collabs SET b_flair=?, b_text=?, b_handle=?, b_session_id=?, status='paired', is_live_paired=?, paired_at=?, artifact=?, ai_merged=? WHERE id=?"
+  ).bind(partner.a_flair, partner.a_text, partner.a_handle, partner.session_id, live, Date.now(), artifactLine, merged ? 1 : 0, rowId).run();
+  await fill(a.id, a, bRow, 1);
+  await fill(bRow.id, bRow, a, 0);
+  await insertEvent(DB,
+    { id: a.session_id, cohort_id: sess.cohort_id, cohort_day: sess.cohort_day, arm: "EXPT",
+      cohort_phase: (cohort && cohort.phase) || "task", handle: "kpop_mod", flair: "SYS" },
+    "note_published", artifactLine, "note", "kpop_mod", "SYS");
+}
+
+// When the researcher moves the phase off 'task', every still-waiting contribution is
+// resolved with a clearly-labelled system sample (the existing filler path), so nobody
+// reaches the end-of-day survey with their entry unresolved.
+async function sweepWaiting(DB, code) {
+  const cohort = await DB.prepare("SELECT language FROM cohorts WHERE id=?").bind(code).first();
+  const lang = cohort && cohort.language === "zh" ? "zh" : "en";
+  const rows = (await DB.prepare("SELECT id, a_flair FROM collabs WHERE cohort_id=? AND status IN ('waiting','pairing')")
+    .bind(code).all()).results || [];
+  for (const r of rows) {
+    await DB.prepare("UPDATE collabs SET status='filler', filler=1, b_flair=?, b_text=?, b_handle='system_sample' WHERE id=?")
+      .bind(other(r.a_flair), NOTE[lang].fillerText, r.id).run();
+  }
+  return rows.length;
+}
+
 export default {
   async fetch(request, env, ctx) {
     const origin = request.headers.get("Origin") || "";
+    EXTRA_ORIGINS = String(env.ALLOWED_ORIGINS_EXTRA || "").split(",").map((x) => x.trim()).filter(Boolean);
     const url = new URL(request.url);
     const path = url.pathname;
     if (request.method === "OPTIONS") return new Response(null, { status: 204, headers: corsHeaders(origin) });
@@ -396,8 +456,27 @@ export default {
         const phase = sess.cohort_phase || null;
         const open = taskOpen(sess);
         const done = await surveysDone(DB, sess.id);
+        // Has this session completed its task action? Drives the blocking task step —
+        // a reload must never re-block someone who already contributed or voted.
+        let taskDone = false, myCollab = null;
+        if (open) {
+          if (sess.arm === "EXPT") {
+            myCollab = await DB.prepare(
+              `SELECT c.id, c.status FROM collabs c JOIN sessions s ON c.session_id = s.id
+               WHERE s.participant_id=? AND c.day=?`).bind(sess.participant_id, sess.cohort_day).first();
+            taskDone = !!myCollab;
+          } else {
+            taskDone = !!(await DB.prepare(
+              `SELECT v.id FROM poll_votes v JOIN sessions s ON v.session_id = s.id
+               WHERE s.participant_id=? AND v.day=?`).bind(sess.participant_id, sess.cohort_day).first());
+          }
+        }
+        // Drive the pairing cadence off participant polls — no cron needed, and the tick
+        // never delays the feed response.
+        if (open && sess.arm === "EXPT" && ctx) ctx.waitUntil(pairTick(env, DB, sess).catch(() => {}));
         return json({
-          day: sess.cohort_day, posts: rows, phase,
+          day: sess.cohort_day, posts: rows, phase, taskDone,
+          collab: myCollab ? { id: myCollab.id, status: myCollab.status } : null,
           survey: phase ? await surveyDue(DB, sess, phase, done) : null,
           note: open && sess.arm === "EXPT" ? NOTE[lang] : null,
           poll: open && sess.arm === "CTRL" ? POLL[lang] : null,
@@ -427,7 +506,7 @@ export default {
         const b = await request.json().catch(() => ({}));
         const sess = await getSession(DB, b.sessionId);
         if (!sess) return json({ error: "no_session" }, 400, origin);
-        const type = ["post", "comment", "like", "share", "cross"].includes(b.type) ? b.type : "post";
+        const type = ["post", "comment", "like", "share", "cross", "task_skipped"].includes(b.type) ? b.type : "post";
         const evId = await insertEvent(DB, sess, type, b.textRaw, b.threadId);
         // LLM-grade the score in the background — the response never waits on the model
         if ((type === "post" || type === "comment") && apiKey(env) && ctx) {
@@ -445,31 +524,15 @@ export default {
         if (sess.arm !== "EXPT" || !taskOpen(sess)) return json({ error: "not_available" }, 403, origin);
         const lang = sess.language === "zh" ? "zh" : "en";
         const text = String(b.text || "").slice(0, 500);
-        const match = await DB.prepare(
-          "SELECT * FROM collabs WHERE cohort_id=? AND arm='EXPT' AND status='waiting' AND a_flair=? ORDER BY created_at ASC LIMIT 1"
-        ).bind(sess.cohort_id, other(sess.flair)).first();
-        if (match) {
-          // publish the co-authored note into the shared EXPT feed: LLM-merged when the
-          // LLM_API_KEY secret is configured, verbatim assembly otherwise / on failure
-          const merged = await llmMerge(env, lang,
-            { flair: match.a_flair, handle: match.a_handle, text: match.a_text },
-            { flair: sess.flair, handle: sess.handle, text });
-          const artifactLine = merged
-            ? `${NOTE[lang].artifact} — ${merged} (co-written by ${match.a_handle} · ${match.a_flair} × ${sess.handle} · ${sess.flair} · AI-merged)`
-            : `${NOTE[lang].artifact} — "${match.a_text}" (${match.a_handle} · ${match.a_flair}) × "${text}" (${sess.handle} · ${sess.flair})`;
-          // ai_merged distinguishes a synthesised note from the verbatim fallback that runs
-          // when the model is unavailable. The fallback is a DIFFERENT manipulation, so it is
-          // recorded rather than silent -- same treatment as is_live_paired / filler.
-          await DB.prepare("ALTER TABLE collabs ADD COLUMN ai_merged INTEGER DEFAULT 0").run().catch(() => {});
-          await DB.prepare("UPDATE collabs SET b_flair=?, b_text=?, b_handle=?, status='paired', is_live_paired=1, paired_at=?, artifact=?, ai_merged=? WHERE id=?")
-            .bind(sess.flair, text, sess.handle, Date.now(), artifactLine, merged ? 1 : 0, match.id).run()
-            .catch(() => DB.prepare("UPDATE collabs SET b_flair=?, b_text=?, b_handle=?, status='paired', is_live_paired=1, paired_at=?, artifact=? WHERE id=?")
-              .bind(sess.flair, text, sess.handle, Date.now(), artifactLine, match.id).run());
-          await insertEvent(DB, sess, "note_published", artifactLine, "note", "kpop_mod", "SYS");
-          return json({ collabId: match.id, status: "paired", isLivePaired: true, aiMerged: !!merged,
-            partner: { flair: match.a_flair, text: match.a_text, handle: match.a_handle },
-            artifact: NOTE[lang].artifact }, 200, origin);
-        }
+        // One contribution per PARTICIPANT per day — a rejoin mints a new session id, so
+        // keying this on the session would let the same person queue twice.
+        const mine = await DB.prepare(
+          `SELECT c.id, c.status FROM collabs c JOIN sessions s ON c.session_id = s.id
+           WHERE s.participant_id=? AND c.day=?`).bind(sess.participant_id, sess.cohort_day).first();
+        if (mine) return json({ collabId: mine.id, status: mine.status }, 200, origin);
+        // Contributions always QUEUE. Pairing is done by pairTick on a fixed cadence — one
+        // pair per PAIR_INTERVAL_MS per cohort — so notes surface one at a time instead of
+        // all bursting the moment both sides have typed something.
         const cid = uid("col");
         await DB.prepare(
           "INSERT INTO collabs (id,session_id,cohort_id,day,arm,a_flair,a_text,a_handle,status,is_live_paired,filler,artifact,created_at) VALUES (?,?,?,?,?,?,?,?,'waiting',0,0,?,?)"
@@ -481,7 +544,10 @@ export default {
         const id = url.searchParams.get("id");
         const col = await DB.prepare("SELECT * FROM collabs WHERE id=?").bind(id).first();
         if (!col) return json({ status: "unknown" }, 200, origin);
-        const timeoutMs = Number(env.PAIRING_TIMEOUT_MS || 90000); // group sessions: wait longer before filler
+        // Safety net only (v3.2): the stagger means real pairs can take several minutes, so
+        // this must far exceed PAIR_INTERVAL_MS x expected pairs. The normal resolver for
+        // stragglers is the sweep when the researcher advances the phase off 'task'.
+        const timeoutMs = Number(env.PAIRING_TIMEOUT_MS || 600000);
         if (col.status === "waiting" && Date.now() - col.created_at > timeoutMs) {
           const cohort = await DB.prepare("SELECT language FROM cohorts WHERE id=?").bind(col.cohort_id).first();
           const lang = cohort && cohort.language === "zh" ? "zh" : "en";
@@ -503,6 +569,10 @@ export default {
         const sess = await getSession(DB, b.sessionId);
         if (!sess) return json({ error: "no_session" }, 400, origin);
         if (sess.arm !== "CTRL" || !taskOpen(sess)) return json({ error: "not_available" }, 403, origin);
+        const voted = await DB.prepare(
+          `SELECT v.id FROM poll_votes v JOIN sessions s ON v.session_id = s.id
+           WHERE s.participant_id=? AND v.day=?`).bind(sess.participant_id, sess.cohort_day).first();
+        if (voted) return json({ ok: true, duplicate: true }, 200, origin);
         await DB.prepare("INSERT INTO poll_votes (id,session_id,cohort_id,day,option_idx,created_at) VALUES (?,?,?,?,?,?)")
           .bind(uid("pv"), sess.id, sess.cohort_id, sess.cohort_day, Number(b.option) || 0, Date.now()).run();
         await insertEvent(DB, sess, "cross", "poll_vote:" + b.option, "poll"); // engagement log only (type not in feed)
@@ -585,7 +655,11 @@ export default {
           await DB.prepare("ALTER TABLE cohorts ADD COLUMN phase TEXT DEFAULT 'free'").run().catch(() => {});
           const r = await DB.prepare("UPDATE cohorts SET phase=? WHERE id=?").bind(phase, code).run();
           if (!r.meta || r.meta.changes === 0) return json({ error: "no_cohort" }, 404, origin);
-          return json({ ok: true, code, phase }, 200, origin);
+          // Leaving the task block resolves every still-unpaired contribution with a
+          // labelled system sample, so no one reaches the end-of-day survey unresolved.
+          let swept = 0;
+          if (phase === "survey1" || phase === "survey2" || phase === "done") swept = await sweepWaiting(DB, code);
+          return json({ ok: true, code, phase, swept }, 200, origin);
         }
         if (path === "/api/dashboard/cohort/close" && request.method === "POST") {
           const b = await request.json().catch(() => ({}));

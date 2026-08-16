@@ -1,0 +1,393 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>DefuseLab — Researcher Dashboard</title>
+<link rel="icon" href="data:," />
+<link rel="stylesheet" href="assets/ui.css?v=4" />
+<style>
+  .checks{display:flex;gap:10px;flex-wrap:wrap;margin-top:8px}
+  .rq{border:1.5px dashed var(--line);border-radius:10px;padding:8px 12px;font-size:12.5px;color:var(--mut)}
+  .rq.ok{border-color:var(--good);color:var(--good)}
+  .rq.bad{border-color:#ef4444;color:#fca5a5}
+  .cohortrow{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:8px}
+  .cohortrow input,.cohortrow select{background:var(--panel2,#131c1f);color:inherit;border:1px solid var(--line);border-radius:8px;padding:7px 10px;font:inherit;font-size:12.5px}
+  .daybtn{padding:5px 10px;font-size:12px}
+  .msgfilters{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:10px 0 4px}
+  .msgfilters select,.msgfilters input{background:var(--panel2,#131c1f);color:inherit;border:1px solid var(--line);border-radius:8px;padding:6px 9px;font:inherit;font-size:12.5px}
+  .msgfilters input{min-width:190px}
+  .msgwrap{overflow-x:auto;max-height:540px;overflow-y:auto;border:1px solid var(--line);border-radius:10px;margin-top:6px}
+  .msgwrap thead th{position:sticky;top:0;background:var(--panel,#101617);z-index:2}
+  .toxpill{display:inline-block;min-width:34px;text-align:center;border-radius:999px;padding:2px 8px;font-weight:800;font-size:12px;border:1px solid currentColor}
+  #msg-table td.msgtext{white-space:normal;max-width:560px;overflow-wrap:anywhere}
+</style>
+</head>
+<body>
+
+<!-- ===================== GATE ===================== -->
+<div id="gate-wrap">
+  <div class="gate">
+    <h2>Researcher access</h2>
+    <p class="muted tiny">This view holds the study metrics and is kept separate from participants
+      (blinding). Enter the researcher passphrase. In offline mode it shows this device's local data.</p>
+    <input type="password" id="pass" placeholder="researcher passphrase" />
+    <div class="err" id="gate-err"></div>
+    <button class="btn" id="gate-go">Open dashboard</button>
+  </div>
+</div>
+
+<!-- ===================== DASHBOARD ===================== -->
+<div class="dash" id="dash" hidden>
+  <div class="dash-hd">
+    <h1>DefuseLab · Study 1 — Researcher Dashboard</h1>
+    <span class="pill" id="mode-pill">…</span>
+    <span class="pill" id="n-pill">—</span>
+  </div>
+  <div class="muted tiny">Protocol v3.1 · <b>2 arms</b> (EXPT community note · CTRL inert poll) × <b>2 days</b> · cohort group sessions. The feature fires <b>inside Day 1</b>; Day 2 tests persistence.
+    Meters are transparent demo heuristics — each labelled with the <b>validated instrument + source paper</b> it stands in for.</div>
+
+  <div class="toolbar">
+    <button class="btn ghost sm" id="btn-refresh">↻ Refresh</button>
+    <button class="btn ghost sm" id="btn-rescore" title="Re-grade every stored message (LLM-graded when LLM_API_KEY is set, wordlists otherwise)">♻ Rescore</button>
+    <button class="btn ghost sm" id="btn-csv">⇩ Sessions CSV</button>
+    <button class="btn ghost sm" id="btn-msgcsv">⇩ Messages CSV</button>
+    <button class="btn ghost sm" id="btn-svcsv" title="One row per participant x instrument, one column per item id">⇩ Surveys CSV</button>
+    <button class="btn ghost sm" id="btn-json">⇩ Export JSON</button>
+  </div>
+
+  <!-- cohorts (backend mode) -->
+  <div class="card" id="cohort-card" hidden>
+    <h3>Cohorts — create, advance the day, close</h3>
+    <div class="cohortrow">
+      <input id="co-code" placeholder="code e.g. PILOT1" maxlength="12" style="text-transform:uppercase"/>
+      <input id="co-label" placeholder="label (optional)" maxlength="40"/>
+      <select id="co-lang"><option value="en">EN</option><option value="zh">中文</option></select>
+      <select id="co-arm"><option value="EXPT">EXPT (whole group)</option><option value="CTRL">CTRL (whole group)</option><option value="MIXED">MIXED (split within group)</option></select>
+      <button class="btn ghost sm" id="co-create">＋ Create cohort</button>
+      <span class="err tiny" id="co-err"></span>
+    </div>
+    <table class="sesstable" id="cohort-table" style="margin-top:10px"></table>
+    <div class="muted tiny" style="margin-top:6px">Advancing the day re-seeds that day's discussion prompts. Participants join with the cohort code at
+      <code>study.html</code>; on Day 2 they also enter the personal rejoin code issued on Day 1.</div>
+  </div>
+
+  <!-- operational gates -->
+  <div class="card" style="margin-top:14px">
+    <h3>Operational go/no-go gates — computed from live data</h3>
+    <div class="cite">Pre-registered <b>run-time checks</b> (Ray's G1–G3): they decide whether a day is ready to advance,
+      and are <b>not</b> evidence for the hypothesis. The feature fires inside Day 1, so the reported effect is the
+      <b>condition × phase</b> contrast (pre-task vs post-task, both arms triggered alike), never a within-arm drop;
+      Day 2 tests whether it persists.</div>
+    <div class="checks" id="checks"></div>
+  </div>
+
+  <!-- per-group trajectories -->
+  <div class="card" style="margin-top:14px">
+    <h3>By group — toxicity per cohort × day</h3>
+    <div class="cite">Each whole-group cohort is one cluster, so this is the level the design varies at.
+      Read the EXPT and CTRL groups of the same language side by side.</div>
+    <div style="overflow-x:auto"><table class="sesstable" id="group-table"></table></div>
+  </div>
+
+  <!-- Day 1: pre-task vs post-task (the treatment contrast) -->
+  <div class="card" style="margin-top:14px">
+    <h3>Day 1 — toxicity before vs after the task block</h3>
+    <div class="cite">This is the <b>condition × phase</b> contrast the effect is identified by: both arms are
+      triggered at the same point, so novelty and regression toward the mean are shared. Read EXPT's drop
+      <i>relative to</i> CTRL's, never on its own.</div>
+    <div class="cmp" id="cmp-phase"></div>
+  </div>
+
+  <!-- primary outcome by arm × day -->
+  <div class="card" style="margin-top:14px">
+    <h3>Persistence — toxicity rate by arm × day</h3>
+    <div class="cite">Perspective API + Coe et&nbsp;al. 2014 incivility codebook + validated K-pop lexicon · <b>H1</b> · (demo heuristic until rescoring)</div>
+    <div class="cmp" id="cmp"></div>
+  </div>
+
+  <!-- mechanism table -->
+  <div class="card" style="margin-top:14px">
+    <h3>By arm × day — messages, toxicity, we/they, dose</h3>
+    <div style="overflow-x:auto"><table class="sesstable" id="mech-table"></table></div>
+  </div>
+
+  <!-- per-message toxicity -->
+  <div class="card" style="margin-top:14px">
+    <h3>Messages — toxicity per message</h3>
+    <div class="cite">Every stored post &amp; reply with its own 0–100 score · seeds are marked · use ⇩ Messages CSV for the full text export</div>
+    <div class="msgfilters">
+      <select id="mf-cohort"><option value="">all cohorts</option></select>
+      <select id="mf-arm"><option value="">both arms</option><option value="EXPT">EXPT</option><option value="CTRL">CTRL</option></select>
+      <select id="mf-day"><option value="">all days</option><option value="1">Day 1</option><option value="2">Day 2</option></select>
+      <select id="mf-src"><option value="part">participants only</option><option value="all">include seed prompts</option></select>
+      <select id="mf-sort"><option value="tox">most toxic first</option><option value="new">newest first</option><option value="old">oldest first</option></select>
+      <input id="mf-q" placeholder="search text or handle…" />
+      <span class="muted tiny" id="mf-count"></span>
+    </div>
+    <div class="msgwrap"><table class="sesstable" id="msg-table"></table></div>
+  </div>
+
+  <!-- sessions -->
+  <div class="card" style="margin-top:14px">
+    <h3>Sessions</h3>
+    <div style="overflow-x:auto"><table class="sesstable" id="sess-table"></table></div>
+  </div>
+
+  <div class="foot">Prototype dashboard · toxicity here is a keyword heuristic; the study rescores stored pre-moderation text with the validated instruments (MEASURES.md).</div>
+</div>
+
+<script src="assets/config.js?v=4"></script>
+<script>
+const $ = (s)=>document.querySelector(s);
+const CFG = window.STUDY_CONFIG || {};
+const BACKEND = (new URLSearchParams(location.search).get("backend") || CFG.BACKEND_URL || "").replace(/\/$/,"");
+const hasBackend = !!BACKEND;
+let TOKEN = "";
+const ARMS = ["EXPT","CTRL"], DAYS=[1,2];
+
+async function call(path, opts={}){
+  const r = await fetch(BACKEND+path, { method: opts.method||"GET",
+    headers: Object.assign({ "content-type":"application/json", authorization:"Bearer "+TOKEN }, opts.headers||{}),
+    body: opts.body? JSON.stringify(opts.body): undefined });
+  const data = await r.json().catch(()=>({}));
+  if(!r.ok) throw Object.assign(new Error(data.error||("http "+r.status)), {status:r.status});
+  return data;
+}
+
+/* -------- gate -------- */
+$("#gate-go").onclick = openDash;
+$("#pass").addEventListener("keydown", e=>{ if(e.key==="Enter") openDash(); });
+async function openDash(){
+  const pass = $("#pass").value.trim();
+  if(!pass){ $("#gate-err").textContent = "Enter the passphrase."; return; }
+  TOKEN = pass;
+  if(!hasBackend){ $("#gate-err").textContent = "No BACKEND_URL configured (assets/config.js) — deploy the backend first, or use ?backend=http://127.0.0.1:8787 for local dev."; return; }
+  try{
+    const sum = await call("/api/dashboard/summary");
+    $("#gate-wrap").hidden = true; $("#dash").hidden = false; $("#cohort-card").hidden = false;
+    renderAll(sum);
+  }catch(e){
+    $("#gate-err").textContent = (e.status===401||e.status===403) ? "Wrong passphrase." : "Could not load ("+(e.message||"error")+").";
+  }
+}
+
+/* -------- render -------- */
+const pct = (v)=> v==null? "—" : Math.round(v*100);
+const band = (v)=> v>0.6?"var(--hot)":v>0.33?"var(--warm)":"var(--cool)";
+
+function renderAll(sum){
+  $("#mode-pill").textContent = "LIVE · backend"; $("#mode-pill").className = "pill live";
+  $("#n-pill").textContent = (sum.totals? sum.totals.sessions:0) + " sessions";
+
+  // cohorts
+  const ct = $("#cohort-table");
+  const cs = sum.cohorts||[];
+  // v3.2 order: the task runs inside the day, surveys END each day. Day 1 walks
+  // free -> task -> survey1; Day 2 walks free -> survey2. Advancing off 'task' also
+  // resolves unpaired contributions with labelled system samples (server-side sweep).
+  const PHASES = ["free","task","survey1","survey2","done"];
+  ct.innerHTML = `<tr><th>Code</th><th>Label</th><th>Lang</th><th>Arm</th><th>Day</th><th>Phase</th><th>Status</th><th>Advance</th></tr>` +
+    (cs.length? cs.map(c=>`<tr><td><b>${c.id}</b></td><td>${c.label||""}</td><td>${c.language}</td>
+      <td>${c.arm && c.arm!=="MIXED" ? `<span class="pill ${c.arm==="EXPT"?"live":""}" style="font-size:10px">${c.arm}</span>` : `<span class="muted tiny">mixed</span>`}</td><td>Day ${c.day}</td>
+      <td><b>${c.phase||"free"}</b></td><td>${c.status}</td>
+      <td>${[1,2].map(d=>`<button class="btn ghost sm daybtn" data-code="${c.id}" data-day="${d}" ${c.day===d?"disabled":""}>Day ${d}</button>`).join(" ")}
+      <button class="btn ghost sm daybtn" data-close="${c.id}" style="color:#fca5a5">close</button>
+      <div style="margin-top:6px">${PHASES.map(p=>`<button class="btn ghost sm daybtn" data-phcode="${c.id}" data-phase="${p}" ${(c.phase||"free")===p?"disabled":""}>${p}</button>`).join(" ")}</div></td></tr>`).join("")
+    : `<tr><td colspan="8" class="muted">No cohorts yet — create one above, share the code with participants.</td></tr>`);
+  ct.querySelectorAll("[data-phase]").forEach(b=> b.onclick = async ()=>{ await call("/api/dashboard/cohort/phase",{method:"POST",body:{code:b.dataset.phcode, phase:b.dataset.phase}}); refresh(); });
+  ct.querySelectorAll("[data-day]").forEach(b=> b.onclick = async ()=>{ await call("/api/dashboard/cohort/day",{method:"POST",body:{code:b.dataset.code, day:+b.dataset.day}}); refresh(); });
+  ct.querySelectorAll("[data-close]").forEach(b=> b.onclick = async ()=>{ if(confirm("Close cohort "+b.dataset.close+"?")){ await call("/api/dashboard/cohort/close",{method:"POST",body:{code:b.dataset.close}}); refresh(); } });
+
+  // operational go/no-go gates (NOT evidence — see the note in the card)
+  const ch = sum.checks||{};
+  const lab = { R1:"G1 — baseline HIGH before the task, Day 1 (both arms ≥55)", R2:"G2 — control STAYS high after its inert feature (≥50)", R3:"G3 — drop ONLY after the community note (EXPT ≤35 & CTRL ≥50, post-task)" };
+  $("#checks").innerHTML = ["R1","R2","R3"].map(k=>{
+    const v = ch[k];
+    return `<div class="rq ${v===true?"ok":v===false?"bad":""}">${v===true?"✓":v===false?"✗":"•"} ${lab[k]}</div>`;
+  }).join("");
+
+  // per-group trajectories (each whole-group cohort is a cluster)
+  const G = sum.byCohortDay||{};
+  const meta = Object.fromEntries((sum.cohorts||[]).map(c=>[c.id,c]));
+  const gids = Object.keys(G).sort((a,b)=>(meta[a]?.language||"").localeCompare(meta[b]?.language||"") || a.localeCompare(b));
+  $("#group-table").innerHTML = `<tr><th>Group</th><th>Lang</th><th>Arm</th><th>Day 1</th><th>Day 2</th><th>Δ Day1→2</th></tr>` +
+    (gids.length? gids.map(id=>{
+      const g=G[id], c=meta[id]||{}, arm=(g[1]||g[2]||{}).arm||c.arm||"—";
+      const cellOf=d=>{ const x=g[d]; return x&&x.toxRate!=null? `<span class="toxpill" style="color:${band(x.toxRate)}">${Math.round(x.toxRate*100)}</span> <span class="muted tiny">n=${x.msgs}</span>` : `<span class="muted">—</span>`; };
+      const d1=g[1]&&g[1].toxRate, d2=g[2]&&g[2].toxRate;
+      const delta = d1!=null&&d2!=null ? `${d2-d1>0?"+":""}${Math.round((d2-d1)*100)}` : "—";
+      return `<tr><td><b>${id}</b></td><td>${c.language||""}</td><td>${arm}</td>
+        <td>${cellOf(1)}</td><td>${cellOf(2)}</td><td>${delta}</td></tr>`;
+    }).join("") : `<tr><td colspan="6" class="muted">No messages yet.</td></tr>`);
+
+  // Day 1 phase contrast (pre-task vs post-task)
+  const P = sum.byArmPhase||{};
+  const cp = $("#cmp-phase"); cp.innerHTML = "";
+  [["pre","before task"],["post","after task"]].forEach(([k,lbl])=> ARMS.forEach(a=>{
+    const b=(P[a]||{})[k]||{}; const v=b.toxRate;
+    const row=document.createElement("div"); row.className="cmprow";
+    row.innerHTML = `<span class="k">${a} · ${lbl}</span>
+      <span class="bar"><span style="width:${v==null?0:Math.round(v*100)}%;background:${v==null?'var(--line)':band(v)}"></span></span>
+      <span class="pv">${pct(v)}</span>`;
+    cp.appendChild(row);
+  }));
+
+  // toxicity by arm × day (Day 1 -> Day 2 persistence)
+  const A = sum.byArmDay||{};
+  const cmp = $("#cmp"); cmp.innerHTML = "";
+  DAYS.forEach(d=> ARMS.forEach(a=>{
+    const b=(A[a]||{})[d]||{}; const v=b.toxRate;
+    const row=document.createElement("div"); row.className="cmprow";
+    row.innerHTML = `<span class="k">${a==="EXPT"?"EXPT":"CTRL"} · Day ${d}</span>
+      <span class="bar"><span style="width:${v==null?0:Math.round(v*100)}%;background:${v==null?'var(--line)':band(v)}"></span></span>
+      <span class="pv">${pct(v)}</span>`;
+    cmp.appendChild(row);
+  }));
+
+  // mechanism table
+  $("#mech-table").innerHTML =
+    `<tr><th>Arm</th><th>Day</th><th>Sessions</th><th>Msgs</th><th>Tox %</th><th>we share %</th><th>Cross</th><th>Live-paired</th><th>Filler</th><th>Poll votes</th></tr>` +
+    ARMS.map(a=>DAYS.map(d=>{ const b=(A[a]||{})[d]||{};
+      return `<tr><td><b>${a}</b></td><td>${d}</td><td>${b.sessions||0}</td><td>${b.msgs||0}</td><td>${pct(b.toxRate)}</td><td>${b.weShare==null?"—":pct(b.weShare)}</td><td>${b.cross||0}</td><td>${a==="EXPT"?(b.livePaired||0):"—"}</td><td>${a==="EXPT"?(b.filler||0):"—"}</td><td>${a==="CTRL"?(b.pollVotes||0):"—"}</td></tr>`;
+    }).join("")).join("");
+
+  loadSessions();
+}
+async function loadSessions(){
+  const d = await call("/api/dashboard/sessions");
+  const evByS={}; (d.events||[]).forEach(e=>{(evByS[e.session_id]=evByS[e.session_id]||[]).push(e);});
+  $("#sess-table").innerHTML =
+    `<tr><th>Session</th><th>Cohort</th><th>Day</th><th>Arm</th><th>Fandom</th><th>Handle</th><th>Msgs</th><th>Mean tox %</th></tr>` +
+    (d.sessions||[]).map(s=>{
+      const evs=(evByS[s.id]||[]).filter(e=>e.type==="post"||e.type==="comment");
+      const tox=evs.length? Math.round(100*evs.reduce((a,e)=>a+(e.toxicity||0),0)/evs.length):"—";
+      const part=(d.participants||[]).find(p=>p.id===s.participant_id)||{};
+      return `<tr><td class="tiny">${(s.id||"").slice(0,12)}…</td><td>${s.cohort_id||""}</td><td>${s.day||""}</td><td><b>${s.arm}</b></td><td>${s.flair||""}</td><td class="tiny">${part.handle||""}</td><td>${evs.length}</td><td>${tox}</td></tr>`;
+    }).join("") || `<tr><td colspan="8" class="muted">No sessions yet.</td></tr>`;
+  window.__export = d;
+  populateMsgFilters(d);
+  renderMessages();
+}
+
+/* -------- per-message toxicity -------- */
+const esc = (s)=>String(s==null?"":s).replace(/[&<>"]/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const msgRows = ()=> ((window.__export||{}).events||[]).filter(e=>e.type==="post"||e.type==="comment");
+const stamp = (ms)=>{ const t=new Date(ms||0); const p=(n)=>String(n).padStart(2,"0"); return `${t.getMonth()+1}/${t.getDate()} ${p(t.getHours())}:${p(t.getMinutes())}`; };
+function populateMsgFilters(d){
+  const sel=$("#mf-cohort"), keep=sel.value;
+  const cohorts=[...new Set(msgRows().map(e=>e.cohort_id).filter(Boolean))].sort();
+  sel.innerHTML = `<option value="">all cohorts</option>`+cohorts.map(c=>`<option value="${esc(c)}"${c===keep?" selected":""}>${esc(c)}</option>`).join("");
+}
+function filteredMsgs(){
+  const co=$("#mf-cohort").value, arm=$("#mf-arm").value, day=$("#mf-day").value;
+  const q=$("#mf-q").value.trim().toLowerCase(), sort=$("#mf-sort").value;
+  const src=$("#mf-src").value;
+  let rows = msgRows().filter(e=>
+    (src==="all" || e.session_id) &&
+    (!co || e.cohort_id===co) && (!arm || e.arm===arm) && (!day || String(e.day)===day) &&
+    (!q || String(e.text_raw||"").toLowerCase().includes(q) || String(e.author||"").toLowerCase().includes(q)));
+  rows.sort(sort==="tox" ? (a,b)=>(b.toxicity||0)-(a.toxicity||0)
+       : sort==="new" ? (a,b)=>b.created_at-a.created_at : (a,b)=>a.created_at-b.created_at);
+  return rows;
+}
+function renderMessages(){
+  const rows = filteredMsgs();
+  const mean = rows.length ? Math.round(100*rows.reduce((a,e)=>a+(e.toxicity||0),0)/rows.length) : null;
+  $("#mf-count").textContent = rows.length
+    ? `${rows.length} messages · mean ${mean}${$("#mf-src").value==="part"?" (participant messages — same basis as the chart above)":" (incl. seed prompts, which the chart above excludes)"}`
+    : "no messages match";
+  $("#msg-table").innerHTML =
+    `<thead><tr><th>Tox</th><th>When</th><th>Cohort</th><th>Day</th><th>Arm</th><th>Fandom</th><th>Handle</th><th>Message</th><th>we/they</th></tr></thead><tbody>` +
+    (rows.map(e=>{
+      const v=e.toxicity||0, seed=!e.session_id;
+      return `<tr><td><span class="toxpill" style="color:${band(v)}">${Math.round(v*100)}</span></td>` +
+        `<td class="tiny">${stamp(e.created_at)}</td><td>${esc(e.cohort_id||"")}</td><td>${e.day||""}</td>` +
+        `<td><b>${esc(e.arm||"")}</b></td><td>${esc(e.flair||"")}</td>` +
+        `<td class="tiny">${esc(e.author||"")}${seed?' <span class="muted">·seed</span>':""}</td>` +
+        `<td class="msgtext">${esc(e.text_raw||"")}</td><td class="tiny">${e.we||0}/${e.they||0}</td></tr>`;
+    }).join("") || `<tr><td colspan="9" class="muted">No messages yet.</td></tr>`) + `</tbody>`;
+}
+["#mf-cohort","#mf-arm","#mf-day","#mf-sort","#mf-src"].forEach(s=>$(s).onchange=renderMessages);
+$("#mf-q").oninput = renderMessages;
+
+/* -------- toolbar + cohort admin -------- */
+async function refresh(){ renderAll(await call("/api/dashboard/summary")); }
+$("#btn-refresh").onclick = refresh;
+$("#btn-rescore").onclick = async ()=>{
+  const b = $("#btn-rescore"); b.disabled = true; b.textContent = "♻ Rescoring…";
+  try{
+    let offset=0, total=0, mode="", llmOk=0;
+    for(;;){
+      const r = await call("/api/dashboard/rescore", {method:"POST", body:{offset}});
+      mode=r.mode; total=r.total; offset=r.nextOffset; llmOk+=(r.llmScored||0);
+      b.textContent = `♻ ${Math.min(offset,total)}/${total} (${mode})`;
+      if(r.done || !r.processed) break;
+    }
+    // Report how many rows the MODEL actually scored, not just which scorer was attempted:
+    // mode "llm" with 0 graded means the model is unreachable and every score is wordlist.
+    b.textContent = mode==="llm"
+      ? `♻ ${total} rescored · model graded ${llmOk}/${total}`
+      : `♻ ${total} rescored (wordlist — no LLM key)`;
+    if(mode==="llm" && llmOk===0 && total>0)
+      alert("The model graded 0 of "+total+" messages.\n\nEvery score you see is the keyword fallback, not the LLM. Check LLM_API_KEY and LLM_BASE_URL on the Worker — an international key will not authenticate against the mainland endpoint, or vice versa.");
+    await refresh();
+  }
+  catch(e){ b.textContent = "♻ Rescore failed"; }
+  setTimeout(()=>{ b.textContent = "♻ Rescore"; b.disabled = false; }, 4000);
+};
+$("#co-create").onclick = async ()=>{
+  $("#co-err").textContent="";
+  try{ await call("/api/dashboard/cohort",{method:"POST",body:{code:$("#co-code").value.trim(), label:$("#co-label").value.trim(), language:$("#co-lang").value, arm:$("#co-arm").value}}); $("#co-code").value=""; refresh(); }
+  catch(e){ $("#co-err").textContent = e.message==="bad_code"? "Code must be 3–12 letters/numbers." : (e.message||"error"); }
+};
+$("#btn-json").onclick = ()=> download("defuselab-data.json", JSON.stringify(window.__export||{},null,2), "application/json");
+$("#btn-csv").onclick = ()=>{
+  const d = window.__export||{}; const evByS={}; (d.events||[]).forEach(e=>{(evByS[e.session_id]=evByS[e.session_id]||[]).push(e);});
+  let csv="session_id,cohort,day,arm,fandom,messages,mean_toxicity\n";
+  (d.sessions||[]).forEach(s=>{ const evs=(evByS[s.id]||[]).filter(e=>e.type==="post"||e.type==="comment");
+    const tox=evs.length?(evs.reduce((a,e)=>a+(e.toxicity||0),0)/evs.length).toFixed(3):"";
+    csv+=`${s.id},${s.cohort_id||""},${s.day||""},${s.arm},${s.flair||""},${evs.length},${tox}\n`; });
+  download("defuselab-sessions.csv", csv, "text/csv");
+};
+$("#btn-msgcsv").onclick = ()=>{
+  const q = (s)=>`"${String(s==null?"":s).replace(/"/g,'""').replace(/\r?\n/g," ")}"`;
+  // phase is the treatment contrast in the two-day design (pre-task vs post-task within
+  // Day 1), so it has to travel with the messages or the analysis cannot be done from
+  // this file. Rows written before the column existed export as "" and count as pre-task.
+  let csv="event_id,cohort,day,phase,arm,fandom,handle,type,is_seed,toxicity_0_100,we,they,thread_id,created_at_iso,text_raw\n";
+  filteredMsgs().forEach(e=>{ csv += [e.id,e.cohort_id,e.day,e.phase||"",e.arm,e.flair,e.author,e.type,e.session_id?0:1,
+    Math.round((e.toxicity||0)*100),e.we||0,e.they||0,e.thread_id,new Date(e.created_at||0).toISOString()].map(q).join(",")
+    + "," + q(e.text_raw) + "\n"; });
+  download("defuselab-messages.csv", csv, "text/csv");
+};
+/* Surveys CSV: one row per participant x instrument, one column per item id. 7.1 and 7.2
+   (back_shared_community / back_own_fandom) stay separate columns — the protocol is explicit
+   that they jointly operationalise dual identity and must never be averaged. */
+$("#btn-svcsv").onclick = ()=>{
+  const d = window.__export||{}; const rows = d.surveys||[];
+  if(!rows.length){ alert("No survey responses yet."); return; }
+  const sessById = Object.fromEntries((d.sessions||[]).map(s=>[s.id,s]));
+  const partById = Object.fromEntries((d.participants||[]).map(p=>[p.id,p]));
+  const parsed = rows.map(r=>{ let a={}; try{ a=JSON.parse(r.payload_json||"{}"); }catch{} 
+    const s=sessById[r.session_id]||{}, p=partById[s.participant_id]||{};
+    return {r,a,s,p}; });
+  const ids=[...new Set(parsed.flatMap(x=>Object.keys(x.a)))].sort();
+  const q=(v)=>`"${String(v==null?"":v).replace(/"/g,'""').replace(/\r?\n/g," ")}"`;
+  let csv=["participant_id","handle","cohort","day","arm","fandom","instrument","submitted_at_iso",...ids].join(",")+"\n";
+  parsed.forEach(({r,a,s,p})=>{ csv += [s.participant_id,p.handle,s.cohort_id,s.day,s.arm,s.flair,r.instrument,
+    new Date(r.created_at||0).toISOString(),...ids.map(k=>a[k])].map(q).join(",")+"\n"; });
+  download("defuselab-surveys.csv", csv, "text/csv");
+};
+function download(name, text, type){
+  // CSVs get a UTF-8 byte-order mark. Without it Excel on Windows reads the file in the
+  // system codepage and Chinese posts arrive as mojibake -- the stored text is fine, but
+  // the export looks corrupted, which is where the analysis actually starts.
+  const csv = String(type).indexOf("csv") >= 0;
+  const parts = csv ? ["\uFEFF", text] : [text];
+  const blob = new Blob(parts, { type: type + (csv ? ";charset=utf-8" : "") });
+  const a=document.createElement("a"); a.href=URL.createObjectURL(blob); a.download=name; a.click(); URL.revokeObjectURL(a.href);
+}
+</script>
+</body>
+</html>

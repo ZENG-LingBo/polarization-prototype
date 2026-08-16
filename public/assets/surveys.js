@@ -1,9 +1,10 @@
 /* DefuseLab — participant survey item bank (Surveys_v3_TwoDay_Protocol).
  *
- * Three instruments, administered inside KFeed at the moments the protocol requires:
- *   survey1     Day 1, after free interaction, BEFORE the task block (it gates the task)
- *   microcheck  Day 1, immediately after the task block  (M5 routed by live pairing)
- *   survey2     Day 2, after free interaction            (adds Looking back + suspicion probe)
+ * Two instruments, administered inside KFeed at the END of each day (v3.2 — the task block
+ * runs first; the micro-check was dropped by team decision, so the exit interview's
+ * ownership questions are the only probe of felt co-ownership):
+ *   survey1     Day 1, after free interaction and the task block
+ *   survey2     Day 2, after free interaction (adds Looking back + suspicion probe)
  *
  * ITEM IDS ARE THE ANALYSIS COLUMN NAMES. They are stable: rename one and you break the
  * mapping between stored responses and the analysis. Add items, never rename them.
@@ -176,38 +177,6 @@
     ],
   };
 
-  // ---- Micro-check: IDENTICAL WORDING IN BOTH ARMS -------------------------
-  // The protocol is explicit: do not write an intervention-specific version naming
-  // co-authorship — that hands the manipulation to the participant. Only M5 is routed,
-  // and only when the platform logged a live cross-fandom pair.
-  const MICRO = {
-    block: 1,
-    title: { en: "Quick check", zh: "简短确认" },
-    items: [
-      { id: "m1_natural", type: "likert5", required: true,
-        anchors: { en: ["1 completely natural", "5 completely forced"], zh: ["1 完全自然", "5 完全勉强"] },
-        stem: { en: "How natural or forced did the activity you just completed feel?",
-                zh: "你刚刚完成的活动，感觉有多自然或多勉强？" } },
-      { id: "m2_effort", type: "likert5", required: true,
-        anchors: { en: ["1 none at all", "5 a great deal"], zh: ["1 完全没有", "5 非常多"] },
-        stem: { en: "How much effort did you put into what you just wrote?",
-                zh: "你在刚才写的内容上投入了多少心力？" } },
-      { id: "m3_shared", type: "likert5", required: true,
-        anchors: { en: ["1 entirely mine", "5 equally shared"], zh: ["1 完全属于我自己", "5 平等共有"] },
-        stem: { en: "When you look at what was published, how much does it feel like it belongs to you and someone else equally, rather than to you alone?",
-                zh: "你觉得刚刚发布的内容，是完全属于你自己的，还是和另一个人平等共有的？" } },
-      { id: "m4_better", type: "likert5", required: true,
-        anchors: { en: ["1 not at all", "5 very much"], zh: ["1 完全不会", "5 非常会"] },
-        stem: { en: "Do you think this feature will make discussions on this platform better?",
-                zh: "你觉得这个功能会让这个平台上的讨论氛围变好吗？" } },
-      // Dual-identity check. Routed: intervention arm, live pair only. Optional.
-      { id: "m5_aware", type: "likert5", required: false, routed: "m5",
-        anchors: { en: ["1 not at all aware", "5 constantly aware"], zh: ["1 完全没有意识到", "5 一直很清楚"] },
-        stem: { en: "While doing the activity, how aware were you of which fandom the other contributor belonged to?",
-                zh: "在参与这个活动时，你有多清楚另一位参与者属于哪个粉丝群体？" } },
-    ],
-  };
-
   // ---- Survey 2 only: Block 7 Looking back, Block 8 suspicion probe ---------
   const S2_LOOKBACK = {
     block: 7,
@@ -272,12 +241,6 @@
         zh: "以下问题想了解你此刻的真实感受。没有对错之分。",
       },
       pages: prefixed(CORE.concat([S1_TRAITS]), "s1_"),
-    },
-    microcheck: {
-      id: "microcheck",
-      title: { en: "Quick check", zh: "简短确认" },
-      intro: { en: "Just a few questions about what you just did.", zh: "关于你刚刚完成的活动，几个简短问题。" },
-      pages: prefixed([MICRO], "mc_"),
     },
     survey2: {
       id: "survey2",

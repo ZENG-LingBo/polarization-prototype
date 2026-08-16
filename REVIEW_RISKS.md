@@ -75,8 +75,10 @@ per-protocol rather than silently mixed into the treatment arm.
 **What it costs.** We cannot claim participants co-wrote the published sentence; the
 interdependence is structural (neither side can publish alone, both are credited, both badges
 stay on the note) while the wording is synthesised. Say this in the limitations rather than
-letting a reviewer find it. **M3** in the micro-check measures exactly this — how much the
-note feels equally shared — so the risk is instrumented rather than assumed.
+letting a reviewer find it. **The micro-check (and with it M3, the shared-ownership
+manipulation check) was dropped in v3.2**, so the only remaining probe of felt co-ownership
+is the exit interview's ownership questions — sample those interviews across both fandoms
+and both arms, or the manipulation's reception goes unmeasured entirely.
 
 ## 5. "How was toxicity measured, and is it valid?" — **serious; work still owed**
 
@@ -106,7 +108,9 @@ trigger point — but Day 2's persistence read-out still depends on it.
 
 ## 7. "What about demand characteristics?"
 
-Two days, a survey after each session, and a highly salient feature appearing mid-session.
+Two days, one survey at the end of each session, and a highly salient forced task
+mid-session. The forcing itself (a blocking step with a timed escape) is identical across
+arms, so salience and coercion do not differ between conditions.
 
 **Our answer.** The participant UI, recruiting materials and surveys never state the purpose
 (blinding is implemented — all research language lives in the researcher-only dashboard).
