@@ -3,8 +3,8 @@
 How to drive a session from the researcher dashboard, for a rehearsal or the real thing.
 The dashboard is the control surface; participants only ever see the forum.
 
-- **Dashboard:** `dashboard.html` — passphrase is the Worker's `RESEARCHER_TOKEN`
-- **Participant:** `study.html?flair=ARMY` or `study.html?flair=BLINK`
+- **Dashboard:** `public/dashboard.html` (or `/dashboard.html` on the custom domain) — passphrase is the Worker's `RESEARCHER_TOKEN`
+- **Participant:** `study.html?flair=ARMY` or `?flair=BLINK` on the custom domain (see [`MIGRATION.md`](MIGRATION.md))
 
 **Fandom comes from the link, never from a menu.** A participant with no `?flair=` and no
 rejoin code sees *"Please use the personal invite link from the study team"* and cannot join.
@@ -33,22 +33,25 @@ within ~4 seconds of each click (the app polls).
 | Phase | You click | Participants see |
 |---|---|---|
 | `free` | *(starting state)* | The forum. They post and argue on the seeded prompts. |
-| `survey1` | when hostility is established | **Survey 1** opens full-screen. Posting is blocked until they submit. |
-| `task` | once everyone has submitted | The pinned **Community Note** (EXPT) or **daily poll** (CTRL) appears. |
-| `microcheck` | once notes have published | The **micro-check** (M1–M5) opens. |
-| `done` | to end the day | Finish screen with their **rejoin code**. |
+| `task` | when hostility is established | A **full-screen task step** — the Community Note contribution (EXPT) or the poll (CTRL). The feed is unreachable until they submit; after 60 s a small "continue without adding" escape appears (logged). |
+| `survey1` | once the notes have published | **Survey 1** opens full-screen. Submitting it **ends their day** — they land on the rejoin-code screen. Advancing to this phase also resolves anyone still unpaired with a labelled system sample. |
+| `done` | housekeeping | Anyone still connected is moved to the finish screen. |
+
+**Notes publish one pair per minute**, oldest contributions first (`PAIR_INTERVAL_MS`), so
+the feed shows them arriving one at a time rather than all at once. With 4 pairs expect the
+last note roughly 4 minutes after the first — don't advance to `survey1` before the last
+note is out, unless you intend the sweep to filler-resolve the stragglers.
 
 **Watch for these while it runs:**
 
-- Anyone who has not finished Survey 1 stays locked on it even after you click `task` — that
-  is the gate working. They join the task on submit. Don't wait for stragglers before
-  advancing; the app handles it.
-- After submitting, participants sit on a neutral waiting screen until you move the phase.
-  If people say "nothing is happening", that is where they are — advance the phase.
-- **The note needs one ARMY and one BLINK to both contribute within 90 seconds.** If only one
-  side contributes, the other half is completed by a clearly-labelled system sample. Those
-  notes are recorded as not-live-paired and get excluded per-protocol, so nudge both sides to
-  submit promptly.
+- The task step blocks everyone until they contribute (or take the 60 s escape, which is
+  logged as `task_skipped`). A reload re-blocks a skipper; a submitted contribution sticks.
+- After contributing, EXPT participants are back in the feed with a pinned card showing
+  their entry and a waiting spinner — their note publishes when the one-per-minute schedule
+  reaches their pair. Keep the discussion going meanwhile.
+- **Unpaired entries resolve when you advance to `survey1`** — each gets a clearly-labelled
+  system sample and is recorded as not-live-paired (excluded per-protocol). Prefer letting
+  the schedule pair everyone first.
 - Tell participants to **screenshot their rejoin code** on the finish screen. Without it they
   cannot be linked to Day 2.
 
@@ -64,8 +67,8 @@ within ~4 seconds of each click (the app polls).
 
 Then: participants rejoin with the **cohort code + their personal rejoin code** (the `?flair=`
 link no longer matters — their fandom comes from their record). Let them discuss, then click
-**`survey2`**. Survey 2 ends the day by itself — no `done` click needed — and finishes with
-the interview-consent question.
+**`survey2`**. Survey 2 ends the day by itself and finishes with the interview-consent
+question. There is no task block on Day 2 — that is the persistence test.
 
 ---
 
@@ -120,9 +123,8 @@ remove its events. Prefix test cohorts `TEST…` so they are identifiable later.
 | Symptom | Cause |
 |---|---|
 | "Please use the personal invite link…" | No `?flair=` in the URL and no rejoin code. Day 1 needs the flair link. |
-| Participant stuck on a waiting screen | Normal between phases — advance the phase. |
-| Note never publishes | Only one side contributed. After 90 s a labelled system sample completes it. |
-| Micro-check has only 4 items | M5 shows only to an EXPT participant who was really paired. Correct behaviour. |
+| Participant stuck on the task step | They haven't contributed; the escape link appears after 60 s. Advancing to `survey1` unblocks everyone. |
+| Note not published yet | Pairs publish one per minute, oldest first — wait for the schedule, or advance the phase to filler-resolve. |
 | A button does nothing | Reload the page (F5). If a browser dialog was suppressed earlier, `confirm()` silently returns false. |
 | Numbers look wrong after a rehearsal | Test cohorts are in the arm-level aggregates — see above. |
 

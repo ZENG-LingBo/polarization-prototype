@@ -23,7 +23,15 @@ SURVEY_URL_D1_ZH = ""
 SURVEY_URL_D2_ZH = ""
 # How long a Community Note waits for a live rival-fandom partner before offering a
 # clearly DISCLOSED system sample (ms). Group sessions run long waits on purpose.
-PAIRING_TIMEOUT_MS = "90000"
+# Staggered pairing (v3.2): at most one cross-fandom pair publishes per interval, so notes
+# surface one at a time through the task block instead of all at once.
+PAIR_INTERVAL_MS = "60000"
+# Safety net only — unpaired entries are normally resolved by the sweep when the phase
+# leaves 'task'. Must far exceed PAIR_INTERVAL_MS x the number of expected pairs.
+PAIRING_TIMEOUT_MS = "600000"
+# Comma-separated extra origins allowed to call this API. PUT YOUR PARTICIPANT DOMAIN HERE
+# after connecting it in Cloudflare Pages (see MIGRATION.md), e.g. "https://study.example.com".
+ALLOWED_ORIGINS_EXTRA = ""
 # LLM merge of paired Community Notes (EXPT day 2). Used only when the LLM_API_KEY
 # secret is set; any failure falls back to verbatim assembly. OpenAI-compatible API.
 # Mainland-China DashScope accounts: set LLM_BASE_URL = "https://dashscope.aliyuncs.com/compatible-mode/v1"

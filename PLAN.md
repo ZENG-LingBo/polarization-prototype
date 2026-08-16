@@ -423,12 +423,21 @@ Ray's latest round revises Study 1's execution. Demo: [`demo.html`](demo.html).
   demographics matched across arms (incl. age and English proficiency);
   language cells run **entirely** in one language (English or Chinese, no mixing;
   surveys may be translated; paper reports both). **Group size and realized N: §17.1.**
-- **Sequence — TWO days (v3.1), ~1 h/day, ≈¥30/day.** The manipulation happens *inside*
+- **Sequence — TWO days (v3.2), ~1 h/day, ≈¥30/day.** The manipulation happens *inside*
   Day 1; Day 2 tests whether it persists:
-  - **Day 1:** free discussion on heated seed prompts → **Survey 1** → the assigned feature
-    appears (community note vs inert) → **micro-check**. Both arms are triggered at the same
+  - **Day 1:** free discussion on heated seed prompts → the assigned feature as a
+    **blocking full-screen task** every participant must pass (contribution/vote; a logged
+    escape link appears after 60 s; matched in both arms) → **Survey 1 ends the day**.
+    Notes publish **one pair per interval** (`PAIR_INTERVAL_MS`, default 60 s), oldest
+    contributions first; entries still unpaired when the phase advances are resolved with
+    labelled system samples and excluded per-protocol. Both arms are triggered at the same
     point, so novelty and regression toward the mean are shared across conditions.
   - **Day 2:** same group, same protocol, **no feature** → **Survey 2** + exit interview.
+  - **Measurement consequence (v3.2, deliberate):** surveys are end-of-day only, so survey
+    outcomes are **post-only** — there is no pre-intervention attitude baseline and the
+    micro-check (incl. the M3 manipulation check) was dropped. The pre/post contrast lives
+    entirely in the **behavioral** phase-stamped toxicity data; felt co-ownership is probed
+    only in the exit interview.
   - **Estimand:** the **condition × phase** contrast — pre-task vs post-task within Day 1 —
     never a within-arm before/after drop. Day 2 is the persistence read-out. Events are
     stamped with the phase they were written in so this is computable.

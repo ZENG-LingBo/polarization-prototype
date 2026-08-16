@@ -28,7 +28,7 @@ Chinese versions (or a documented forward/back-translation) before the real run.
 
 ## `survey1`
 
-Day 1 — after free interaction, **before** the task block (it gates the task)
+Day 1 — END of the day, after free interaction and the task block. Submitting it finishes the day (v3.2: post-only; the pre-task baseline and the micro-check were dropped by team decision).
 
 _7 page(s), 25 items._
 
@@ -124,27 +124,9 @@ _7 page(s), 25 items._
 | `s1_react_opposite` 🚩 | 1–5<br><span title="anchors">1 strongly disagree … 5 strongly agree</span> | Advice and recommendations usually induce me to do just the opposite. | 别人的建议和劝告常常让我想做相反的事。 |
 
 
-## `microcheck`
-
-Day 1 — immediately after the task block. **Identical wording in both arms**; M5 shown only to an intervention-arm participant the platform actually paired.
-
-_1 page(s), 5 items._
-
-
-### Block 1 — Quick check / 简短确认
-
-| id | scale | English | 中文 |
-|---|---|---|---|
-| `mc_m1_natural` | 1–5<br><span title="anchors">1 completely natural … 5 completely forced</span> | How natural or forced did the activity you just completed feel? | 你刚刚完成的活动，感觉有多自然或多勉强？ |
-| `mc_m2_effort` | 1–5<br><span title="anchors">1 none at all … 5 a great deal</span> | How much effort did you put into what you just wrote? | 你在刚才写的内容上投入了多少心力？ |
-| `mc_m3_shared` | 1–5<br><span title="anchors">1 entirely mine … 5 equally shared</span> | When you look at what was published, how much does it feel like it belongs to you and someone else equally, rather than to you alone? | 你觉得刚刚发布的内容，是完全属于你自己的，还是和另一个人平等共有的？ |
-| `mc_m4_better` | 1–5<br><span title="anchors">1 not at all … 5 very much</span> | Do you think this feature will make discussions on this platform better? | 你觉得这个功能会让这个平台上的讨论氛围变好吗？ |
-| `mc_m5_aware` | 1–5<br><span title="anchors">1 not at all aware … 5 constantly aware</span> | While doing the activity, how aware were you of which fandom the other contributor belonged to? _(optional)_ _(routed)_ | 在参与这个活动时，你有多清楚另一位参与者属于哪个粉丝群体？ |
-
-
 ## `survey2`
 
-Day 2 — after free interaction. Block 8 renders in two steps so 8.1 is asked before 8.2.
+Day 2 — END of the day, after free interaction. Block 8 renders in two steps so 8.1 is asked before 8.2.
 
 _9 page(s), 24 items._
 
@@ -249,5 +231,5 @@ _9 page(s), 24 items._
 
 ## Counts
 
-- 54 items across the three instruments
+- 49 items across the three instruments
 - 4 flagged 🚩 as validated-scale Chinese needing replacement
