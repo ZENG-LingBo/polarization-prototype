@@ -38,6 +38,7 @@ const ALLOWED_ORIGINS = [
   "http://127.0.0.1:8000",
 ];
 const ARMS = ["EXPT", "CTRL"];
+const FLAIRS = ["ARMY", "BLINK"];
 const other = (f) => (f === "ARMY" ? "BLINK" : "ARMY");
 
 // ---- Community Note config (EXPT, task phase). Pre-screened template; when the optional
@@ -408,19 +409,22 @@ export default {
           if (!part) return json({ error: "bad_rejoin" }, 404, origin);
         }
         if (!part) {
-          // Fandom is collected in the pre-selection form and carried by the personalized
-          // invite link (?flair=). Never fabricate it — refuse if absent (PLAN.md §17).
-          const flair = b.flair === "ARMY" || b.flair === "BLINK" ? b.flair : null;
-          if (!flair) return json({ error: "no_flair" }, 400, origin);
+          const { n } = (await DB.prepare("SELECT COUNT(*) n FROM participants WHERE cohort_id=?").bind(code).first()) || { n: 0 };
+          // Fandom is normally collected in the pre-selection form and carried by the
+          // personalized invite link (?flair=) — PLAN.md §17. TEMPORARY (v3.2.1, by request):
+          // when no flair is given, auto-assign by alternating ARMY/BLINK on join order (same
+          // pattern as the arm fallback below), so ONE shared link can still fill a cohort 4v4.
+          // This trades pre-screened, self-identified fandom for convenience — revert to
+          // requiring ?flair= (`if (!flair) return json({ error: "no_flair" }, 400, origin);`)
+          // once personalized per-participant invites are back in use for the real run.
+          let flair = b.flair === "ARMY" || b.flair === "BLINK" ? b.flair : null;
+          if (!flair) flair = FLAIRS[n % 2];
           // Arm: a cohort pinned to EXPT/CTRL puts its whole group in one arm, so a 4v4
           // group is a true 4v4 feed and the group is one clean cluster (PLAN §17). Cohorts
           // left MIXED keep the alternating assignment (back-compat with earlier pilots);
           // an un-migrated DB has no arm column, which reads as MIXED.
           let arm = cohort.arm === "EXPT" || cohort.arm === "CTRL" ? cohort.arm : null;
-          if (!arm) {
-            const { n } = (await DB.prepare("SELECT COUNT(*) n FROM participants WHERE cohort_id=?").bind(code).first()) || { n: 0 };
-            arm = ARMS[n % 2];
-          }
+          if (!arm) arm = ARMS[n % 2];
           part = { id: uid("p"), cohort_id: code, rejoin_code: rejoinCode(), handle: mkHandle(flair), arm, flair, created_at: Date.now() };
           await DB.prepare("INSERT INTO participants (id,cohort_id,rejoin_code,handle,arm,flair,created_at) VALUES (?,?,?,?,?,?,?)")
             .bind(part.id, part.cohort_id, part.rejoin_code, part.handle, part.arm, part.flair, part.created_at).run();

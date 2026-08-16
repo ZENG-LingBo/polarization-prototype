@@ -4,12 +4,20 @@ How to drive a session from the researcher dashboard, for a rehearsal or the rea
 The dashboard is the control surface; participants only ever see the forum.
 
 - **Dashboard:** `public/dashboard.html` (or `/dashboard.html` on the custom domain) — passphrase is the Worker's `RESEARCHER_TOKEN`
-- **Participant:** `study.html?flair=ARMY` or `?flair=BLINK` on the custom domain (see [`MIGRATION.md`](MIGRATION.md))
+- **Participant:** `study.html` on the custom domain, plus the cohort code (see [`MIGRATION.md`](MIGRATION.md))
 
-**Fandom comes from the link, never from a menu.** A participant with no `?flair=` and no
-rejoin code sees *"Please use the personal invite link from the study team"* and cannot join.
-This is deliberate — self-assigned fandom would break the design — so real invites must be
-personalised per participant from the pre-selection form.
+**⚠️ Fandom assignment is temporarily auto-alternating (v3.2.1, by request).** One shared
+link + the cohort code is now enough to join — no personalized `?flair=` needed. The server
+assigns ARMY/BLINK by alternating join order, same pattern as the arm auto-assignment on
+`MIXED` cohorts, so a shared link still fills a cohort 4v4.
+
+This is a **deliberate, temporary trade-off for testing convenience**: the design otherwise
+requires fandom to be pre-screened and carried by a personalized invite link
+(`?flair=ARMY`/`?flair=BLINK`), so that group membership reflects genuine, externally-verified
+fan identity rather than whoever clicked first. `?flair=` links still work if you send them —
+the server honours an explicit flair when given, and only auto-assigns when it's absent.
+**Revert to personalized links before the real run** — ask to have the requirement restored
+(`backend/worker.js`, the comment marked `TEMPORARY (v3.2.1)` says exactly what to change).
 
 ---
 
@@ -19,8 +27,9 @@ personalised per participant from the pre-selection form.
    Pick `EXPT (whole group)` or `CTRL (whole group)` — never `MIXED` for a real run, which
    splits a group of 8 into two 2v2 feeds. The cohort starts at **Day 1, phase `free`**, and
    its Day-1 seed prompts are inserted automatically.
-2. **Send each participant their link** — `study.html?flair=ARMY` to the ARMY members,
-   `?flair=BLINK` to the BLINK members — plus the cohort code.
+2. **Send the link + cohort code.** One shared link works now (fandom auto-alternates on
+   join — see the note above); personalized `?flair=ARMY` / `?flair=BLINK` links still work
+   too if you want to control who lands on which side.
 3. Confirm the row shows the arm you intended and `Day 1` / `free`.
 
 ---
@@ -122,7 +131,7 @@ remove its events. Prefix test cohorts `TEST…` so they are identifiable later.
 
 | Symptom | Cause |
 |---|---|
-| "Please use the personal invite link…" | No `?flair=` in the URL and no rejoin code. Day 1 needs the flair link. |
+| Two joiners land on the same fandom | Alternation is per-cohort join order — check the dashboard shows the split you expect; use personalized `?flair=` links if you need exact control. |
 | Participant stuck on the task step | They haven't contributed; the escape link appears after 60 s. Advancing to `survey1` unblocks everyone. |
 | Note not published yet | Pairs publish one per minute, oldest first — wait for the schedule, or advance the phase to filler-resolve. |
 | A button does nothing | Reload the page (F5). If a browser dialog was suppressed earlier, `confirm()` silently returns false. |

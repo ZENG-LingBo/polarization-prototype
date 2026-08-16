@@ -332,7 +332,7 @@ const OFFLINE = {
     let part = b.rejoin ? s.participants.find((p) => p.rejoin_code === String(b.rejoin).toUpperCase()) : null;
     if (!part) {
       const arm = ["EXPT", "CTRL"].includes(qs.get("arm")) ? qs.get("arm") : ["EXPT", "CTRL"][s.participants.length % 2];
-      const flair = b.flair || "ARMY";
+      const flair = b.flair || ["ARMY", "BLINK"][s.participants.length % 2];
       part = { id: uid("p"), rejoin_code: Math.random().toString(36).slice(2, 8).toUpperCase(), handle: (flair === "ARMY" ? "army_" : "blink_") + Math.random().toString(36).slice(2, 6), arm, flair };
       s.participants.push(part); lsave(s);
     }
@@ -432,15 +432,17 @@ function renderStrings() {
 $("#langbtn").onclick = () => { LANG = LANG === "en" ? "zh" : "en"; renderStrings(); };
 
 /* ================================================================== join */
-// Fandom, consent, and 18+ are handled BEFORE the app, in the pre-selection form
-// (PLAN.md §17). The participant's fandom arrives via their personalized invite link
-// (?flair=ARMY|BLINK); rejoining participants are identified by their personal code.
+// Fandom, consent, and 18+ are normally handled BEFORE the app, in the pre-selection form
+// (PLAN.md §17), and carried by a personalized invite link (?flair=ARMY|BLINK) — still
+// honoured here if present. TEMPORARY (v3.2.1, by request): a link with no ?flair= is now
+// also accepted; the server auto-assigns fandom by alternating join order so one shared
+// link still fills a cohort 4v4. Revert by requiring pickFlair below (or a rejoin code)
+// once personalized per-participant invites are back in use for the real run.
 const pickFlair = ["ARMY", "BLINK"].includes(qs.get("flair")) ? qs.get("flair") : null;
 $("#in-cohort").oninput = validate; $("#in-rejoin").oninput = validate;
 function validate() {
-  const hasIdentity = pickFlair || $("#in-rejoin").value.trim();
-  $("#join-go").disabled = !(hasIdentity && ($("#in-cohort").value.trim() || !hasBackend));
-  $("#join-err").textContent = (!pickFlair && !$("#in-rejoin").value.trim()) ? T("err_link") : "";
+  $("#join-go").disabled = !($("#in-cohort").value.trim() || !hasBackend);
+  $("#join-err").textContent = "";
 }
 function screen(id) { document.querySelectorAll(".screen").forEach((s) => s.classList.toggle("on", s.id === "s-" + id)); }
 
