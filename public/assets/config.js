@@ -11,7 +11,12 @@
 window.STUDY_CONFIG = {
   // Consumed by study.html (v3 participant app) and dashboard.html. Both also accept a
   // ?backend=https://... query override for staging/local dev (wrangler dev).
-  BACKEND_URL: "https://defuselab-study.lingpo-tseng.workers.dev",
+  // Same-origin API: kpop.lbzeng.com/api/* is routed to the defuselab-study Worker
+  // (Cloudflare Workers route). The workers.dev hostname is blocked outright by the Great
+  // Firewall, so mainland participants could load the page but never join — routing the
+  // API through the one custom domain they can reach fixes that, and removes CORS from
+  // the picture entirely. The workers.dev URL still works for wrangler deploys/secrets.
+  BACKEND_URL: "https://kpop.lbzeng.com",
 
   // Fixed interaction-session length shown to testers (PLAN.md §8 step 5: "e.g. 20–30 min").
   // Kept short here so a walkthrough is quick; the real study uses the full duration.
