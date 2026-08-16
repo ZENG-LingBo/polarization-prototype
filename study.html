@@ -1,11 +1,13 @@
 <!DOCTYPE html>
 <!-- Transitional stub: the participant app moved to public/ so the custom domain deploys
-     only participant-facing files (protocol docs stay off it). Old links keep working. -->
+     only participant-facing files (protocol docs stay off it). Old links keep working.
+     JS redirect (not meta-refresh) so the query string — the ?flair= that assigns a
+     participant's fandom — survives the hop. -->
 <html lang="en">
 <head>
 <meta charset="UTF-8" />
-<meta http-equiv="refresh" content="0; url=public/study.html" />
 <title>r/kpop — community</title>
+<script>location.replace("public/study.html" + location.search);</script>
 </head>
 <body><p><a href="public/study.html">Continue →</a></p></body>
 </html>
