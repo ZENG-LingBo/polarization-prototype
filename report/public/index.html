@@ -1,0 +1,994 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<meta name="description" content="What the AUG16 and TEST1 cohorts support: a replicated Day-1 toxicity drop, no Day-2 persistence, and no control arm.">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>&#128201;</text></svg>">
+<title>DefuseLab Pilot Readout</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&family=Spectral:ital,wght@0,400;0,600;1,400&display=swap">
+
+<style>
+  :root {
+    --ground:   #F4F6F8;
+    --card:     #FFFFFF;
+    --ink:      #151B23;
+    --ink-2:    #4E5966;
+    --ink-3:    #78838F;
+    --line:     #DDE2E7;
+    --line-2:   #EBEFF2;
+    --hot:      #BE3F2B;
+    --hot-soft: #F6E4E0;
+    --cool:     #146B6D;
+    --cool-soft:#DCEDEC;
+    --absent:   #7C848D;
+    --absent-soft:#E7EAED;
+    --shadow:   0 1px 2px rgba(21,27,35,.05), 0 8px 24px -16px rgba(21,27,35,.28);
+
+    --step--1: clamp(.78rem, .76rem + .1vw, .84rem);
+    --step-0:  clamp(1rem, .97rem + .16vw, 1.09rem);
+    --step-1:  clamp(1.2rem, 1.13rem + .34vw, 1.42rem);
+    --step-2:  clamp(1.55rem, 1.4rem + .72vw, 2.05rem);
+    --step-3:  clamp(2.1rem, 1.8rem + 1.5vw, 3.15rem);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ground:   #111519;
+      --card:     #181D23;
+      --ink:      #E7EAED;
+      --ink-2:    #A3ADB8;
+      --ink-3:    #7E8892;
+      --line:     #29313A;
+      --line-2:   #212831;
+      --hot:      #E4735D;
+      --hot-soft: #37211D;
+      --cool:     #4EB5B2;
+      --cool-soft:#122B2C;
+      --absent:   #939CA6;
+      --absent-soft:#232A32;
+      --shadow:   0 1px 2px rgba(0,0,0,.4), 0 8px 24px -16px rgba(0,0,0,.7);
+    }
+  }
+  :root[data-theme="dark"] {
+    --ground:   #111519;
+    --card:     #181D23;
+    --ink:      #E7EAED;
+    --ink-2:    #A3ADB8;
+    --ink-3:    #7E8892;
+    --line:     #29313A;
+    --line-2:   #212831;
+    --hot:      #E4735D;
+    --hot-soft: #37211D;
+    --cool:     #4EB5B2;
+    --cool-soft:#122B2C;
+    --absent:   #939CA6;
+    --absent-soft:#232A32;
+    --shadow:   0 1px 2px rgba(0,0,0,.4), 0 8px 24px -16px rgba(0,0,0,.7);
+  }
+
+  *, *::before, *::after { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: var(--ground);
+    color: var(--ink);
+    font-family: "IBM Plex Sans", ui-sans-serif, system-ui, -apple-system, sans-serif;
+    font-size: var(--step-0);
+    line-height: 1.62;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .wrap {
+    max-width: 61rem;
+    margin: 0 auto;
+    padding: clamp(2rem, 1rem + 4vw, 4.5rem) clamp(1.1rem, .5rem + 2.4vw, 2.5rem) 5rem;
+    display: flex;
+    flex-direction: column;
+    gap: clamp(2.4rem, 1.6rem + 2.6vw, 4rem);
+  }
+
+  .col { max-width: 43rem; }
+
+  /* ---------------------------------------------------------------- masthead */
+  .masthead { display: flex; flex-direction: column; gap: 1.15rem; }
+  .kicker {
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: var(--step--1);
+    letter-spacing: .11em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+    display: flex;
+    flex-wrap: wrap;
+    gap: .5rem .9rem;
+    align-items: baseline;
+  }
+  .kicker b { color: var(--hot); font-weight: 600; }
+  h1 {
+    font-family: Spectral, ui-serif, Georgia, serif;
+    font-size: var(--step-3);
+    font-weight: 600;
+    line-height: 1.05;
+    letter-spacing: -.018em;
+    margin: 0;
+    text-wrap: balance;
+  }
+  .standfirst {
+    font-family: Spectral, ui-serif, Georgia, serif;
+    font-size: var(--step-1);
+    line-height: 1.5;
+    color: var(--ink-2);
+    margin: 0;
+    max-width: 40rem;
+    text-wrap: pretty;
+  }
+
+  /* ------------------------------------------------------------ verdict strip */
+  .verdicts {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr));
+    gap: 1px;
+    background: var(--line);
+    border: 1px solid var(--line);
+    border-radius: 3px;
+    overflow: hidden;
+  }
+  .verdict { background: var(--card); padding: 1.3rem 1.4rem; display: flex; flex-direction: column; gap: .5rem; }
+  .verdict .tag {
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: .68rem; letter-spacing: .1em; text-transform: uppercase; font-weight: 600;
+    display: inline-flex; align-items: center; gap: .42rem; width: fit-content;
+  }
+  .verdict .tag::before { content: ""; width: .5rem; height: .5rem; border-radius: 50%; background: currentColor; }
+  .t-yes { color: var(--cool); }
+  .t-maybe { color: var(--hot); }
+  .t-none { color: var(--absent); }
+  .verdict .claim { font-size: var(--step-0); font-weight: 500; line-height: 1.42; }
+  .verdict .why { font-size: var(--step--1); color: var(--ink-2); line-height: 1.5; }
+
+  /* ----------------------------------------------------------------- sections */
+  section { display: flex; flex-direction: column; gap: 1.15rem; }
+  .eyebrow {
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: .69rem; letter-spacing: .12em; text-transform: uppercase; font-weight: 600;
+    color: var(--ink-3);
+    display: flex; align-items: center; gap: .7rem;
+  }
+  .eyebrow::after { content: ""; flex: 1; height: 1px; background: var(--line); }
+  .eyebrow .status {
+    padding: .17rem .5rem; border-radius: 2px; letter-spacing: .08em;
+  }
+  .s-yes { color: var(--cool); background: var(--cool-soft); }
+  .s-maybe { color: var(--hot); background: var(--hot-soft); }
+  .s-none { color: var(--absent); background: var(--absent-soft); }
+
+  h2 {
+    font-family: Spectral, ui-serif, Georgia, serif;
+    font-size: var(--step-2); font-weight: 600; line-height: 1.16;
+    letter-spacing: -.012em; margin: 0; text-wrap: balance;
+  }
+  h3 {
+    font-size: var(--step-0); font-weight: 600; margin: 0;
+    letter-spacing: .002em;
+  }
+  p { margin: 0; text-wrap: pretty; }
+  .col p + p { margin-top: .85rem; }
+  a { color: var(--cool); text-underline-offset: .18em; }
+  a:focus-visible, summary:focus-visible { outline: 2px solid var(--cool); outline-offset: 3px; border-radius: 2px; }
+  strong { font-weight: 600; }
+  em.q {
+    font-family: Spectral, ui-serif, Georgia, serif;
+    font-style: italic;
+  }
+
+  /* ------------------------------------------------------------------- figure */
+  figure { margin: 0; background: var(--card); border: 1px solid var(--line); border-radius: 3px; box-shadow: var(--shadow); overflow: hidden; }
+  .fig-head { padding: 1.15rem 1.35rem .3rem; display: flex; flex-direction: column; gap: .3rem; }
+  .fig-head h3 { font-size: var(--step-0); }
+  .fig-head .sub { font-size: var(--step--1); color: var(--ink-2); }
+  .fig-body { padding: .6rem .7rem 1.15rem; overflow-x: auto; }
+  figcaption {
+    padding: 1rem 1.35rem 1.2rem; border-top: 1px solid var(--line-2);
+    font-size: var(--step--1); color: var(--ink-2); line-height: 1.55;
+  }
+  .legend {
+    display: flex; flex-wrap: wrap; gap: .4rem 1.1rem; padding: 0 1.35rem 1.05rem;
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: .69rem; letter-spacing: .07em; text-transform: uppercase; color: var(--ink-2);
+  }
+  .legend span { display: inline-flex; align-items: center; gap: .42rem; }
+  .swatch { width: .72rem; height: .72rem; border-radius: 1px; }
+
+  /* -------------------------------------------------------------------- table */
+  .tbl-wrap { overflow-x: auto; background: var(--card); border: 1px solid var(--line); border-radius: 3px; box-shadow: var(--shadow); }
+  table { border-collapse: collapse; width: 100%; font-size: var(--step--1); min-width: 30rem; }
+  caption {
+    text-align: left; padding: 1.1rem 1.35rem .8rem;
+    font-size: var(--step-0); font-weight: 600; color: var(--ink);
+  }
+  caption .sub { display: block; font-weight: 400; font-size: var(--step--1); color: var(--ink-2); margin-top: .2rem; }
+  th, td { padding: .62rem 1.35rem; text-align: left; border-top: 1px solid var(--line-2); vertical-align: top; }
+  thead th {
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: .68rem; letter-spacing: .09em; text-transform: uppercase;
+    color: var(--ink-3); font-weight: 600; border-top: 1px solid var(--line);
+  }
+  tbody th { font-weight: 500; }
+  .num { font-family: "IBM Plex Mono", ui-monospace, monospace; font-variant-numeric: tabular-nums; text-align: right; white-space: nowrap; }
+  .hot { color: var(--hot); font-weight: 600; }
+  .cool { color: var(--cool); font-weight: 600; }
+  .none { color: var(--absent); }
+  tbody tr:hover { background: var(--line-2); }
+
+  /* ------------------------------------------------------------- pull numbers */
+  /* Container ground is card, not line, so a short final row reads as surface
+     rather than an empty grey block; the 1px rings sit in the gap as dividers. */
+  .pull {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(10.5rem, 1fr));
+    gap: 1px; background: var(--card); border: 1px solid var(--line); border-radius: 3px; overflow: hidden;
+  }
+  .pull > div {
+    background: var(--card); padding: 1.15rem 1.3rem;
+    display: flex; flex-direction: column; gap: .28rem;
+    box-shadow: 0 0 0 1px var(--line);
+  }
+  .pull .n {
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: var(--step-2); font-weight: 600; letter-spacing: -.02em;
+    font-variant-numeric: tabular-nums; line-height: 1.1;
+  }
+  .pull .lbl { font-size: var(--step--1); color: var(--ink-2); line-height: 1.45; }
+
+  /* ------------------------------------------------------------------ callout */
+  .callout {
+    background: var(--card); border: 1px solid var(--line);
+    border-left: 3px solid var(--hot); border-radius: 3px;
+    padding: 1.25rem 1.4rem; display: flex; flex-direction: column; gap: .6rem;
+    box-shadow: var(--shadow);
+  }
+  .callout.calm { border-left-color: var(--cool); }
+  .callout h3 { font-size: var(--step-0); }
+  .callout p { font-size: calc(var(--step-0) * .97); color: var(--ink-2); }
+  .callout p strong { color: var(--ink); }
+
+  /* --------------------------------------------------------------------- list */
+  ol.steps { margin: 0; padding: 0; list-style: none; counter-reset: s; display: flex; flex-direction: column; gap: 1px; background: var(--line); border: 1px solid var(--line); border-radius: 3px; overflow: hidden; }
+  ol.steps li {
+    background: var(--card); counter-increment: s;
+    padding: 1.05rem 1.35rem 1.05rem 3.4rem; position: relative;
+    display: flex; flex-direction: column; gap: .28rem;
+  }
+  ol.steps li::before {
+    content: counter(s); position: absolute; left: 1.35rem; top: 1.05rem;
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: .8rem; font-weight: 600; color: var(--ink-3);
+    font-variant-numeric: tabular-nums;
+  }
+  ol.steps .what { font-weight: 600; font-size: var(--step-0); }
+  ol.steps .why { font-size: var(--step--1); color: var(--ink-2); line-height: 1.55; }
+
+  ul.plain { margin: 0; padding-left: 1.15rem; display: flex; flex-direction: column; gap: .6rem; }
+  ul.plain li { padding-left: .2rem; }
+  ul.plain li::marker { color: var(--ink-3); }
+
+  /* ------------------------------------------------------------------- quotes */
+  .quotes { display: flex; flex-direction: column; gap: 1px; background: var(--line); border: 1px solid var(--line); border-radius: 3px; overflow: hidden; }
+  .quotes blockquote {
+    margin: 0; background: var(--card); padding: 1.05rem 1.35rem;
+    display: flex; flex-direction: column; gap: .4rem;
+  }
+  .quotes .zh { font-size: var(--step-0); line-height: 1.6; }
+  .quotes .en { font-size: var(--step--1); color: var(--ink-2); font-style: italic; }
+  .quotes .who {
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: .67rem; letter-spacing: .09em; text-transform: uppercase; color: var(--ink-3);
+  }
+
+  footer {
+    border-top: 1px solid var(--line); padding-top: 1.5rem;
+    font-size: var(--step--1); color: var(--ink-2);
+    display: flex; flex-direction: column; gap: .7rem;
+  }
+  code {
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: .88em; background: var(--line-2); padding: .1rem .35rem; border-radius: 2px;
+  }
+
+  @media (prefers-reduced-motion: no-preference) {
+    .bar-rect { transition: opacity .18s ease; }
+  }
+</style>
+</head>
+<body>
+
+
+<div class="wrap">
+
+  <header class="masthead">
+    <div class="kicker">
+      <span>Cohorts AUG16 + TEST1</span><span>·</span><span>Aug 2026</span><span>·</span>
+      <span>Chinese</span><span>·</span><span><b>EXPT arm only</b></span><span>·</span><span>No control ever run</span>
+    </div>
+    <h1>What the pilot supports</h1>
+    <p class="standfirst">
+      Toxicity fell about 39% the moment the Community Note task opened — and it did so
+      twice, in two separate sessions eleven days apart, at almost identical magnitude.
+      It still is not a causal result. And by the time people came back, it was gone.
+    </p>
+  </header>
+
+  <div class="verdicts">
+    <div class="verdict">
+      <span class="tag t-yes">Replicated</span>
+      <span class="claim">Toxicity drops ~0.13 when the task opens — in both cohorts</span>
+      <span class="why">−38% and −43% independently. Survives leave-one-out, the prior trend, and attrition bias.</span>
+    </div>
+    <div class="verdict">
+      <span class="tag t-maybe">Not identified</span>
+      <span class="claim">Whether the note caused it</span>
+      <span class="why">Every participant was in EXPT, so phase and clock time are perfectly collinear.</span>
+    </div>
+    <div class="verdict">
+      <span class="tag t-maybe">Does not persist</span>
+      <span class="claim">Day 2 returns to baseline — 3 of 4 people more toxic</span>
+      <span class="why">Only 4 participants, and the gap was 11 days, not 2. Directional, not a test.</span>
+    </div>
+  </div>
+
+  <!-- ------------------------------------------------------------- inventory -->
+  <section>
+    <div class="eyebrow"><span>What ran</span><span class="status s-none">Two cohorts, one arm</span></div>
+    <h2>The pilot is smaller than the registration count suggests</h2>
+    <div class="col">
+      <p>
+        Forty-four people registered across the two usable cohorts and fifteen ever posted.
+        For the paired analysis — the test that respects clustering — the effective sample is
+        the ten who wrote messages in <em>both</em> phases. Recruitment numbers are not
+        sample size.
+      </p>
+      <p>
+        TEST1 was set up as a rehearsal, but it holds real two-session data from four
+        returning participants. It is the only Day-2 data in the database, so it is reported
+        here rather than discarded — with its limits stated. The other cohorts
+        (<code>JULY23</code>, <code>PRE5</code>, <code>AUG5</code>, <code>JULY22</code>) are
+        fragments of 2–32 messages with no phase stamps, and are excluded throughout.
+      </p>
+    </div>
+
+    <div class="tbl-wrap">
+      <table>
+        <caption>The two usable cohorts
+          <span class="sub">Both EXPT. No control cohort has ever been run.</span>
+        </caption>
+        <thead><tr><th scope="col"></th><th scope="col" class="num">AUG16</th><th scope="col" class="num">TEST1</th></tr></thead>
+        <tbody>
+          <tr><th scope="row">Day 1 session</th><td class="num">16 Aug</td><td class="num">5 Aug</td></tr>
+          <tr><th scope="row">Day 2 session</th><td class="num none">none</td><td class="num">16 Aug</td></tr>
+          <tr><th scope="row">Gap between sessions</th><td class="num none">—</td><td class="num hot">10.9 days</td></tr>
+          <tr><th scope="row">Registered</th><td class="num">17</td><td class="num">27</td></tr>
+          <tr><th scope="row">Posted, Day 1</th><td class="num">9</td><td class="num">6</td></tr>
+          <tr><th scope="row">Posted, Day 2</th><td class="num none">—</td><td class="num">4</td></tr>
+          <tr><th scope="row">Messages, Day 1</th><td class="num">120</td><td class="num">81</td></tr>
+          <tr><th scope="row">Messages, Day 2</th><td class="num none">—</td><td class="num">32</td></tr>
+          <tr><th scope="row">Collabs (live-paired)</th><td class="num">6 (2)</td><td class="num">5 (2)</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="pull">
+      <div><span class="n">44</span><span class="lbl">registered across both cohorts</span></div>
+      <div><span class="n">15</span><span class="lbl">actually posted</span></div>
+      <div><span class="n cool">10</span><span class="lbl">posted in both phases — the effective <em>n</em></span></div>
+      <div><span class="n">201</span><span class="lbl">Day-1 participant messages</span></div>
+      <div><span class="n">32</span><span class="lbl">Day-2 messages, from 4 people</span></div>
+      <div><span class="n none">0</span><span class="lbl">control-arm participants, ever</span></div>
+    </div>
+  </section>
+
+  <!-- --------------------------------------------------------------- finding -->
+  <section>
+    <div class="eyebrow"><span>Primary contrast</span><span class="status s-yes">Replicated</span></div>
+    <h2>The drop appears twice, at the same size</h2>
+    <div class="col">
+      <p>
+        Two separate sessions, different people, eleven days apart, producing a drop of
+        −0.132 and −0.130. That agreement is the strongest thing in the pilot: it is the
+        closest this design gets to a replication, and much harder to explain as noise than
+        a single cohort would be.
+      </p>
+    </div>
+
+    <div class="tbl-wrap">
+      <table>
+        <caption>Day-1 phase contrast, both cohorts
+          <span class="sub">Messages are stamped with their phase at write time, so this contrast is not reconstructed after the fact.</span>
+        </caption>
+        <thead>
+          <tr>
+            <th scope="col">Cohort</th><th scope="col" class="num">free <em>n</em></th>
+            <th scope="col" class="num">free tox</th><th scope="col" class="num">task <em>n</em></th>
+            <th scope="col" class="num">task tox</th><th scope="col" class="num">drop</th>
+            <th scope="col" class="num">relative</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><th scope="row">AUG16</th><td class="num">89</td><td class="num hot">0.350</td><td class="num">31</td><td class="num cool">0.218</td><td class="num">−0.132</td><td class="num"><strong>−38%</strong></td></tr>
+          <tr><th scope="row">TEST1</th><td class="num">61</td><td class="num hot">0.305</td><td class="num">20</td><td class="num cool">0.175</td><td class="num">−0.130</td><td class="num"><strong>−43%</strong></td></tr>
+          <tr><th scope="row"><strong>Pooled</strong></th><td class="num">150</td><td class="num hot">0.332</td><td class="num">51</td><td class="num cool">0.201</td><td class="num"><strong>−0.131</strong></td><td class="num"><strong>−39%</strong></td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <figure>
+      <div class="fig-head">
+        <h3>Mean toxicity per 10-minute window</h3>
+        <p class="sub">Cohort AUG16, 120 participant messages, 11:10–12:24</p>
+      </div>
+      <div class="fig-body"><div id="chart"></div></div>
+      <div class="legend">
+        <span><i class="swatch" style="background:var(--hot)"></i>Free — open argument</span>
+        <span><i class="swatch" style="background:var(--cool)"></i>Task — Community Note</span>
+      </div>
+      <figcaption>
+        Hostility climbed through the free phase, peaking at 0.450 around 11:45. Both
+        merged notes published at 12:01 and 12:02, and every subsequent window sits below
+        every free-phase window. Bar width is proportional to the number of messages in
+        that window.
+      </figcaption>
+    </figure>
+
+    <div class="col">
+      <h3>Three reasons the drop is not an artefact <span style="font-weight:400;color:var(--ink-3)">(checked on AUG16, where there is enough data)</span></h3>
+      <ul class="plain">
+        <li><strong>No single person carries it.</strong> Removing any one participant leaves the
+          drop intact, ranging +0.084 to +0.170.</li>
+        <li><strong>Attrition pushes the other way.</strong> The four people who stopped posting after
+          the free phase were <em>less</em> toxic than those who stayed (0.258 vs 0.364). Losing the
+          calm participants should have raised the task-phase mean. It fell anyway.</li>
+        <li><strong>It reverses a rising trend.</strong> Toxicity was climbing during the free phase
+          (+0.0020/min). Extrapolating that trend predicts 0.422 in the task window; the observed
+          value is 0.218.</li>
+      </ul>
+    </div>
+
+    <div class="tbl-wrap">
+      <table>
+        <caption>A second measure moves at the same moment
+          <span class="sub">First-person plural vs third-person plural references — othering language, counted independently of the toxicity scorer.</span>
+        </caption>
+        <thead>
+          <tr><th scope="col">Phase</th><th scope="col" class="num">“we” / msg</th><th scope="col" class="num">“they” / msg</th><th scope="col" class="num">“they” share</th></tr>
+        </thead>
+        <tbody>
+          <tr><th scope="row">Free</th><td class="num">0.04</td><td class="num">0.19</td><td class="num hot">0.810</td></tr>
+          <tr><th scope="row">Task</th><td class="num">0.13</td><td class="num">0.06</td><td class="num cool">0.333</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- ------------------------------------------------------------------ day 2 -->
+  <section>
+    <div class="eyebrow"><span>Persistence</span><span class="status s-maybe">Does not hold</span></div>
+    <h2>By Day 2 the effect is gone</h2>
+    <div class="col">
+      <p>
+        This is the direct answer to the request for an objective Day-2 difference, and it is
+        a negative one. Only TEST1 has a second session.
+      </p>
+    </div>
+
+    <figure>
+      <div class="fig-head">
+        <h3>TEST1 trajectory across both sessions</h3>
+        <p class="sub">Baseline → intervention → return, 11 days later</p>
+      </div>
+      <div class="fig-body"><div id="traj"></div></div>
+      <figcaption>
+        The intervention window is the only point below baseline. When the same four people
+        came back, toxicity had returned to roughly where it started — the shape of a
+        state-dependent effect rather than a durable one.
+      </figcaption>
+    </figure>
+
+    <div class="tbl-wrap">
+      <table>
+        <caption>TEST1 across both sessions
+          <span class="sub">Day 2 has no task phase — that absence is the persistence test.</span>
+        </caption>
+        <thead><tr><th scope="col">Checkpoint</th><th scope="col" class="num"><em>n</em></th><th scope="col" class="num">mean toxicity</th></tr></thead>
+        <tbody>
+          <tr><th scope="row">Day 1 free — baseline</th><td class="num">61</td><td class="num hot">0.305</td></tr>
+          <tr><th scope="row">Day 1 task — intervention</th><td class="num">20</td><td class="num cool">0.175</td></tr>
+          <tr><th scope="row">Day 2 free — persistence</th><td class="num">32</td><td class="num hot">0.277</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="pull">
+      <div><span class="n hot">+0.102</span><span class="lbl">rebound against the intervention window (0.175 → 0.277)</span></div>
+      <div><span class="n">−0.028</span><span class="lbl">like-for-like, free vs free (0.305 → 0.277) — essentially flat</span></div>
+      <div><span class="n hot">3 of 4</span><span class="lbl">participants returned <em>more</em> toxic than they left</span></div>
+    </div>
+
+    <div class="tbl-wrap">
+      <table>
+        <caption>The same four people, both sessions
+          <span class="sub">Wilcoxon p = 0.625 at n = 4 — descriptive, not a test.</span>
+        </caption>
+        <thead>
+          <tr><th scope="col">Handle</th><th scope="col" class="num">D1 <em>n</em></th><th scope="col" class="num">D1 tox</th>
+          <th scope="col" class="num">D2 <em>n</em></th><th scope="col" class="num">D2 tox</th><th scope="col" class="num">change</th></tr>
+        </thead>
+        <tbody>
+          <tr><th scope="row"><code>blink_rwv0</code></th><td class="num">24</td><td class="num">0.296</td><td class="num">13</td><td class="num">0.381</td><td class="num hot">+0.085</td></tr>
+          <tr><th scope="row"><code>army_pz0q</code></th><td class="num">17</td><td class="num">0.218</td><td class="num">10</td><td class="num">0.235</td><td class="num hot">+0.017</td></tr>
+          <tr><th scope="row"><code>blink_njzj</code></th><td class="num">12</td><td class="num">0.233</td><td class="num">6</td><td class="num">0.067</td><td class="num cool">−0.167</td></tr>
+          <tr><th scope="row"><code>army_1tkp</code></th><td class="num">4</td><td class="num">0.175</td><td class="num">3</td><td class="num">0.383</td><td class="num hot">+0.208</td></tr>
+          <tr><th scope="row"><strong>Mean</strong></th><td class="num">—</td><td class="num"><strong>0.231</strong></td><td class="num">—</td><td class="num"><strong>0.266</strong></td><td class="num hot"><strong>+0.036</strong></td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="callout">
+      <h3>What this can and cannot bear</h3>
+      <p>
+        Thirty-two messages from four people, one arm, no control — and the sessions were
+        <strong>11 days apart rather than consecutive</strong>. It cannot support a persistence
+        claim in either direction as a confirmatory result.
+      </p>
+      <p>
+        What it does do is remove the assumption that the effect obviously persists. The
+        evidence points the other way, and the honest framing is that
+        <strong>the effect is state-dependent</strong> — present while the intervention is,
+        gone by the time people come back. That is a contingency finding rather than a
+        failure. It also makes the Day-2 design decision consequential rather than a
+        formality: if the real protocol runs consecutive days, it is testing something the
+        pilot has not tested.
+      </p>
+    </div>
+  </section>
+
+  <!-- ---------------------------------------------------------- significance -->
+  <section>
+    <div class="eyebrow"><span>Inference</span><span class="status s-maybe">Underpowered</span></div>
+    <h2>Why it is not significant, precisely</h2>
+    <div class="col">
+      <p>
+        Pooling both cohorts doubles the effective sample to ten participants. It is still not
+        enough. The tests disagree, and the disagreement is the finding rather than something
+        to resolve by quoting the smallest number.
+      </p>
+    </div>
+
+    <div class="tbl-wrap">
+      <table>
+        <thead>
+          <tr><th scope="col">Test</th><th scope="col">Unit</th><th scope="col" class="num">Result</th><th scope="col">What it assumes</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <th scope="row">Wilcoxon signed-rank <span class="none">pooled</span></th><td>10 participants</td>
+            <td class="num">p = 0.131</td><td>Little — and still close to powerless at n=10.</td>
+          </tr>
+          <tr>
+            <th scope="row">Paired <em>t</em> <span class="none">pooled</span></th><td>10 participants</td>
+            <td class="num">p = 0.067<br><span class="none">d<sub>z</sub> = 0.66</span></td>
+            <td>Normality. The best-powered honest test available.</td>
+          </tr>
+          <tr>
+            <th scope="row">Paired <em>t</em> <span class="none">AUG16 only</span></th><td>5 participants</td>
+            <td class="num">p = 0.083<br><span class="none">d<sub>z</sub> = 1.03</span></td>
+            <td>Same, on one cohort.</td>
+          </tr>
+          <tr>
+            <th scope="row">Within-participant permutation</th><td>120 messages</td>
+            <td class="num cool">p = 0.011</td>
+            <td>Messages exchangeable within a person — ignores drift over time.</td>
+          </tr>
+          <tr>
+            <th scope="row">OLS + time trend, cluster-robust</th><td>9 clusters</td>
+            <td class="num">p = 0.108<br><span class="none">b = −0.192</span></td>
+            <td>Closest to the real question; anti-conservative at 9 clusters.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="callout calm">
+      <h3>Recommended reporting</h3>
+      <p>
+        Quote the <strong>effect size and the cross-cohort agreement, not a significance
+        claim</strong>. The pilot is powered to estimate, not to test. Leading with
+        p&nbsp;=&nbsp;0.011 would not survive review, because the test that produces it is the
+        one that assumes away the time confound. Two independent sessions landing within
+        0.002 of each other is the more persuasive fact, and it does not depend on a
+        <em>p</em>-value at all.
+      </p>
+    </div>
+  </section>
+
+  <!-- ------------------------------------------------------- identification -->
+  <section>
+    <div class="eyebrow"><span>Causality</span><span class="status s-maybe">Not identified</span></div>
+    <h2>The control group is doing the work no test can do</h2>
+    <div class="col">
+      <p>
+        In both cohorts the phase flipped at a single instant — in AUG16, last free message
+        11:59, first task message 12:00 — and <strong>nothing else in the study differed at
+        that instant</strong>, because every participant was in the EXPT arm.
+      </p>
+      <p>
+        So <em class="q">“the note calmed people”</em> and <em class="q">“an hour of arguing had
+        passed and people were tiring”</em> predict exactly the same data. No amount of
+        re-analysis separates them. The design already solves this: the control arm sits
+        through the same clock time with a matched-salience poll instead of the note.
+        <strong>That cohort has never been run.</strong>
+      </p>
+      <p>
+        The replication across two sessions, the rising pre-trend, and the direction of
+        attrition all argue against pure fatigue, and all belong in the write-up. None of them
+        substitutes for the control group — and fatigue explains the Day-2 rebound perfectly
+        well too, since people arrive fresh and get heated again. The persistence result does
+        not break the tie either.
+      </p>
+    </div>
+  </section>
+
+  <!-- --------------------------------------------------- behaviour/attitudes -->
+  <section>
+    <div class="eyebrow"><span>Mechanism</span><span class="status s-yes">Measured</span></div>
+    <h2>Behaviour moved. Attitudes did not.</h2>
+    <div class="col">
+      <p>
+        This is the most interesting thing in the pilot, and it supports the point that
+        self-report is the weaker evidence. Participants rejected the note as illegitimate and
+        reported high reactance — and got measurably less toxic in the same window.
+      </p>
+    </div>
+
+    <div class="tbl-wrap">
+      <table>
+        <caption>Survey 1, end of Day 1
+          <span class="sub">n = 5. Five-point scales unless noted.</span>
+        </caption>
+        <thead><tr><th scope="col">Measure</th><th scope="col" class="num">Mean</th><th scope="col">Reading</th></tr></thead>
+        <tbody>
+          <tr><th scope="row">Note seen as legitimate</th><td class="num hot">1.87</td><td>Rejected.</td></tr>
+          <tr><th scope="row">Reactance — “made me want to argue the opposite”</th><td class="num hot">4.35</td><td>Strongly resisted.</td></tr>
+          <tr><th scope="row">Thermometer, own fandom</th><td class="num">97</td><td rowspan="3">An 84-point gap. Three of five rated the rival fandom <strong>0</strong>.</td></tr>
+          <tr><th scope="row">Thermometer, rival fandom</th><td class="num hot">13</td></tr>
+          <tr><th scope="row">Gap</th><td class="num">84</td></tr>
+          <tr><th scope="row">Session felt heated</th><td class="num">4.80</td><td>The conflict seeding worked.</td></tr>
+          <tr><th scope="row">Outgroup similarity</th><td class="num">2.95</td><td>No softening.</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="callout">
+      <h3>The framing this supports: compliance without persuasion</h3>
+      <p>
+        The intervention changed <strong>what people did</strong> without changing
+        <strong>what they thought</strong>. That is a defensible and publishable CHI finding, and
+        a stronger one than an attitude-change claim the data contradicts.
+      </p>
+      <p>
+        It also sits naturally with the Day-2 rebound: <strong>a behavioural effect with no
+        attitudinal footing is exactly the kind that should decay</strong> once the intervention
+        is removed. The two results tell one story rather than two. It does mean the mechanism
+        is unlikely to be the superordinate-identity route currently in the theory section —
+        worth reconciling before the next draft.
+      </p>
+    </div>
+  </section>
+
+  <!-- --------------------------------------------------------------- network -->
+  <section>
+    <div class="eyebrow"><span>Objective evidence</span><span class="status s-yes">Measured</span></div>
+    <h2>The reply graph carries hostility with no self-report at all</h2>
+    <div class="col">
+      <p>
+        The network reconstructs cleanly from reply targets: 95 directed edges across 29 dyads.
+        It answers the request for an objective illustration without touching a survey item.
+      </p>
+    </div>
+
+    <div class="pull">
+      <div><span class="n">77%</span><span class="lbl">of replies cross the fandom line — genuine contact, not parallel monologues</span></div>
+      <div><span class="n hot">2.1×</span><span class="lbl">cross-fandom replies are this much more toxic (0.384 vs 0.186)</span></div>
+      <div><span class="n">29%</span><span class="lbl">of all replies sit in a single ARMY–BLINK dyad</span></div>
+      <div><span class="n">71%</span><span class="lbl">of messages come from just three participants</span></div>
+    </div>
+
+    <div class="col">
+      <p>
+        Hostility is <strong>concentrated, not distributed</strong>. Participant-level means are
+        dominated by a couple of people, so group means understate what a typical participant
+        experienced — and the per-participant plot will show that immediately.
+      </p>
+    </div>
+  </section>
+
+  <!-- ------------------------------------------------------------ suspicion -->
+  <section>
+    <div class="eyebrow"><span>Threat to validity</span><span class="status s-maybe">Live risk</span></div>
+    <h2>Participants worked out they were in a study</h2>
+
+    <div class="quotes">
+      <blockquote>
+        <p class="zh">谁家好人骂人还打引号，要是做什么实验，你这条数据估计都污染池子</p>
+        <p class="en">“Who puts quotation marks around an insult? If this is some kind of experiment, your data pool is probably contaminated.”</p>
+        <p class="who">BLINK · 12:00 · first message of the task phase</p>
+      </blockquote>
+      <blockquote>
+        <p class="zh">怀疑有AI</p>
+        <p class="en">“Suspect there’s an AI here.”</p>
+        <p class="who">ARMY · 12:07</p>
+      </blockquote>
+    </div>
+
+    <div class="col">
+      <p>
+        Both land inside the task phase — the window the primary result depends on. Demand
+        characteristics are a direct threat to a behavioural measure, and the merged-note text
+        is the most likely tell. This needs handling in the debrief protocol and reporting in
+        the limitations, not omission.
+      </p>
+    </div>
+  </section>
+
+  <!-- ---------------------------------------------------------- can't answer -->
+  <section>
+    <div class="eyebrow"><span>Out of reach</span><span class="status s-none">No data</span></div>
+    <h2>What no analysis of this dataset can produce</h2>
+
+    <div class="tbl-wrap">
+      <table>
+        <thead><tr><th scope="col">Request</th><th scope="col">Status</th></tr></thead>
+        <tbody>
+          <tr><th scope="row">Intervention vs control</th><td class="none"><strong>Impossible.</strong> No CTRL cohort has ever been run.</td></tr>
+          <tr><th scope="row">A <em>clean</em> Day-2 result</th><td>Not from this. 4 people, 11-day gap, no control. Directionally: no persistence.</td></tr>
+          <tr><th scope="row">Day 2 for AUG16 specifically</th><td class="none"><strong>Impossible.</strong> Zero rows.</td></tr>
+          <tr><th scope="row">N = 30</th><td>15 have posted across both usable cohorts. Needs roughly 3 more.</td></tr>
+          <tr><th scope="row">Interview material in the discussion</th><td>No interviews conducted yet.</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="callout">
+      <h3>One methodological caution, recorded on purpose</h3>
+      <p>
+        Choosing where to measure <em>after</em> seeing the results — testing checkpoints until a
+        difference appears, or falling back to “end of Day 1” if Day 2 shows nothing — is ordinary
+        exploratory practice, and stops being defensible the moment it is written up as
+        confirmatory. CHI reviewers ask about this.
+      </p>
+      <p>
+        The workable version: <strong>fix the checkpoints and the primary contrast in writing
+        before the next cohort runs</strong>, then label everything else exploratory. Naming an
+        expected pattern in advance is a <em>prediction</em> and pre-registering it is exactly
+        right. It only becomes a problem if the cut points move afterwards to fit what came back.
+      </p>
+    </div>
+  </section>
+
+  <!-- ------------------------------------------------------------- next steps -->
+  <section>
+    <div class="eyebrow"><span>Before the next run</span><span class="status s-yes">Actionable</span></div>
+    <h2>Ordered by what each one buys</h2>
+
+    <ol class="steps">
+      <li>
+        <span class="what">Run a CTRL cohort</span>
+        <span class="why">Without it there is no causal claim, no matter how many participants are added. Highest-value change by a wide margin.</span>
+      </li>
+      <li>
+        <span class="what">Run a real Day 2, on consecutive days</span>
+        <span class="why">The only Day-2 data has an 11-day gap and four participants. If the protocol says two days, test two days — the pilot has not.</span>
+      </li>
+      <li>
+        <span class="what">Fix the primary contrast and checkpoints in writing first</span>
+        <span class="why">Decide the confirmatory analysis before the data exists, so the exploratory/confirmatory line holds under review.</span>
+      </li>
+      <li>
+        <span class="what">Raise participation, not just registration</span>
+        <span class="why">8 of 17 AUG16 registrants and 21 of 27 TEST1 registrants never posted. The effective n for the pooled paired analysis was ten.</span>
+      </li>
+      <li>
+        <span class="what">Improve scorer resolution</span>
+        <span class="why">The scale produces only 8 distinct values and 46% of messages score exactly 0.30. That compresses real variation and costs power directly.</span>
+      </li>
+      <li>
+        <span class="what">Handle participant suspicion</span>
+        <span class="why">Add a suspicion probe to the debrief so it is measured rather than inferred from stray messages, and report it.</span>
+      </li>
+    </ol>
+  </section>
+
+  <footer>
+    <p>
+      Every figure reproduces from <code>analysis/analyze_pilot.py</code>, which pulls the same
+      export as the dashboard’s <strong>Export JSON</strong> button. <code>--cohort AUG16</code>
+      gives single-cohort detail; <code>--compare AUG16,TEST1</code> pools Day 1 and reports
+      whatever Day 2 exists. Confirmatory and exploratory output print under separate headings.
+    </p>
+    <p>
+      Read against the live database on 20 August 2026. Cohorts <code>JULY23</code>,
+      <code>PRE5</code>, <code>AUG5</code> and <code>JULY22</code> are fragments of 2–32
+      messages with no phase stamps, and are excluded throughout.
+    </p>
+  </footer>
+</div>
+
+<script>
+(function () {
+  const BINS = [
+    { label: "11:10", n: 22, tox: 0.3159, phase: "free" },
+    { label: "11:20", n: 23, tox: 0.2891, phase: "free" },
+    { label: "11:30", n: 14, tox: 0.4071, phase: "free" },
+    { label: "11:42", n: 10, tox: 0.4500, phase: "free" },
+    { label: "11:50", n: 21, tox: 0.3643, phase: "free" },
+    { label: "12:03", n: 15, tox: 0.2367, phase: "task" },
+    { label: "12:10", n: 14, tox: 0.2000, phase: "task" },
+    { label: "12:20", n:  1, tox: 0.1000, phase: "task" }
+  ];
+
+  const W = 760, H = 300;
+  const M = { top: 18, right: 16, bottom: 46, left: 42 };
+  const iw = W - M.left - M.right, ih = H - M.top - M.bottom;
+  const yMax = 0.5;
+  const y = v => M.top + ih - (v / yMax) * ih;
+
+  const totalN = BINS.reduce((s, b) => s + b.n, 0);
+  const GAP = 5;
+  const usable = iw - GAP * (BINS.length - 1);
+  let cursor = M.left;
+  BINS.forEach(b => { b.w = Math.max(14, (b.n / totalN) * usable); b.x = cursor; cursor += b.w + GAP; });
+  const scale = (iw - GAP * (BINS.length - 1)) / (cursor - GAP - M.left);
+  cursor = M.left;
+  BINS.forEach(b => { b.w *= scale; b.x = cursor; cursor += b.w + GAP; });
+
+  const esc = s => String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;");
+  const p = [];
+
+  p.push(`<svg viewBox="0 0 ${W} ${H}" width="100%" role="img" style="min-width:620px;display:block"
+      aria-label="Mean toxicity per ten-minute window. Free phase rises from 0.32 to a peak of 0.45, then every task-phase window sits lower, falling from 0.24 to 0.10.">`);
+
+  // gridlines
+  for (let v = 0; v <= yMax + 1e-9; v += 0.1) {
+    const yy = y(v);
+    p.push(`<line x1="${M.left}" x2="${W - M.right}" y1="${yy}" y2="${yy}"
+      stroke="var(--line)" stroke-width="1" ${v === 0 ? "" : 'stroke-dasharray="2 4"'} />`);
+    p.push(`<text x="${M.left - 9}" y="${yy + 4}" text-anchor="end"
+      font-family="IBM Plex Mono, monospace" font-size="10" fill="var(--ink-3)">${v.toFixed(1)}</text>`);
+  }
+
+  // phase boundary
+  const bIdx = BINS.findIndex(b => b.phase === "task");
+  const bx = BINS[bIdx].x - GAP / 2;
+  p.push(`<line x1="${bx}" x2="${bx}" y1="${M.top - 6}" y2="${M.top + ih}"
+    stroke="var(--ink-3)" stroke-width="1" stroke-dasharray="3 3" />`);
+  p.push(`<text x="${bx - 6}" y="${M.top + 4}" text-anchor="end"
+    font-family="IBM Plex Mono, monospace" font-size="9.5" letter-spacing="0.08em"
+    fill="var(--ink-3)">TASK OPENS 12:00</text>`);
+  p.push(`<text x="${bx + 6}" y="${M.top + 4}" text-anchor="start"
+    font-family="IBM Plex Mono, monospace" font-size="9.5" letter-spacing="0.08em"
+    fill="var(--cool)">NOTES 12:01 · 12:02</text>`);
+
+  // bars
+  const values = [];
+  BINS.forEach(b => {
+    const c = b.phase === "free" ? "var(--hot)" : "var(--cool)";
+    const top = y(b.tox), h = M.top + ih - top;
+    p.push(`<rect class="bar-rect" x="${b.x.toFixed(1)}" y="${top.toFixed(1)}"
+      width="${b.w.toFixed(1)}" height="${h.toFixed(1)}" fill="${c}" opacity="0.9" rx="1">
+      <title>${esc(b.label)} — mean ${b.tox.toFixed(3)}, ${b.n} messages</title></rect>`);
+    // Value sits inside the bar: the phase-mean reference lines run within a few
+    // pixels of several bar tops, and a label above the bar collides with them.
+    // A bar too narrow to hold the text keeps its label above, where nothing
+    // else is competing for the space. Held back and drawn last, over the lines.
+    const inside = b.w >= 32;
+    values.push(`<text x="${(b.x + b.w / 2).toFixed(1)}"
+      y="${(inside ? top + 15 : top - 6).toFixed(1)}" text-anchor="middle"
+      font-family="IBM Plex Mono, monospace" font-size="10" font-weight="600"
+      fill="${inside ? "var(--card)" : "var(--ink-2)"}">${b.tox.toFixed(2)}</text>`);
+    p.push(`<text x="${(b.x + b.w / 2).toFixed(1)}" y="${M.top + ih + 16}" text-anchor="middle"
+      font-family="IBM Plex Mono, monospace" font-size="10" fill="var(--ink-3)">${esc(b.label)}</text>`);
+    p.push(`<text x="${(b.x + b.w / 2).toFixed(1)}" y="${M.top + ih + 30}" text-anchor="middle"
+      font-family="IBM Plex Mono, monospace" font-size="9" fill="var(--ink-3)" opacity="0.75">n=${b.n}</text>`);
+  });
+
+  // Phase means last, so the reference line and its label read over the bars.
+  // The free label anchors left and the task label right — at the boundary both
+  // bars are tall and a label there collides with their value text.
+  [["free", 0.350, BINS[0].x, BINS[bIdx - 1].x + BINS[bIdx - 1].w, "start"],
+   ["task", 0.218, BINS[bIdx].x, BINS[BINS.length - 1].x + BINS[BINS.length - 1].w, "end"]
+  ].forEach(([ph, mean, x1, x2, anchor]) => {
+    const c = ph === "free" ? "var(--hot)" : "var(--cool)";
+    p.push(`<line x1="${x1}" x2="${x2}" y1="${y(mean)}" y2="${y(mean)}"
+      stroke="${c}" stroke-width="1.5" stroke-dasharray="6 3" />`);
+    const label = `mean ${mean.toFixed(3)}`;
+    const tw = label.length * 6.1 + 9;
+    const tx = anchor === "start" ? x1 + 4 : x2 - 4;
+    const rx = anchor === "start" ? tx - 5 : tx - tw + 5;
+    p.push(`<rect x="${rx.toFixed(1)}" y="${(y(mean) - 18).toFixed(1)}"
+      width="${tw.toFixed(1)}" height="14.5" rx="2"
+      fill="var(--card)" stroke="${c}" stroke-width="0.75" opacity="0.96" />`);
+    p.push(`<text x="${tx.toFixed(1)}" y="${(y(mean) - 7.5).toFixed(1)}"
+      text-anchor="${anchor}"
+      font-family="IBM Plex Mono, monospace" font-size="10" font-weight="600"
+      fill="${c}">${label}</text>`);
+  });
+
+  p.push(values.join(""));
+
+  p.push(`<text x="${M.left - 9}" y="${M.top - 6}" text-anchor="end"
+    font-family="IBM Plex Mono, monospace" font-size="9" letter-spacing="0.08em"
+    fill="var(--ink-3)">TOX</text>`);
+  p.push("</svg>");
+
+  document.getElementById("chart").innerHTML = p.join("");
+})();
+
+/* TEST1 trajectory: baseline -> intervention -> return. Three points, so a slope
+   chart reads the rebound far better than bars would. */
+(function () {
+  const PTS = [
+    { label: "Day 1 free",  sub: "baseline",     tox: 0.3049, n: 61, phase: "free" },
+    { label: "Day 1 task",  sub: "intervention", tox: 0.1750, n: 20, phase: "task" },
+    { label: "Day 2 free",  sub: "11 days later", tox: 0.2766, n: 32, phase: "free" }
+  ];
+  // Wide side margins: the first and last points sit on the plot edge, and their
+  // captions ("11 days later · n=32") are wider than the axis gutter would allow.
+  const W = 700, H = 250, M = { top: 26, right: 78, bottom: 52, left: 78 };
+  const iw = W - M.left - M.right, ih = H - M.top - M.bottom, yMax = 0.4;
+  const y = v => M.top + ih - (v / yMax) * ih;
+  const x = i => M.left + (iw / (PTS.length - 1)) * i;
+  const p = [];
+
+  p.push(`<svg viewBox="0 0 ${W} ${H}" width="100%" role="img" style="min-width:520px;display:block"
+    aria-label="TEST1 mean toxicity: 0.305 at Day 1 baseline, 0.175 during the intervention, back up to 0.277 on Day 2.">`);
+
+  for (let v = 0; v <= yMax + 1e-9; v += 0.1) {
+    p.push(`<line x1="${M.left}" x2="${W - M.right}" y1="${y(v)}" y2="${y(v)}"
+      stroke="var(--line)" stroke-width="1" ${v === 0 ? "" : 'stroke-dasharray="2 4"'} />`);
+    p.push(`<text x="${M.left - 9}" y="${y(v) + 4}" text-anchor="end"
+      font-family="IBM Plex Mono, monospace" font-size="10" fill="var(--ink-3)">${v.toFixed(1)}</text>`);
+  }
+
+  // baseline reference, so the rebound reads against where it started
+  p.push(`<line x1="${M.left}" x2="${W - M.right}" y1="${y(PTS[0].tox)}" y2="${y(PTS[0].tox)}"
+    stroke="var(--hot)" stroke-width="1" stroke-dasharray="5 4" opacity="0.5" />`);
+
+  p.push(`<path d="${PTS.map((d, i) => `${i ? "L" : "M"}${x(i)},${y(d.tox)}`).join(" ")}"
+    fill="none" stroke="var(--ink-3)" stroke-width="2" stroke-linejoin="round" />`);
+
+  PTS.forEach((d, i) => {
+    const c = d.phase === "free" ? "var(--hot)" : "var(--cool)";
+    p.push(`<circle cx="${x(i)}" cy="${y(d.tox)}" r="6.5" fill="${c}"
+      stroke="var(--card)" stroke-width="2"><title>${d.label} — ${d.tox.toFixed(3)}, ${d.n} messages</title></circle>`);
+    p.push(`<text x="${x(i)}" y="${y(d.tox) - 14}" text-anchor="middle"
+      font-family="IBM Plex Mono, monospace" font-size="11" font-weight="600"
+      fill="${c}">${d.tox.toFixed(3)}</text>`);
+    p.push(`<text x="${x(i)}" y="${M.top + ih + 18}" text-anchor="middle"
+      font-family="IBM Plex Sans, sans-serif" font-size="11" font-weight="500"
+      fill="var(--ink-2)">${d.label}</text>`);
+    p.push(`<text x="${x(i)}" y="${M.top + ih + 32}" text-anchor="middle"
+      font-family="IBM Plex Mono, monospace" font-size="9" fill="var(--ink-3)">${d.sub} · n=${d.n}</text>`);
+  });
+
+  // The rebound, called out below the rising segment where nothing else sits.
+  const midX = (x(1) + x(2)) / 2;
+  p.push(`<text x="${midX}" y="${y((PTS[1].tox + PTS[2].tox) / 2) + 22}" text-anchor="middle"
+    font-family="IBM Plex Mono, monospace" font-size="11" font-weight="600"
+    fill="var(--hot)">rebound +0.102</text>`);
+
+  p.push("</svg>");
+  document.getElementById("traj").innerHTML = p.join("");
+})();
+</script>
+
+</body>
+</html>
