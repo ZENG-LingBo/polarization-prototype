@@ -1,132 +1,188 @@
-# AUG16 pilot — what the data supports
+# Pilot findings — what the data supports
 
 Written against the live database on 2026-08-20. Reproduce with:
 
 ```bash
 export RESEARCHER_TOKEN=…            # the Worker secret, never committed
 python3 -m pip install numpy scipy
-python3 analysis/analyze_pilot.py --cohort AUG16
+python3 analysis/analyze_pilot.py --cohort AUG16          # single-cohort detail
+python3 analysis/analyze_pilot.py --compare AUG16,TEST1   # replication + Day 2
 ```
 
 This memo answers the analysis questions raised in supervision. It separates what the
-data **shows**, what it **cannot yet show**, and which requests would need a design
-change rather than a different statistical test.
+data **shows**, what it **cannot yet show**, and which requests need a design change
+rather than a different statistical test.
 
 ---
 
 ## 1. What is actually in the database
 
-One real cohort has run. Everything else is rehearsal traffic.
+Two cohorts carry usable behavioural data. Both were run in the **EXPT** arm.
 
-| | AUG16 | notes |
+| | AUG16 | TEST1 |
 |---|---|---|
-| Date | 2026-08-16, 11:10–12:24 | single sitting |
-| Language | Chinese | |
-| Registered participants | 17 | 9 ARMY / 8 BLINK |
-| **Participants who actually posted** | **9** | 8 of 17 never wrote a message |
-| Participant messages | 120 | 89 free / 31 task |
-| Arm | **EXPT only** | no control group was run |
-| Days | **Day 1 only** | no Day 2 session took place |
-| Surveys returned | 5 survey1 | 0 survey2 |
-| Collabs | 6 | 2 live-paired, 2 filler, 2 unresolved |
+| Day 1 | 2026-08-16, 11:10–12:24 | 2026-08-05, 13:20–14:08 |
+| Day 2 | **none** | 2026-08-16, 12:36–13:03 |
+| Gap between sessions | — | **10.9 days** |
+| Language | Chinese | Chinese |
+| Arm | EXPT | EXPT |
+| Registered participants | 17 | 27 |
+| Posted on Day 1 | 9 | 6 |
+| Posted on Day 2 | — | 4 |
+| Day-1 messages | 120 | 81 |
+| Day-2 messages | — | 32 |
+| Surveys | 5 × survey1 | 5 × survey1 |
+| Collabs | 6 (2 live-paired) | 5 (2 live-paired) |
 
-Other cohorts in the database — `TEST1`, `JULY23`, `PRE5`, `AUG5`, `JULY22` — are
-rehearsals containing researcher and pilot traffic. `TEST1` is the only one with Day-2
-rows (32 messages, 4 participants) and it is test data, not evidence.
+`JULY23`, `PRE5`, `AUG5` and `JULY22` are fragments — 2 to 32 messages, mostly from one
+or two people, with no phase stamps. They are excluded throughout.
 
-**The two facts that constrain everything below: there is no control arm, and there is
-no Day 2.**
+**TEST1 was set up as a rehearsal, but it contains real two-session behavioural data
+from four returning participants.** It is the only Day-2 data that exists anywhere in
+the database, so it is reported here rather than discarded — with its limitations stated
+plainly.
+
+**The constraint that shapes everything below: no control cohort has ever been run.**
 
 ---
 
-## 2. The headline result
+## 2. The Day-1 drop replicates across two independent sessions
 
-Toxicity falls sharply when the Community Note task opens.
+Toxicity falls sharply when the Community Note task opens — in both cohorts, eleven days
+apart, at almost identical magnitude.
 
-| Phase | n | mean toxicity | window |
-|---|---|---|---|
-| `free` (open argument) | 89 | **0.350** | 11:10–11:59 |
-| `task` (notes) | 31 | **0.218** | 12:00–12:20 |
+| Cohort | free *n* | free tox | task *n* | task tox | drop | relative |
+|---|---|---|---|---|---|---|
+| AUG16 | 89 | 0.350 | 31 | 0.218 | −0.132 | **−38%** |
+| TEST1 | 61 | 0.305 | 20 | 0.175 | −0.130 | **−43%** |
+| **Pooled** | **150** | **0.332** | **51** | **0.201** | **−0.131** | **−39%** |
 
-A drop of 0.132 absolute, **38% relative**. The direction is the one the hypothesis
-predicts, and it is not fragile:
+Two separate sessions, different people, eleven days apart, producing a drop of −0.132
+and −0.130. That agreement is the strongest thing in the pilot — it is the closest this
+design gets to a replication, and it is much harder to explain as noise than one cohort
+would be.
+
+### It is not fragile (AUG16, where there is enough data to check)
 
 - **Leave-one-participant-out**: the drop survives removing any single participant,
-  ranging +0.084 to +0.170. No one person carries it.
-- **Attrition works against it.** The four participants who stopped posting after the
-  free phase were *less* toxic than those who stayed (0.258 vs 0.364). Losing the calm
-  people should have pushed the task phase *up*. It went down anyway.
-- **It reverses a rising trend.** Within the free phase toxicity was climbing
-  (+0.0020/min, n.s.). Extrapolating that trend predicts 0.422 in the task window; the
-  observed value is 0.218.
+  ranging −0.084 to −0.170.
+- **Attrition works against it.** The four people who stopped posting after the free
+  phase were *less* toxic than those who stayed (0.258 vs 0.364). Losing the calm
+  participants should have pushed the task phase *up*. It fell anyway.
+- **It reverses a rising trend.** Free-phase toxicity was climbing (+0.0020/min).
+  Extrapolating that trend predicts 0.422 in the task window; observed is 0.218.
 
-### Othering language moves with it
+### A second measure moves at the same moment
 
-| Phase | "we" per msg | "they" per msg | they-share |
+| Phase | “we” / msg | “they” / msg | “they” share |
 |---|---|---|---|
-| `free` | 0.04 | 0.19 | **0.810** |
-| `task` | 0.13 | 0.06 | **0.333** |
+| free | 0.04 | 0.19 | **0.810** |
+| task | 0.13 | 0.06 | **0.333** |
 
-Counts are small (17 vs 2 "they" tokens) but this is a second, independent measure
-moving in the same direction at the same moment.
+Othering language collapses alongside toxicity. Counts are small (17 vs 2 “they” tokens)
+but this is an independent measure moving in the same direction at the same instant.
 
 ---
 
-## 3. Significance — the honest answer
+## 3. Day 2: the effect does not persist
 
-The question "why is it not significant" has a specific answer: **only 5 participants
-posted in both phases.** That is the effective sample for any paired test.
+This is the direct answer to the request for an objective Day-2 difference, and it is a
+negative one.
+
+| Checkpoint | *n* | mean toxicity |
+|---|---|---|
+| Day 1 free — baseline | 61 | 0.305 |
+| Day 1 task — intervention | 20 | **0.175** |
+| Day 2 free — persistence | 32 | **0.277** |
+
+- **Against the intervention window**: 0.175 → 0.277, a **rebound of +0.102**.
+- **Like-for-like, free vs free**: 0.305 → 0.277, a change of −0.028 — essentially flat.
+
+Person by person, the same four participants across both sessions:
+
+| Handle | Day 1 *n* | Day 1 tox | Day 2 *n* | Day 2 tox | change |
+|---|---|---|---|---|---|
+| `blink_rwv0` | 24 | 0.296 | 13 | 0.381 | **+0.085** more toxic |
+| `army_pz0q` | 17 | 0.218 | 10 | 0.235 | **+0.017** more toxic |
+| `blink_njzj` | 12 | 0.233 | 6 | 0.067 | −0.167 less toxic |
+| `army_1tkp` | 4 | 0.175 | 3 | 0.383 | **+0.208** more toxic |
+| **Mean** | | **0.231** | | **0.266** | **+0.036** |
+
+**Three of four returned more toxic than they left.** Wilcoxon p=0.625 at n=4 — this is
+descriptive, not a test.
+
+### What this Day-2 result can and cannot bear
+
+It is 32 messages from 4 people, one arm, no control, and the sessions were **11 days
+apart rather than consecutive**. It cannot support a persistence claim in either
+direction as a confirmatory result.
+
+What it does do is remove the assumption that the effect obviously persists. The
+available evidence points the other way, and the honest framing is that
+**the effect is state-dependent: present while the intervention is, gone by the time
+people come back.** That is a contingency finding rather than a failure — and it is the
+kind of "under what conditions" result that was asked for. It also makes the Day-2
+design decision consequential rather than a formality: if the real protocol runs
+consecutive days, it is testing something the pilot has not tested.
+
+---
+
+## 4. Significance — the honest answer
+
+Pooling both cohorts doubles the effective sample to 10 participants. It is still not
+enough.
 
 | Test | Unit | Result |
 |---|---|---|
-| Wilcoxon signed-rank | 5 participants | W=2.0, **p=0.188** |
-| Paired *t* | 5 participants | t(4)=2.30, **p=0.083**, dz=1.03 |
-| Within-participant permutation (20k) | 120 messages | **p=0.011** |
-| OLS + linear time trend, cluster-robust | 9 clusters | b=−0.192, **p=0.108** |
+| Wilcoxon signed-rank (pooled) | 10 participants | W=12.0, **p=0.131** |
+| Paired *t* (pooled) | 10 participants | t(9)=2.08, **p=0.067**, dz=0.66 |
+| Wilcoxon (AUG16 only) | 5 participants | W=2.0, p=0.188 |
+| Paired *t* (AUG16 only) | 5 participants | t(4)=2.30, p=0.083, dz=1.03 |
+| Within-participant permutation (AUG16) | 120 messages | **p=0.011** |
+| OLS + linear time trend, cluster-robust (AUG16) | 9 clusters | b=−0.192, **p=0.108** |
 
-These disagree because they make different assumptions, and the disagreement is
-informative rather than something to resolve by picking the smallest number:
+The tests disagree because they make different assumptions, and the disagreement is
+itself informative:
 
 - The **permutation test (p=0.011)** treats messages within a participant as
-  exchangeable. It has the most power and the strongest assumption — it ignores that
-  toxicity drifts over time within a session, so some of what it reads as a phase
-  effect is time.
-- The **paired tests (p=0.083–0.188)** respect clustering and are the defensible
-  confirmatory tests, but with n=5 they are close to powerless. dz=1.03 is a large
-  effect that this sample simply cannot certify.
-- The **time-adjusted model (p=0.108)** is the one closest to the real question, and it
-  is the one that should be quoted alongside its caveat: with 9 clusters, cluster-robust
-  standard errors are anti-conservative, so even that p-value is optimistic.
+  exchangeable. Most power, strongest assumption — it ignores that toxicity drifts over
+  time within a session, so part of what it reads as a phase effect is time.
+- The **paired tests** respect clustering and are the defensible confirmatory tests, but
+  are close to powerless at n=5–10.
+- The **time-adjusted model** is closest to the real question; with 9 clusters,
+  cluster-robust standard errors are anti-conservative, so even p=0.108 is optimistic.
 
-**Recommended reporting: effect size and interval, not a significance claim.** The
-pilot is powered to estimate, not to test. Presenting p=0.011 as the result would not
-survive review.
+**Recommended reporting: effect size and interval, plus the cross-cohort agreement — not
+a significance claim.** The pilot is powered to estimate, not to test. Leading with
+p=0.011 would not survive review, because the test that produces it is the one that
+assumes away the time confound.
 
 ---
 
-## 4. The identification problem, stated plainly
+## 5. The identification problem, stated plainly
 
-Phase flipped at a single instant — last free message 11:59, first task message 12:00 —
-and **nothing else in the study differed at that instant**, because every participant
-was in the EXPT arm. So "the Community Note calmed people" and "an hour of arguing had
-passed and people were tiring" predict exactly the same data.
+In both cohorts the phase flipped at a single instant, and **nothing else differed at
+that instant**, because every participant was in the EXPT arm. So <em>"the Community
+Note calmed people"</em> and <em>"an hour of arguing had passed and people were
+tiring"</em> predict exactly the same data.
 
 The design already solves this: the control arm sits through the same clock time with a
-matched-salience poll instead of the note. That contrast is the estimand in `PLAN.md`
-§17.1. It was not run on 16 August. **Until a CTRL cohort runs, the drop is a promising
-descriptive result and cannot be causal.**
+matched-salience poll instead of the note. **That cohort has never been run.**
 
-The rising pre-trend and the attrition direction both argue against pure fatigue, and
-they are worth reporting, but neither substitutes for the control group.
+The replication across two sessions, the rising pre-trend, and the direction of attrition
+all argue against pure fatigue, and all belong in the write-up. None of them substitutes
+for the control group. Note that fatigue also predicts the Day-2 rebound perfectly well —
+people arrive fresh and get heated again — so the persistence result does not break the
+tie either.
 
 ---
 
-## 5. Behaviour moved; attitudes did not
+## 6. Behaviour moved; attitudes did not
 
-This is the most interesting thing in the pilot, and it directly supports the
-supervision point that self-report is the weaker evidence.
+The most interesting thing in the pilot, and it supports the point that self-report is
+the weaker evidence.
 
-| Survey 1 measure (n=5, end of Day 1) | Mean |
+| Survey 1 measure (AUG16, n=5, end of Day 1) | Mean |
 |---|---|
 | Note seen as legitimate | **1.87 / 5** |
 | Reactance — "made me want to argue the opposite" | **4.35 / 5** |
@@ -136,111 +192,131 @@ supervision point that self-report is the weaker evidence.
 | Session felt heated | 4.80 / 5 |
 | Outgroup similarity | 2.95 / 5 |
 
-Three of five respondents rated the rival fandom **0**. Participants rejected the note
-as illegitimate and reported high reactance — and their behaviour still got measurably
-less toxic in the same window.
+Three of five rated the rival fandom **0**. Participants rejected the note as
+illegitimate and reported high reactance — and their behaviour still got measurably less
+toxic in the same window.
 
 The framing this supports is **compliance without persuasion**: the intervention changed
-what people did without changing what they thought. That is a legitimate and publishable
-CHI finding, and it is more defensible than an attitude-change claim the data does not
-support. It also means the mechanism is unlikely to be the superordinate-identity route
-in the current draft — worth reconciling with the theory section.
+what people did without changing what they thought. That is legitimate and publishable,
+and more defensible than an attitude-change claim the data contradicts. It also sits
+naturally with the Day-2 rebound — a behavioural effect with no attitudinal footing is
+exactly the kind that should decay once the intervention is removed.
+
+It does mean the mechanism is unlikely to be the superordinate-identity route in the
+current draft. Worth reconciling with the theory section.
 
 ---
 
-## 6. Objective, non-self-report evidence available now
+## 7. Objective, non-self-report evidence
 
-The reply graph reconstructs cleanly from `thread_id`: 95 directed edges, 29 dyads.
+The reply graph reconstructs cleanly from `thread_id`: 95 directed edges, 29 dyads
+(AUG16).
 
-- **77% of replies are cross-fandom** (73 of 95) — the seeding produced genuine
-  intergroup contact rather than two parallel monologues.
+- **77% of replies cross the fandom line** (73 of 95) — the seeding produced genuine
+  intergroup contact, not two parallel monologues.
 - **Cross-fandom replies are 2.1× as toxic as within-fandom replies** (0.384 vs 0.186).
-  This is an objective, behavioural measure of intergroup hostility with no self-report
+  An objective, behavioural measure of intergroup hostility with no self-report
   component.
-- **Conflict is concentrated in one dyad.** One BLINK–ARMY pair accounts for 28 of 95
+- **Conflict concentrates in one dyad.** A single BLINK–ARMY pair accounts for 28 of 95
   replies (29%). The top three participants produced 71% of all messages.
 
-That last point matters for the analysis plan: with hostility this concentrated,
-participant-level means are dominated by a couple of people, and the per-participant
-network plot requested in supervision will show that clearly. It also means group-level
-means understate what a *typical* participant experienced.
+With hostility this concentrated, participant-level means are dominated by a couple of
+people, and group means understate what a *typical* participant experienced. The
+per-participant network plot will show this immediately.
 
-**Topic-shifting is visible in the transcript** and is worth coding qualitatively —
-the argument drifts off K-pop into unrelated flame material (esports teams, a rival
-boy group, repetitive spam), which is a plausible escalation route rather than noise.
+**Topic-shifting is visible in the transcript** and is worth coding qualitatively — the
+argument drifts off K-pop into unrelated flame material (esports teams, a rival boy
+group, repetitive spam), which is a plausible escalation route rather than noise.
 
 ---
 
-## 7. Requests that the current data cannot meet
+## 8. Participants worked out they were in a study
+
+Two AUG16 messages, both inside the task phase — the window the primary result depends
+on:
+
+> 谁家好人骂人还打引号，要是做什么实验，你这条数据估计都污染池子
+> *"Who puts quotation marks around an insult? If this is some kind of experiment, your
+> data pool is probably contaminated."* — BLINK, 12:00
+
+> 怀疑有AI
+> *"Suspect there's an AI here."* — ARMY, 12:07
+
+Demand characteristics are a direct threat to a behavioural measure, and the merged-note
+text is the most likely tell. This needs handling in the debrief protocol and reporting
+in the limitations — not omission.
+
+---
+
+## 9. Requests the current data cannot meet
 
 | Request | Status |
 |---|---|
-| An objective difference on **Day 2** | **Not possible.** No Day-2 session was run. There are zero rows. |
-| Day-1 vs Day-2 persistence | **Not possible.** Same reason. |
-| Effect of the intervention vs control | **Not possible.** No CTRL cohort exists. |
-| N=30 | Currently 9 active participants. Needs roughly 3–4 more cohorts. |
-| Interview data in the discussion | No interviews conducted yet. |
+| Intervention vs control | **Impossible.** No CTRL cohort has ever been run. |
+| A *clean* Day-2 result | **Not from this.** 4 people, 11-day gap, no control. Directionally: no persistence. |
+| Day 2 for AUG16 specifically | **Impossible.** Zero rows. |
+| N = 30 | 13 participants have posted across both usable cohorts. Needs ~3 more. |
+| Interview material | No interviews conducted yet. |
 
 On interviewing: the guidance to interview everyone or run a focus group rather than
-selecting participants is right, and it is worth deciding *before* recruitment, because
+selecting participants is right, and should be decided *before* recruitment, because
 consent language and session length both depend on it.
 
 ---
 
-## 8. One methodological caution, recorded deliberately
+## 10. One methodological caution, recorded deliberately
 
-Some of the analysis guidance amounts to choosing where to measure after seeing the
-results — testing checkpoints until a difference appears, or falling back to "end of
-Day 1" as the comparison point if Day 2 shows nothing. Both are ordinary exploratory
-practice, and both stop being defensible the moment they are written up as confirmatory.
-This is the exposure already logged in `REVIEW_RISKS.md` §1–2, and CHI reviewers do ask.
+Some analysis guidance amounts to choosing where to measure after seeing the results —
+testing checkpoints until a difference appears, or falling back to "end of Day 1" as the
+comparison point if Day 2 shows nothing. Both are ordinary exploratory practice, and both
+stop being defensible the moment they are written up as confirmatory. This is the
+exposure already logged in `REVIEW_RISKS.md` §1–2, and CHI reviewers do ask.
 
 The workable version: **fix the checkpoints and the primary contrast in writing before
-the next cohort runs**, then report anything else as exploratory and clearly labelled.
+the next cohort runs**, then report everything else as exploratory and clearly labelled.
 Naming an expected pattern in advance — the 10 → 5 → 6 → 7 shape discussed in
 supervision — is a *prediction*, and pre-registering it is exactly the right move. It
-becomes a problem only if the cut points are moved afterwards to fit what came back.
+becomes a problem only if the cut points move afterwards to fit what came back.
 
-The exploratory checkpoint series from AUG16, reported as descriptive only:
+The exploratory checkpoint series from AUG16, descriptive only:
 
-| Checkpoint | n | mean toxicity |
+| Checkpoint | *n* | mean toxicity |
 |---|---|---|
 | Free, first half (11:10–11:30) | 44 | 0.302 |
 | Free, second half (11:30–11:59) | 45 | 0.397 |
 | After notes published (12:03–12:20) | 30 | 0.215 |
 
-The predicted shape — escalation, then a drop at the intervention — is present. It just
-cannot be certified from one arm of one cohort.
+The predicted shape — escalation, then a drop at the intervention — is present in both
+cohorts. It still cannot be certified without a control arm.
 
 ---
 
-## 9. What to change before the next run
+## 11. What to change before the next run
 
 Ordered by how much each one buys.
 
 1. **Run a CTRL cohort.** Without it there is no causal claim, no matter how many
-   participants are added. This is the single highest-value change.
-2. **Run Day 2.** It is a stated contribution and there is currently no data at all.
+   participants are added. Single highest-value change.
+2. **Run a real Day 2, on consecutive days.** The only Day-2 data has an 11-day gap and
+   4 participants. If the protocol says two days, test two days.
 3. **Fix the primary contrast and checkpoints in writing first**, so the confirmatory
    analysis is decided before the data exists.
-4. **Raise participation, not just registration.** 8 of 17 registered participants never
-   posted. Recruitment counts are not sample size; the effective n for the paired
-   analysis was 5.
-5. **Improve scorer resolution.** The toxicity scale is producing only 8 distinct values
-   and 46% of messages score exactly 0.3, which compresses real variation and costs
-   power. Either widen the rubric or move to a continuous score.
-6. **Address participant suspicion.** At least two messages show participants guessing
-   they were in a study or that AI was involved ("怀疑有AI", and one explicitly noting
-   their data would contaminate an experiment). Demand characteristics are a live threat
-   to the behavioural measure and should be handled in the debrief protocol and reported.
+4. **Raise participation, not just registration.** 8 of 17 AUG16 registrants and 21 of 27
+   TEST1 registrants never posted. Recruitment counts are not sample size.
+5. **Improve scorer resolution.** The toxicity scale produces only 8 distinct values and
+   46% of messages score exactly 0.30, which compresses real variation and costs power
+   directly.
+6. **Add a suspicion probe to the debrief**, so demand characteristics are measured
+   rather than inferred from stray messages.
 
 ---
 
-## 10. Reproducing and extending
+## 12. Reproducing
 
 `analysis/analyze_pilot.py` pulls the same export as the dashboard's **Export JSON**
-button and prints every number in this memo. It takes `--cohort`, `--input` for a saved
-dump, and `--json` to save one.
+button and prints every number in this memo. `--cohort` gives single-cohort detail;
+`--compare A,B` pools Day 1 and reports whatever Day 2 exists. `--input` reads a saved
+dump, `--json` saves one.
 
 Note for anyone writing their own script: Cloudflare rejects the default
 `Python-urllib` user agent with a 403 before the request reaches the Worker. Send a real

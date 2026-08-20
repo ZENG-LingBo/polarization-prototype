@@ -349,10 +349,122 @@ def report(data, cohort, iters, seed):
           f"of messages.")
 
 
+# ----------------------------------------------------------------- replication
+def compare(data, cohorts):
+    """Pool the Day-1 contrast across cohorts, then report whatever Day-2 exists.
+
+    Each cohort is an independent session, so agreement between them is the
+    closest thing this design has to a replication.
+    """
+    sets = {c: messages(data, c) for c in cohorts}
+    sets = {c: m for c, m in sets.items() if m}
+    if not sets:
+        sys.exit("none of those cohorts have participant messages")
+
+    rule("DAY-1 CONTRAST ACROSS COHORTS")
+    print(f"  {'cohort':<9} {'free n':>7} {'free':>8} {'task n':>7} {'task':>8} "
+          f"{'drop':>8} {'rel':>6}")
+
+    def phase_tox(m, ph):
+        return [x["tox"] for x in m if x["day"] == 1 and x["phase"] == ph]
+
+    for c, m in sets.items():
+        f, t = phase_tox(m, "free"), phase_tox(m, "task")
+        if not (f and t):
+            print(f"  {c:<9} {len(f):>7} {np.mean(f) if f else float('nan'):>8.4f} "
+                  f"{len(t):>7} {'—':>8} {'—':>8} {'—':>6}")
+            continue
+        print(f"  {c:<9} {len(f):>7} {np.mean(f):>8.4f} {len(t):>7} {np.mean(t):>8.4f} "
+              f"{np.mean(f) - np.mean(t):>+8.4f} {100 * (np.mean(f) - np.mean(t)) / np.mean(f):>5.0f}%")
+
+    pf = [x for m in sets.values() for x in phase_tox(m, "free")]
+    pt = [x for m in sets.values() for x in phase_tox(m, "task")]
+    if pf and pt:
+        print(f"  {'POOLED':<9} {len(pf):>7} {np.mean(pf):>8.4f} {len(pt):>7} "
+              f"{np.mean(pt):>8.4f} {np.mean(pf) - np.mean(pt):>+8.4f} "
+              f"{100 * (np.mean(pf) - np.mean(pt)) / np.mean(pf):>5.0f}%")
+
+        byp = collections.defaultdict(lambda: {"free": [], "task": []})
+        for m in sets.values():
+            for x in m:
+                if x["day"] == 1 and x["phase"] in ("free", "task"):
+                    byp[x["pid"]][x["phase"]].append(x["tox"])
+        both = {p: v for p, v in byp.items() if v["free"] and v["task"]}
+        if len(both) >= 3:
+            a = np.array([np.mean(v["free"]) for v in both.values()])
+            b = np.array([np.mean(v["task"]) for v in both.values()])
+            w, t = stats.wilcoxon(a, b), stats.ttest_rel(a, b)
+            print(f"\n  pooled participants in both phases: {len(both)}")
+            print(f"  participant means  free={a.mean():.4f}  task={b.mean():.4f}  "
+                  f"delta={np.mean(a - b):+.4f}")
+            print(f"  Wilcoxon  W={w.statistic:.1f}  p={w.pvalue:.4f}")
+            print(f"  paired t  t({len(a) - 1})={t.statistic:.3f}  p={t.pvalue:.4f}  "
+                  f"dz={np.mean(a - b) / np.std(a - b, ddof=1):.3f}")
+
+    # ------------------------------------------------------------------ day 2
+    rule("DAY 2 — PERSISTENCE")
+    any_d2 = False
+    for c, m in sets.items():
+        d2 = [x for x in m if x["day"] == 2]
+        if not d2:
+            print(f"  {c:<9} no Day-2 rows.")
+            continue
+        any_d2 = True
+        d1f = [x for x in m if x["day"] == 1 and x["phase"] == "free"]
+        d1t = [x for x in m if x["day"] == 1 and x["phase"] == "task"]
+        last1 = max(x["created_at"] for x in m if x["day"] == 1)
+        gap = (min(x["created_at"] for x in d2) - last1) / 86400000
+        print(f"  {c} — Day 1 {hhmm(min(x['created_at'] for x in m))}, "
+              f"Day 2 starts {gap:.1f} days later")
+        for nm, g in (("Day 1 free (baseline)", d1f),
+                      ("Day 1 task (intervention)", d1t),
+                      ("Day 2 free (persistence)", d2)):
+            if g:
+                print(f"    {nm:<28} n={len(g):>3}  "
+                      f"mean={np.mean([x['tox'] for x in g]):.4f}  "
+                      f"parts={len({x['pid'] for x in g})}")
+        if d1t and d2:
+            print(f"    Day1 task -> Day2 free : {np.mean([x['tox'] for x in d1t]):.4f} -> "
+                  f"{np.mean([x['tox'] for x in d2]):.4f} "
+                  f"({np.mean([x['tox'] for x in d2]) - np.mean([x['tox'] for x in d1t]):+.4f})")
+        if d1f and d2:
+            print(f"    Day1 free -> Day2 free : {np.mean([x['tox'] for x in d1f]):.4f} -> "
+                  f"{np.mean([x['tox'] for x in d2]):.4f} "
+                  f"({np.mean([x['tox'] for x in d2]) - np.mean([x['tox'] for x in d1f]):+.4f})"
+                  f"   <- like-for-like")
+
+        bd = collections.defaultdict(lambda: {1: [], 2: []})
+        for x in m:
+            if x["day"] in (1, 2):
+                bd[x["pid"]][x["day"]].append(x["tox"])
+        pairs = {p: v for p, v in bd.items() if v[1] and v[2]}
+        if pairs:
+            hand = {p["id"]: p["handle"] for p in data["participants"]}
+            print(f"\n    same people, both days (n={len(pairs)}):")
+            print(f"      {'handle':<14} {'d1 n':>5} {'d1':>8} {'d2 n':>5} {'d2':>8} {'change':>9}")
+            u, v2 = [], []
+            for p, val in sorted(pairs.items(), key=lambda kv: -len(kv[1][1])):
+                x, yy = np.mean(val[1]), np.mean(val[2])
+                u.append(x); v2.append(yy)
+                print(f"      {hand.get(p, '?'):<14} {len(val[1]):>5} {x:>8.4f} "
+                      f"{len(val[2]):>5} {yy:>8.4f} {yy - x:>+9.4f}"
+                      f"  {'MORE toxic' if yy > x else 'less toxic'}")
+            u, v2 = np.array(u), np.array(v2)
+            print(f"      mean {u.mean():.4f} -> {v2.mean():.4f} "
+                  f"({np.mean(v2 - u):+.4f});  {int(np.sum(v2 > u))} of {len(u)} more toxic")
+            if len(u) >= 3:
+                w2 = stats.wilcoxon(u, v2)
+                print(f"      Wilcoxon W={w2.statistic:.1f} p={w2.pvalue:.4f} "
+                      f"(descriptive at this n)")
+    if not any_d2:
+        print("  No cohort has Day-2 rows. Persistence is unanswerable from this data.")
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__,
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--cohort", default="AUG16")
+    ap.add_argument("--compare", help="comma-separated cohorts: pool Day 1, report Day 2")
     ap.add_argument("--base", default=DEFAULT_BASE)
     ap.add_argument("--input", help="analyse a saved dump instead of fetching")
     ap.add_argument("--json", help="write the raw dump here after fetching")
@@ -364,7 +476,10 @@ def main():
     if args.json:
         json.dump(data, open(args.json, "w"), ensure_ascii=False)
         print(f"raw dump written to {args.json}")
-    report(data, args.cohort, args.iters, args.seed)
+    if args.compare:
+        compare(data, [c.strip() for c in args.compare.split(",") if c.strip()])
+    else:
+        report(data, args.cohort, args.iters, args.seed)
 
 
 if __name__ == "__main__":
