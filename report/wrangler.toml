@@ -1,0 +1,22 @@
+# Static-assets Worker serving the pilot readout.
+#
+# Deliberately a SEPARATE Worker from the participant site: kpop.lbzeng.com serves
+# study.html, and this report spells out the hypothesis, the manipulation and the
+# expected direction of the effect. A participant who found it mid-study would be
+# unblinded. Keep it on its own hostname and off the participant domain.
+#
+#   cd report && npx wrangler deploy
+#
+# Then attach a custom domain (once, in the dashboard):
+#   Workers & Pages -> defuselab-report -> Settings -> Domains & Routes
+#   -> Add -> Custom Domain -> report.lbzeng.com
+# DNS is created automatically because the zone is already on Cloudflare.
+#
+# The workers.dev URL works too, but it is blocked by the Great Firewall, so
+# mainland readers need the custom domain.
+
+name = "defuselab-report"
+compatibility_date = "2026-08-01"
+
+[assets]
+directory = "./public"

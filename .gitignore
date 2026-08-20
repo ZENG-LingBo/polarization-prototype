@@ -5,3 +5,8 @@ node_modules/
 .dev.vars
 **/.dev.vars
 .wrangler/
+
+# Generated data exports — participant data, never commit these
+study_data.txt
+*.dump.json
+sessions.json
