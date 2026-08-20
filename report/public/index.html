@@ -22,8 +22,8 @@
     --line-2:   #EBEFF2;
     --hot:      #BE3F2B;
     --hot-soft: #F6E4E0;
-    --cool:     #146B6D;
-    --cool-soft:#DCEDEC;
+    --cool:     #0891B2;
+    --cool-soft:#DDF1F7;
     --absent:   #7C848D;
     --absent-soft:#E7EAED;
     --shadow:   0 1px 2px rgba(21,27,35,.05), 0 8px 24px -16px rgba(21,27,35,.28);
@@ -43,10 +43,10 @@
       --ink-3:    #7E8892;
       --line:     #29313A;
       --line-2:   #212831;
-      --hot:      #E4735D;
+      --hot:      #D9614A;
       --hot-soft: #37211D;
-      --cool:     #4EB5B2;
-      --cool-soft:#122B2C;
+      --cool:     #189FC4;
+      --cool-soft:#0E2A33;
       --absent:   #939CA6;
       --absent-soft:#232A32;
       --shadow:   0 1px 2px rgba(0,0,0,.4), 0 8px 24px -16px rgba(0,0,0,.7);
@@ -60,10 +60,10 @@
     --ink-3:    #7E8892;
     --line:     #29313A;
     --line-2:   #212831;
-    --hot:      #E4735D;
+    --hot:      #D9614A;
     --hot-soft: #37211D;
-    --cool:     #4EB5B2;
-    --cool-soft:#122B2C;
+    --cool:     #189FC4;
+    --cool-soft:#0E2A33;
     --absent:   #939CA6;
     --absent-soft:#232A32;
     --shadow:   0 1px 2px rgba(0,0,0,.4), 0 8px 24px -16px rgba(0,0,0,.7);
@@ -296,8 +296,22 @@
     font-size: .88em; background: var(--line-2); padding: .1rem .35rem; border-radius: 2px;
   }
 
+  /* -------------------------------------------------------------------- tip */
+  .tip {
+    position: fixed; z-index: 40; pointer-events: none; opacity: 0;
+    background: var(--card); color: var(--ink);
+    border: 1px solid var(--line); border-radius: 3px;
+    box-shadow: 0 2px 4px rgba(0,0,0,.06), 0 12px 28px -14px rgba(0,0,0,.4);
+    padding: .5rem .65rem; font-size: .78rem; line-height: 1.45;
+    max-width: 17rem;
+  }
+  .tip b { font-family: "IBM Plex Mono", ui-monospace, monospace; font-weight: 600; }
+  .tip .m { color: var(--ink-2); font-family: "IBM Plex Mono", ui-monospace, monospace; }
+  .hit { cursor: default; }
+
   @media (prefers-reduced-motion: no-preference) {
-    .bar-rect { transition: opacity .18s ease; }
+    .bar-rect, .slope-g, .edge, .node { transition: opacity .15s ease; }
+    .tip { transition: opacity .12s ease; }
   }
 </style>
 </head>
@@ -452,6 +466,25 @@
           value is 0.218.</li>
       </ul>
     </div>
+
+    <figure>
+      <div class="fig-head">
+        <h3>Every participant who posted in both phases</h3>
+        <p class="sub">Pooled across AUG16 and TEST1 — 10 participants, Day 1</p>
+      </div>
+      <div class="fig-body"><div id="slopes"></div></div>
+      <div class="legend">
+        <span><i class="swatch" style="background:var(--cool)"></i>Less toxic in the task phase — 8</span>
+        <span><i class="swatch" style="background:var(--hot)"></i>More toxic — 2</span>
+      </div>
+      <figcaption>
+        Eight of ten fell. The two that rose are the lowest-volume participants in the
+        set — <code>army_1tkp</code> wrote 2 messages then 2, <code>army_6b8w</code> 19 then
+        5 — so their means are the least stable. The heaviest poster,
+        <code>blink_nibj</code> (27 then 7), barely moved: the group effect is not one
+        person calming down.
+      </figcaption>
+    </figure>
 
     <div class="tbl-wrap">
       <table>
@@ -695,6 +728,23 @@
       </p>
     </div>
 
+    <figure>
+      <div class="fig-head">
+        <h3>Who replied to whom</h3>
+        <p class="sub">AUG16 — 9 participants, 95 directed replies. Column = fandom, circle size = messages written, line width = replies sent.</p>
+      </div>
+      <div class="fig-body"><div id="net"></div></div>
+      <div class="legend">
+        <span><i class="swatch" style="background:var(--hot)"></i>Cross-fandom reply — 73</span>
+        <span><i class="swatch" style="background:var(--ink-3)"></i>Within-fandom reply — 22</span>
+      </div>
+      <figcaption>
+        Almost every line crosses the middle. One pair — <code>blink_nibj</code> and
+        <code>army_15ie</code> — carries 28 of the 95 replies between them, and the three
+        largest circles account for 71% of all messages written. One self-reply is omitted.
+      </figcaption>
+    </figure>
+
     <div class="pull">
       <div><span class="n">77%</span><span class="lbl">of replies cross the fandom line — genuine contact, not parallel monologues</span></div>
       <div><span class="n hot">2.1×</span><span class="lbl">cross-fandom replies are this much more toxic (0.384 vs 0.186)</span></div>
@@ -774,6 +824,34 @@
     </div>
   </section>
 
+  <!-- ----------------------------------------------------------- measurement -->
+  <section>
+    <div class="eyebrow"><span>Measurement</span><span class="status s-maybe">Costing power</span></div>
+    <h2>The scorer only has eight settings</h2>
+    <div class="col">
+      <p>
+        Across both cohorts the toxicity scale returns just ten distinct values on Day 1,
+        and nearly half of all messages land on exactly 0.30. A measure that compresses
+        this hard has less room to show a difference — some of the missing significance is
+        instrument, not absent effect.
+      </p>
+    </div>
+
+    <figure>
+      <div class="fig-head">
+        <h3>Distribution of toxicity scores</h3>
+        <p class="sub">201 Day-1 messages, AUG16 + TEST1</p>
+      </div>
+      <div class="fig-body"><div id="dist"></div></div>
+      <figcaption>
+        The spike at 0.30 is the model's default landing spot, not a real mode in the data.
+        Widening the rubric or moving to a continuous score would recover resolution
+        cheaply — and it is the one recommendation on the next-steps list that costs
+        nothing but a prompt change.
+      </figcaption>
+    </figure>
+  </section>
+
   <!-- ------------------------------------------------------------- next steps -->
   <section>
     <div class="eyebrow"><span>Before the next run</span><span class="status s-yes">Actionable</span></div>
@@ -821,6 +899,7 @@
     </p>
   </footer>
 </div>
+<div class="tip" id="tip" role="status" aria-live="polite"></div>
 
 <script>
 (function () {
@@ -987,6 +1066,222 @@
 
   p.push("</svg>");
   document.getElementById("traj").innerHTML = p.join("");
+})();
+
+/* Shared tooltip. Every chart on this page is hover-readable rather than relying
+   on labels alone — there are more marks than can carry a printed number. */
+const TIP = (() => {
+  const el = document.getElementById("tip");
+  return {
+    show(html, ev) {
+      el.innerHTML = html; el.style.opacity = "1";
+      const r = el.getBoundingClientRect();
+      let x = ev.clientX + 14, y = ev.clientY + 14;
+      if (x + r.width > innerWidth - 8) x = ev.clientX - r.width - 14;
+      if (y + r.height > innerHeight - 8) y = ev.clientY - r.height - 14;
+      el.style.left = x + "px"; el.style.top = y + "px";
+    },
+    hide() { el.style.opacity = "0"; }
+  };
+})();
+function bindTips(root) {
+  root.querySelectorAll("[data-tip]").forEach(n => {
+    n.addEventListener("pointerenter", e => TIP.show(n.dataset.tip, e));
+    n.addEventListener("pointermove", e => TIP.show(n.dataset.tip, e));
+    n.addEventListener("pointerleave", TIP.hide);
+  });
+}
+const esc2 = s => String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/"/g, "&quot;");
+
+/* ---------------------------------------- participant slopes, free -> task */
+(function () {
+  const S = [
+    {h:"blink_nibj",c:"AUG16",free:0.4519,task:0.4429,nf:27,nt:7},
+    {h:"blink_lyjx",c:"AUG16",free:0.4444,task:0.2000,nf:9,nt:5},
+    {h:"blink_9565",c:"TEST1",free:0.4100,task:0.3000,nf:5,nt:1},
+    {h:"blink_rwv0",c:"TEST1",free:0.3588,task:0.1429,nf:17,nt:7},
+    {h:"army_8fxz", c:"TEST1",free:0.3321,task:0.2000,nf:14,nt:4},
+    {h:"army_15ie", c:"AUG16",free:0.3306,task:0.0889,nf:18,nt:9},
+    {h:"army_1v3n", c:"AUG16",free:0.3000,task:0.1000,nf:4,nt:5},
+    {h:"army_pz0q", c:"TEST1",free:0.2636,task:0.1333,nf:11,nt:6},
+    {h:"army_6b8w", c:"AUG16",free:0.2474,task:0.2700,nf:19,nt:5},
+    {h:"army_1tkp", c:"TEST1",free:0.0500,task:0.3000,nf:2,nt:2}
+  ];
+  const W=700,H=350,M={top:26,right:130,bottom:46,left:170},
+        iw=W-M.left-M.right, ih=H-M.top-M.bottom, yMax=0.5;
+  const y=v=>M.top+ih-(v/yMax)*ih, xL=M.left, xR=M.left+iw;
+
+  /* Several participants sit within a few thousandths of each other, so raw label
+     positions overlap. Push text apart to a minimum gap; the dots stay truthful. */
+  function decollide(vals, gap) {
+    const it = vals.map((v,i)=>({i, y:y(v)})).sort((a,b)=>a.y-b.y);
+    for (let k=1;k<it.length;k++)
+      if (it[k].y - it[k-1].y < gap) it[k].y = it[k-1].y + gap;
+    const over = it[it.length-1].y - (M.top+ih);
+    if (over > 0) it.forEach(o=>o.y -= over);
+    const out=[]; it.forEach(o=>out[o.i]=o.y); return out;
+  }
+  const lY = decollide(S.map(d=>d.free), 13);
+  const rY = decollide(S.map(d=>d.task), 13);
+
+  const p=[];
+  p.push(`<svg viewBox="0 0 ${W} ${H}" width="100%" role="img" style="min-width:620px;display:block"
+    aria-label="Slope chart: 10 participants, free phase to task phase. Eight fall, two rise.">`);
+  for (let v=0; v<=yMax+1e-9; v+=0.1) {
+    p.push(`<line x1="${xL}" x2="${xR}" y1="${y(v)}" y2="${y(v)}" stroke="var(--line)"
+      stroke-width="1" ${v===0?"":'stroke-dasharray="2 4"'} />`);
+    p.push(`<text x="26" y="${y(v)+4}" text-anchor="start" font-family="IBM Plex Mono, monospace"
+      font-size="10" fill="var(--ink-3)">${v.toFixed(1)}</text>`);
+  }
+  p.push(`<line x1="${xL}" x2="${xR}" y1="${y(0.3189)}" y2="${y(0.2178)}" stroke="var(--ink-3)"
+    stroke-width="7" stroke-linecap="round" opacity="0.2" />`);
+
+  S.forEach((d,i) => {
+    const down = d.task < d.free, col = down ? "var(--cool)" : "var(--hot)";
+    const tip = `<b>${esc2(d.h)}</b><br><span class="m">${d.c}</span><br>
+      free ${d.free.toFixed(3)} <span class="m">(n=${d.nf})</span><br>
+      task ${d.task.toFixed(3)} <span class="m">(n=${d.nt})</span><br>
+      <b>${down?"−":"+"}${Math.abs(d.free-d.task).toFixed(3)}</b>`;
+    p.push(`<g class="slope-g hit" data-tip="${esc2(tip)}">
+      <line x1="${xL}" x2="${xR}" y1="${y(d.free)}" y2="${y(d.task)}" stroke="${col}"
+        stroke-width="14" opacity="0" />
+      <line x1="${xL}" x2="${xR}" y1="${y(d.free)}" y2="${y(d.task)}" stroke="${col}"
+        stroke-width="2" opacity="0.9" />
+      <circle cx="${xL}" cy="${y(d.free)}" r="4.5" fill="${col}" stroke="var(--card)" stroke-width="1.5"/>
+      <circle cx="${xR}" cy="${y(d.task)}" r="4.5" fill="${col}" stroke="var(--card)" stroke-width="1.5"/>
+      <text x="${xL-42}" y="${lY[i]+3.5}" text-anchor="end" font-family="IBM Plex Mono, monospace"
+        font-size="10" fill="var(--ink-2)">${esc2(d.h)}</text>
+      <text x="${xL-11}" y="${lY[i]+3.5}" text-anchor="end" font-family="IBM Plex Mono, monospace"
+        font-size="10" font-weight="600" fill="${col}">${d.free.toFixed(2)}</text>
+      <text x="${xR+11}" y="${rY[i]+3.5}" text-anchor="start" font-family="IBM Plex Mono, monospace"
+        font-size="10" font-weight="600" fill="${col}">${d.task.toFixed(2)}</text>
+    </g>`);
+  });
+  [["FREE",xL],["TASK",xR]].forEach(([t,x])=>{
+    p.push(`<text x="${x}" y="${M.top+ih+24}" text-anchor="middle" font-family="IBM Plex Mono, monospace"
+      font-size="10" letter-spacing="0.09em" font-weight="600" fill="var(--ink-2)">${t}</text>`);
+  });
+  p.push(`<text x="${(xL+xR)/2}" y="${y(0.2683)-11}" text-anchor="middle"
+    font-family="IBM Plex Mono, monospace" font-size="10" fill="var(--ink-3)">pooled mean</text>`);
+  p.push("</svg>");
+  const host=document.getElementById("slopes"); host.innerHTML=p.join(""); bindTips(host);
+})();
+
+/* -------------------------------------------------- AUG16 reply network */
+(function () {
+  const N=[
+    {id:"p_bjggrb",h:"blink_nibj",f:"BLINK",m:34,t:0.450},
+    {id:"p_mksir0",h:"army_15ie", f:"ARMY", m:27,t:0.250},
+    {id:"p_2qjpj9",h:"army_6b8w", f:"ARMY", m:24,t:0.252},
+    {id:"p_mtiw8h",h:"blink_lyjx",f:"BLINK",m:14,t:0.357},
+    {id:"p_e0p39j",h:"army_1v3n", f:"ARMY", m:9, t:0.189},
+    {id:"p_qswoiu",h:"army_8j0l", f:"ARMY", m:5, t:0.380},
+    {id:"p_spvw42",h:"army_6duy", f:"ARMY", m:4, t:0.225},
+    {id:"p_8gq1hj",h:"army_ze1k", f:"ARMY", m:2, t:0.100},
+    {id:"p_nc950l",h:"blink_g6zj",f:"BLINK",m:1, t:0.100}
+  ];
+  const E=[
+    ["p_bjggrb","p_mksir0",17,1],["p_mksir0","p_bjggrb",11,1],["p_bjggrb","p_2qjpj9",10,1],
+    ["p_2qjpj9","p_bjggrb",8,1],["p_mtiw8h","p_bjggrb",4,0],["p_2qjpj9","p_mksir0",4,0],
+    ["p_e0p39j","p_bjggrb",4,1],["p_mksir0","p_e0p39j",4,0],["p_bjggrb","p_mtiw8h",3,0],
+    ["p_mtiw8h","p_mksir0",3,1],["p_qswoiu","p_bjggrb",3,1],["p_mtiw8h","p_e0p39j",3,1],
+    ["p_mksir0","p_2qjpj9",2,0],["p_2qjpj9","p_mtiw8h",2,1],["p_mtiw8h","p_2qjpj9",2,1],
+    ["p_e0p39j","p_mksir0",2,0],["p_8gq1hj","p_mtiw8h",1,1],["p_mksir0","p_8gq1hj",1,0],
+    ["p_qswoiu","p_nc950l",1,1],["p_spvw42","p_nc950l",1,1],["p_spvw42","p_bjggrb",1,1],
+    ["p_bjggrb","p_spvw42",1,1],["p_spvw42","p_mtiw8h",1,1],["p_spvw42","p_2qjpj9",1,0],
+    ["p_mtiw8h","p_qswoiu",1,1],["p_bjggrb","p_qswoiu",1,1],["p_mksir0","p_mtiw8h",1,1],
+    ["p_e0p39j","p_mtiw8h",1,1]
+  ];
+  const W=700,H=430,M={top:44,bottom:20},xA=190,xB=510;
+  const cols={ARMY:N.filter(n=>n.f==="ARMY"),BLINK:N.filter(n=>n.f==="BLINK")};
+  const pos={};
+  Object.entries(cols).forEach(([f,list])=>{
+    const x=f==="ARMY"?xA:xB, span=H-M.top-M.bottom;
+    list.forEach((n,i)=>{ pos[n.id]={x, y:M.top + (span/(list.length+1))*(i+1), n}; });
+  });
+  const r=n=>4+Math.sqrt(n.m)*3.1;
+  const byId=Object.fromEntries(N.map(n=>[n.id,n]));
+  const p=[];
+  p.push(`<svg viewBox="0 0 ${W} ${H}" width="100%" role="img" style="min-width:600px;display:block"
+    aria-label="Reply network: ARMY on the left, BLINK on the right. 73 of 95 replies cross between the columns.">`);
+  [["ARMY",xA],["BLINK",xB]].forEach(([t,x])=>
+    p.push(`<text x="${x}" y="22" text-anchor="middle" font-family="IBM Plex Mono, monospace"
+      font-size="11" letter-spacing="0.11em" font-weight="600" fill="var(--ink-2)">${t}</text>`));
+  // merge both directions per pair so a dyad is one line
+  const seen={};
+  E.forEach(([a,b,n,cross])=>{ const k=[a,b].sort().join("|");
+    seen[k]=seen[k]||{n:0,cross,a:[a,b].sort()[0],b:[a,b].sort()[1]}; seen[k].n+=n; });
+  Object.values(seen).sort((x,y)=>x.n-y.n).forEach(e=>{
+    const A=pos[e.a], B=pos[e.b]; if(!A||!B) return;
+    const col=e.cross?"var(--hot)":"var(--ink-3)";
+    const same=A.x===B.x;
+    const bow = same ? (A.x===xA ? -58 : 58) : 0;   // outward, clear of the crossing lines
+    const d=same
+      ? `M${A.x},${A.y} C${A.x+bow},${A.y} ${B.x+bow},${B.y} ${B.x},${B.y}`
+      : `M${A.x},${A.y} C${(A.x+B.x)/2},${A.y} ${(A.x+B.x)/2},${B.y} ${B.x},${B.y}`;
+    const tip=`<b>${esc2(byId[e.a].h)}</b> ↔ <b>${esc2(byId[e.b].h)}</b><br>
+      <span class="m">${e.cross?"cross-fandom":"within-fandom"}</span><br>
+      <b>${e.n}</b> replies <span class="m">(${Math.round(e.n/95*100)}% of all)</span>`;
+    p.push(`<path class="edge hit" d="${d}" fill="none" stroke="${col}"
+      stroke-width="${Math.max(1.2, Math.sqrt(e.n)*1.5)}" opacity="${e.cross?0.62:0.42}"
+      stroke-linecap="round" data-tip="${esc2(tip)}" />`);
+  });
+  N.forEach(n=>{
+    const P=pos[n.id], rad=r(n);
+    const tip=`<b>${esc2(n.h)}</b><br><span class="m">${n.f}</span><br>
+      ${n.m} messages<br>mean toxicity <b>${n.t.toFixed(3)}</b>`;
+    p.push(`<circle class="node hit" cx="${P.x}" cy="${P.y}" r="${rad}" fill="var(--card)"
+      stroke="${n.f==="ARMY"?"var(--ink-2)":"var(--ink-2)"}" stroke-width="2" data-tip="${esc2(tip)}" />`);
+    p.push(`<circle class="node hit" cx="${P.x}" cy="${P.y}" r="${rad}" fill="var(--ink-2)"
+      opacity="0.14" data-tip="${esc2(tip)}" pointer-events="none" />`);
+    const left=n.f==="ARMY";
+    p.push(`<text x="${P.x + (left?-rad-9:rad+9)}" y="${P.y+3.5}" text-anchor="${left?"end":"start"}"
+      font-family="IBM Plex Mono, monospace" font-size="10" fill="var(--ink-2)">${esc2(n.h)}</text>`);
+    p.push(`<text x="${P.x}" y="${P.y+3.5}" text-anchor="middle" font-family="IBM Plex Mono, monospace"
+      font-size="${rad>11?10:8}" font-weight="600" fill="var(--ink)" pointer-events="none">${n.m}</text>`);
+  });
+  p.push("</svg>");
+  const host=document.getElementById("net"); host.innerHTML=p.join(""); bindTips(host);
+})();
+
+/* -------------------------------------------- toxicity score distribution */
+(function () {
+  const D=[[0.0,16],[0.1,53],[0.3,99],[0.4,1],[0.5,2],[0.6,7],[0.65,5],[0.75,2],[0.85,9],[1.0,7]];
+  const total=D.reduce((s,d)=>s+d[1],0);
+  const W=700,H=250,M={top:24,right:20,bottom:48,left:46},
+        iw=W-M.left-M.right, ih=H-M.top-M.bottom, yMax=100;
+  const y=v=>M.top+ih-(v/yMax)*ih;
+  const bw=iw/D.length - 8;
+  const p=[];
+  p.push(`<svg viewBox="0 0 ${W} ${H}" width="100%" role="img" style="min-width:540px;display:block"
+    aria-label="Histogram of toxicity scores: 99 of 201 messages score exactly 0.30.">`);
+  for (let v=0; v<=yMax; v+=25) {
+    p.push(`<line x1="${M.left}" x2="${W-M.right}" y1="${y(v)}" y2="${y(v)}" stroke="var(--line)"
+      stroke-width="1" ${v===0?"":'stroke-dasharray="2 4"'} />`);
+    p.push(`<text x="${M.left-9}" y="${y(v)+4}" text-anchor="end" font-family="IBM Plex Mono, monospace"
+      font-size="10" fill="var(--ink-3)">${v}</text>`);
+  }
+  D.forEach((d,i)=>{
+    const x=M.left + (iw/D.length)*i + 4, top=y(d[1]), h=M.top+ih-top;
+    const peak=d[1]===99;
+    const tip=`score <b>${d[0].toFixed(2)}</b><br><b>${d[1]}</b> messages
+      <span class="m">(${(d[1]/total*100).toFixed(1)}%)</span>`;
+    p.push(`<rect class="bar-rect hit" x="${x.toFixed(1)}" y="${top.toFixed(1)}" width="${bw.toFixed(1)}"
+      height="${h.toFixed(1)}" rx="2" fill="var(--cool)" opacity="${peak?0.95:0.55}"
+      data-tip="${esc2(tip)}" />`);
+    p.push(`<text x="${(x+bw/2).toFixed(1)}" y="${(top-6).toFixed(1)}" text-anchor="middle"
+      font-family="IBM Plex Mono, monospace" font-size="10" font-weight="${peak?600:400}"
+      fill="${peak?"var(--cool)":"var(--ink-3)"}">${d[1]}</text>`);
+    p.push(`<text x="${(x+bw/2).toFixed(1)}" y="${M.top+ih+17}" text-anchor="middle"
+      font-family="IBM Plex Mono, monospace" font-size="10" fill="var(--ink-3)">${d[0].toFixed(2)}</text>`);
+  });
+  p.push(`<text x="${M.left+iw/2}" y="${M.top+ih+37}" text-anchor="middle"
+    font-family="IBM Plex Mono, monospace" font-size="9.5" letter-spacing="0.09em"
+    fill="var(--ink-3)">TOXICITY SCORE</text>`);
+  p.push(`<text x="${M.left-9}" y="${M.top-11}" text-anchor="end" font-family="IBM Plex Mono, monospace"
+    font-size="9" letter-spacing="0.08em" fill="var(--ink-3)">MSGS</text>`);
+  p.push("</svg>");
+  const host=document.getElementById("dist"); host.innerHTML=p.join(""); bindTips(host);
 })();
 </script>
 
